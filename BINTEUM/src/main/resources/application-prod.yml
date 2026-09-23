@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: BINTEUM
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        jdbc:
+          time_zone: Asia/Seoul
+
+server:
+  port: ${SERVER_PORT:8080}
+
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: INFO
+    org.springframework.web: INFO
