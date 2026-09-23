@@ -1,4 +1,4 @@
-package com.binteum;
+package com.binteum.global.security.auth;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,3 +23,5 @@ public class SecurityConfig {
     return http.build();
   }
 }
+
+

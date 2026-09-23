@@ -1,4 +1,4 @@
-package com.binteum;
+package com.binteum.global.config;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -23,3 +23,5 @@ public class SwaggerConfig {
         .info(info);
   }
 }
+
+
