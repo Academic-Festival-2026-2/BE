@@ -1,6 +1,7 @@
 package com.binteum.domain.user.entity;
 
 import com.binteum.domain.user.enums.UserStatus;
+import com.binteum.global.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -13,8 +14,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import com.binteum.global.common.BaseEntity;@Getter
 
+@Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
@@ -32,7 +33,7 @@ public class User extends BaseEntity {
   @Column(name = "name", length = 30, nullable = false)
   private String name;
 
-  @Column(name = "nickname", length = 30)
+  @Column(name = "nickname", length = 30, nullable = false)
   private String nickname;
 
   @Column(name = "email", length = 100, nullable = false, unique = true)
@@ -45,7 +46,7 @@ public class User extends BaseEntity {
   private String department;
 
   @Enumerated(EnumType.STRING)
-  @Column(name = "status", length = 20, nullable = false)
+  @Column(name = "status", length = 10, nullable = false)
   private UserStatus status = UserStatus.ACTIVE;
 }
 
