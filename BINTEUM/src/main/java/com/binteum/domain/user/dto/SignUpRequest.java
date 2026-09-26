@@ -34,7 +34,9 @@ public class SignUpRequest {
   private String email;
 
   @NotBlank(message = "비밀번호는 필수입니다.")
-  @Size(min = 8, max = 255, message = "비밀번호는 8자 이상이어야 합니다.")
+  @Pattern(
+      regexp = "^[\\x21-\\x7E]{8,20}$",
+      message = "비밀번호는 공백 없는 영문, 숫자, 특수문자 8~20자여야 합니다.")
   private String password;
 
   @Size(max = 50, message = "학과는 50자 이하여야 합니다.")
