@@ -3,6 +3,8 @@ package com.binteum.global.exception.handler;
 import com.binteum.global.apiPayload.ApiResponse;
 import com.binteum.global.code.ErrorCode;
 import com.binteum.global.exception.GeneralException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -24,13 +26,13 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ApiResponse<Object>> handleValidationException(
       MethodArgumentNotValidException ex) {
     ErrorCode errorCode = ErrorCode.INVALID_INPUT;
-    String message = ex.getBindingResult().getFieldErrors().stream()
-        .findFirst()
-        .map(FieldError::getDefaultMessage)
-        .orElse(errorCode.getMessage());
+    Map<String, String> errors = new LinkedHashMap<>();
+    for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
+      errors.putIfAbsent(fieldError.getField(), fieldError.getDefaultMessage());
+    }
     return ResponseEntity
         .status(errorCode.getHttpStatus())
-        .body(ApiResponse.error(errorCode.getCode(), message));
+        .body(ApiResponse.error(errorCode.getCode(), errors));
   }
 
   @ExceptionHandler(Exception.class)
