@@ -1,14 +1,10 @@
 package com.binteum.domain.study.entity;
 
+import com.binteum.domain.classroom.entity.Classroom;
 import com.binteum.domain.study.enums.StudyStatus;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.binteum.domain.user.entity.User;
+import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -27,14 +23,19 @@ public class Study extends BaseEntity {
   @Column(name = "study_id")
   private Long studyId;
 
-  @Column(name = "room_id")
-  private Long roomId;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "room_id", nullable = false)
+  private Classroom classroom;
 
-  @Column(name = "host_id", nullable = false)
-  private Long hostId;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "host_id", nullable = false)
+  private User host;
 
   @Column(name = "title", length = 100, nullable = false)
   private String title;
+
+  @Column(name = "description", length = 500)
+  private String description;
 
   @Column(name = "category", length = 30, nullable = false)
   private String category;
