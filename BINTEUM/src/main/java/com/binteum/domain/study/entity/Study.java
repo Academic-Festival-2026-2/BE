@@ -1,6 +1,7 @@
 package com.binteum.domain.study.entity;
 
 import com.binteum.domain.classroom.entity.Classroom;
+import com.binteum.domain.study.enums.StudyCategory;
 import com.binteum.domain.study.enums.StudyStatus;
 import com.binteum.domain.user.entity.User;
 import jakarta.persistence.*;
@@ -37,15 +38,16 @@ public class Study extends BaseEntity {
   @Column(name = "description", length = 500)
   private String description;
 
-  @Column(name = "category", length = 30, nullable = false)
-  private String category;
+  @Column(name = "category", columnDefinition = "VARCHAR(30)", nullable = false)
+  @Enumerated(EnumType.STRING)
+  private StudyCategory category;
 
   @Column(name = "max_participant", nullable = false)
   private Integer maxParticipant;
 
   @Column(name = "status", length = 20, nullable = false)
   @Enumerated(EnumType.STRING)
-  private StudyStatus status = StudyStatus.RECRUITING;
+  private StudyStatus status = StudyStatus.ACTIVE;
 
   @Column(name = "start_time", nullable = false)
   private LocalDateTime startTime;
