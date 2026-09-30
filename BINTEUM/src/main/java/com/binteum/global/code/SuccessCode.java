@@ -1,5 +1,7 @@
 package com.binteum.global.code;
 
+// *********** 해당 코드들을 삭제하고 각 엔티티에 올바르게 배치
+
 import org.springframework.http.HttpStatus;
 
 public enum SuccessCode {

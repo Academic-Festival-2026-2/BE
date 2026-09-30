@@ -2,19 +2,18 @@ package com.binteum.global.code;
 
 import lombok.Builder;
 import lombok.Getter;
+import org.springframework.http.HttpStatus;
 
 @Getter
 @Builder
 public class ErrorReasonDTO {
+  private HttpStatus httpStatus;
+
+  private final boolean isSuccess;
   private String code;
   private String message;
-  private int status;
 
-  public ErrorReasonDTO(String code, String message, int status) {
-    this.code = code;
-    this.message = message;
-    this.status = status;
-  }
+  public boolean getIsSuccess(){return isSuccess;}
 
   // Getters and setters
 }
