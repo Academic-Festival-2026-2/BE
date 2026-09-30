@@ -10,7 +10,16 @@ public enum ErrorCode {
 
   // User
   DUPLICATE_EMAIL(HttpStatus.CONFLICT, "USER409_1", "이미 가입된 이메일입니다."),
-  DUPLICATE_STUDENT_ID(HttpStatus.CONFLICT, "USER409_2", "이미 가입된 학번입니다.");
+  DUPLICATE_STUDENT_ID(HttpStatus.CONFLICT, "USER409_2", "이미 가입된 학번입니다."),
+  USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER404_1", "존재하지 않는 사용자입니다."),
+
+  // Classroom
+  CLASSROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "CLASSROOM404_1", "존재하지 않는 강의실입니다."),
+
+  // Study
+  STUDY_TIME_PAST(HttpStatus.BAD_REQUEST, "STUDY400_1", "시작 시간은 현재 이후여야 합니다."),
+  STUDY_TIME_ORDER(HttpStatus.BAD_REQUEST, "STUDY400_2", "종료 시간은 시작 시간보다 빠를 수 없습니다."),
+  STUDY_TIME_DIFFERENT_DATE(HttpStatus.BAD_REQUEST, "STUDY400_3", "스터디는 당일에 끝나야 합니다.");
 
   private final HttpStatus httpStatus;
   private final String code;

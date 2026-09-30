@@ -5,10 +5,23 @@ import com.binteum.domain.study.enums.StudyCategory;
 import com.binteum.domain.study.enums.StudyStatus;
 import com.binteum.domain.user.entity.User;
 import com.binteum.global.common.BaseEntity;
-import jakarta.persistence.*;
-import lombok.*;
-
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
 @Setter
@@ -55,14 +68,14 @@ public class Study extends BaseEntity {
 
   @Builder
   private Study(
-          Classroom classroom,
-          User host,
-          String title,
-          String description,
-          StudyCategory category,
-          Integer maxParticipant,
-          LocalDateTime startTime,
-          LocalDateTime endTime){
+      Classroom classroom,
+      User host,
+      String title,
+      String description,
+      StudyCategory category,
+      Integer maxParticipant,
+      LocalDateTime startTime,
+      LocalDateTime endTime) {
     this.classroom = classroom;
     this.host = host;
     this.title = title;

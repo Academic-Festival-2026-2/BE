@@ -11,6 +11,7 @@ import lombok.Getter;
 @AllArgsConstructor
 @Builder
 public class StudyResponse {
+
   private Long studyId;
   private Long hostId;
   private Long roomId;
