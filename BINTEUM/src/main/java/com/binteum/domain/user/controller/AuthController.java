@@ -30,7 +30,9 @@ public class AuthController {
   }
 
   @PostMapping("/login")
-  public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
-    return ResponseEntity.ok(new TokenResponse("sample-access-token", "sample-refresh-token"));
+  public ResponseEntity<ApiResponse<TokenResponse>> login(
+      @Valid @RequestBody LoginRequest request) {
+    TokenResponse tokenResponse = authService.login(request);
+    return ResponseEntity.ok(ApiResponse.success("로그인에 성공했습니다.", tokenResponse));
   }
 }
