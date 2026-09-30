@@ -2,6 +2,7 @@ package com.binteum.domain.study.controller;
 
 import com.binteum.domain.study.dto.StudyCreateRequest;
 import com.binteum.domain.study.dto.StudyResponse;
+import com.binteum.domain.study.enums.StudyStatus;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +25,7 @@ public class StudyController {
         "알고리즘 스터디",
         "코딩",
         5,
-        com.binteum.domain.study.enums.StudyStatus.RECRUITING,
+        StudyStatus.ACTIVE,
         LocalDateTime.now(),
         LocalDateTime.now().plusHours(2)
     ));
@@ -38,7 +39,7 @@ public class StudyController {
         request.getTitle(),
         request.getCategory(),
         request.getMaxParticipant(),
-        com.binteum.domain.study.enums.StudyStatus.RECRUITING,
+        StudyStatus.ACTIVE,
         request.getStartTime(),
         request.getEndTime()
     ));
