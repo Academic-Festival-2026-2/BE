@@ -1,8 +1,7 @@
-package com.binteum.global.exception.handler;
+package com.binteum.global.exception;
 
 import com.binteum.global.apiPayload.ApiResponse;
 import com.binteum.global.code.ErrorCode;
-import com.binteum.global.exception.GeneralException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
