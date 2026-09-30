@@ -10,7 +10,10 @@ public enum ErrorCode {
   DUPLICATE_EMAIL(HttpStatus.CONFLICT, "USER409_1", "이미 가입된 이메일입니다."),
   DUPLICATE_STUDENT_ID(HttpStatus.CONFLICT, "USER409_2", "이미 가입된 학번입니다."),
   INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "USER401_1", "이메일 또는 비밀번호가 올바르지 않습니다."),
-  INACTIVE_USER(HttpStatus.FORBIDDEN, "USER403_1", "이용할 수 없는 계정입니다.");
+  INACTIVE_USER(HttpStatus.FORBIDDEN, "USER403_1", "이용할 수 없는 계정입니다."),
+
+  // Auth
+  INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH401_1", "유효하지 않은 리프레시 토큰입니다.");
 
   private final HttpStatus httpStatus;
   private final String code;

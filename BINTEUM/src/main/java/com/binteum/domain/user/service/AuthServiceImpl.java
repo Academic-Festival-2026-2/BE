@@ -3,6 +3,7 @@ package com.binteum.domain.user.service;
 import com.binteum.domain.refreshtoken.entity.RefreshToken;
 import com.binteum.domain.refreshtoken.repository.RefreshTokenRepository;
 import com.binteum.domain.user.dto.LoginRequest;
+import com.binteum.domain.user.dto.ReissueRequest;
 import com.binteum.domain.user.dto.SignUpRequest;
 import com.binteum.domain.user.dto.TokenResponse;
 import com.binteum.domain.user.entity.User;
@@ -61,6 +62,29 @@ public class AuthServiceImpl implements AuthService {
       throw new GeneralException(ErrorCode.INACTIVE_USER);
     }
 
+    return issueTokens(user);
+  }
+
+  @Override
+  public TokenResponse reissue(ReissueRequest request) {
+    String refreshToken = request.getRefreshToken();
+
+    if (!jwtTokenProvider.validateRefreshToken(refreshToken)) {
+      throw new GeneralException(ErrorCode.INVALID_REFRESH_TOKEN);
+    }
+
+    RefreshToken savedToken = refreshTokenRepository.findByRefreshToken(refreshToken)
+        .orElseThrow(() -> new GeneralException(ErrorCode.INVALID_REFRESH_TOKEN));
+
+    User user = savedToken.getUser();
+    if (user.getStatus() != UserStatus.ACTIVE) {
+      throw new GeneralException(ErrorCode.INACTIVE_USER);
+    }
+
+    return issueTokens(user);
+  }
+
+  private TokenResponse issueTokens(User user) {
     String accessToken = jwtTokenProvider.createAccessToken(user.getUserId());
     String refreshToken = jwtTokenProvider.createRefreshToken(user.getUserId());
     LocalDateTime expiredAt = LocalDateTime.now()

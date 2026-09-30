@@ -1,6 +1,7 @@
 package com.binteum.domain.user.controller;
 
 import com.binteum.domain.user.dto.LoginRequest;
+import com.binteum.domain.user.dto.ReissueRequest;
 import com.binteum.domain.user.dto.SignUpRequest;
 import com.binteum.domain.user.dto.TokenResponse;
 import com.binteum.domain.user.service.AuthService;
@@ -34,5 +35,12 @@ public class AuthController {
       @Valid @RequestBody LoginRequest request) {
     TokenResponse tokenResponse = authService.login(request);
     return ResponseEntity.ok(ApiResponse.success("로그인에 성공했습니다.", tokenResponse));
+  }
+
+  @PostMapping("/reissue")
+  public ResponseEntity<ApiResponse<TokenResponse>> reissue(
+      @Valid @RequestBody ReissueRequest request) {
+    TokenResponse tokenResponse = authService.reissue(request);
+    return ResponseEntity.ok(ApiResponse.success("토큰이 재발급되었습니다.", tokenResponse));
   }
 }
