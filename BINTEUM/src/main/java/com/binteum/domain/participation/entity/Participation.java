@@ -42,6 +42,15 @@ public class Participation extends BaseEntity {
 
   @Column(name = "joined_at")
   private LocalDateTime joinedAt;
+
+  public static Participation join(User user, Study study) {
+    Participation participation = new Participation();
+    participation.user = user;
+    participation.study = study;
+    participation.status = ParticipationStatus.JOINED;
+    participation.joinedAt = LocalDateTime.now();
+    return participation;
+  }
 }
 
 

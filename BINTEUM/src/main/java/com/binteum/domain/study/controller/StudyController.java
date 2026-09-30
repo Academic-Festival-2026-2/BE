@@ -2,6 +2,7 @@ package com.binteum.domain.study.controller;
 
 import com.binteum.domain.study.dto.StudyCreateRequest;
 import com.binteum.domain.study.dto.StudyResponse;
+import com.binteum.domain.study.enums.StudyCategory;
 import com.binteum.domain.study.enums.StudyStatus;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
@@ -19,30 +20,27 @@ public class StudyController {
 
   @GetMapping("/{studyId}")
   public ResponseEntity<StudyResponse> getStudy(@PathVariable Long studyId) {
-    return ResponseEntity.ok(new StudyResponse(
-        studyId,
-        1L,
-        "알고리즘 스터디",
-        "코딩",
-        5,
-        StudyStatus.ACTIVE,
-        LocalDateTime.now(),
-        LocalDateTime.now().plusHours(2)
-    ));
+    return ResponseEntity.ok(StudyResponse.builder().
+            studyId(studyId)
+            .title("알고리즘 스터디")
+            .category(StudyCategory.IT)
+            .maxParticipant(5)
+            .status(StudyStatus.ACTIVE)
+            .build());
   }
 
   @PostMapping
   public ResponseEntity<StudyResponse> createStudy(@Valid @RequestBody StudyCreateRequest request) {
-    return ResponseEntity.ok(new StudyResponse(
-        1L,
-        1L,
-        request.getTitle(),
-        request.getCategory(),
-        request.getMaxParticipant(),
-        StudyStatus.ACTIVE,
-        request.getStartTime(),
-        request.getEndTime()
-    ));
+    return ResponseEntity.ok(StudyResponse.builder()
+            .roomId(request.getRoomId())
+            .title(request.getTitle())
+            .description(request.getDescription())
+            .category(request.getCategory())
+            .maxParticipant(request.getMaxParticipant())
+            .status(StudyStatus.ACTIVE)
+            .startTime(request.getStartTime())
+            .endTime(request.getEndTime())
+            .build());
   }
 }
 

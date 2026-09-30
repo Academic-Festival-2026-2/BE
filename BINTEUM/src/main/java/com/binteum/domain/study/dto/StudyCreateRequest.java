@@ -1,27 +1,37 @@
 package com.binteum.domain.study.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import java.time.LocalDateTime;
+import com.binteum.domain.study.enums.StudyCategory;
+import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
 @NoArgsConstructor
 public class StudyCreateRequest {
 
+  @NotNull
+  private Long roomId;
+
   @NotBlank
+  @Size(max = 100)
   private String title;
 
-  @NotBlank
-  private String category;
+  @Size(max = 500)
+  private String description;
 
   @NotNull
+  private StudyCategory category;
+
+  @NotNull
+  @Min(2)
   private Integer maxParticipant;
 
   @NotNull
+  @Future
   private LocalDateTime startTime;
 
   @NotNull
