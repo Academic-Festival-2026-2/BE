@@ -1,7 +1,7 @@
 package com.binteum.domain.study.exception.code;
 
-import com.binteum.global.code.BaseCode;
-import com.binteum.global.code.ReasonDTO;
+import com.binteum.global.apiPayload.code.BaseCode;
+import com.binteum.global.apiPayload.code.ReasonDTO;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
