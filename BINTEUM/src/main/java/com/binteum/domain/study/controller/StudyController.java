@@ -4,6 +4,7 @@ import com.binteum.domain.study.dto.StudyCreateRequest;
 import com.binteum.domain.study.dto.StudyResponse;
 import com.binteum.domain.study.enums.StudyCategory;
 import com.binteum.domain.study.enums.StudyStatus;
+import com.binteum.domain.study.exception.code.StudySuccessCode;
 import com.binteum.domain.study.service.StudyService;
 import com.binteum.global.apiPayload.ApiResponse;
 import jakarta.validation.Valid;
@@ -41,7 +42,8 @@ public class StudyController {
   public ResponseEntity<ApiResponse<StudyResponse>> createStudy(
       @RequestHeader("X-USER-ID") Long userId, @Valid @RequestBody StudyCreateRequest request) {
     StudyResponse response = studyService.createStudy(userId, request);
-    return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(ApiResponse.of(StudySuccessCode._CREATED, response));
   }
 }
 
