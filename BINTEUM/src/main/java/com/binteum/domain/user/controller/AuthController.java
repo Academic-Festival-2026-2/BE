@@ -3,6 +3,7 @@ package com.binteum.domain.user.controller;
 import com.binteum.domain.user.dto.LoginRequest;
 import com.binteum.domain.user.dto.SignUpRequest;
 import com.binteum.domain.user.dto.TokenResponse;
+import com.binteum.domain.user.exception.code.UserSuccessCode;
 import com.binteum.domain.user.service.AuthService;
 import com.binteum.global.apiPayload.ApiResponse;
 import jakarta.validation.Valid;
@@ -26,11 +27,13 @@ public class AuthController {
     authService.signUp(request);
     return ResponseEntity
         .status(HttpStatus.CREATED)
-        .body(ApiResponse.success("회원가입이 완료되었습니다.", null));
+        .body(ApiResponse.of(UserSuccessCode._CREATED, null));
   }
 
   @PostMapping("/login")
-  public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
-    return ResponseEntity.ok(new TokenResponse("sample-access-token", "sample-refresh-token"));
+  public ResponseEntity<ApiResponse<TokenResponse>> login(@Valid @RequestBody LoginRequest request) {
+    return ResponseEntity
+        .status(HttpStatus.OK)
+        .body(ApiResponse.onSuccess(new TokenResponse("sample-access-token", "sample-refresh-token")));
   }
 }

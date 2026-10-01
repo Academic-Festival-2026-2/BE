@@ -2,9 +2,9 @@ package com.binteum.domain.user.service;
 
 import com.binteum.domain.user.dto.SignUpRequest;
 import com.binteum.domain.user.entity.User;
+import com.binteum.domain.user.exception.code.UserErrorCode;
 import com.binteum.domain.user.repository.UserRepository;
-import com.binteum.global.code.ErrorCode;
-import com.binteum.global.exception.GeneralException;
+import com.binteum.global.apiPayload.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -21,10 +21,10 @@ public class AuthServiceImpl implements AuthService {
   @Override
   public void signUp(SignUpRequest request) {
     if (userRepository.existsByEmail(request.getEmail())) {
-      throw new GeneralException(ErrorCode.DUPLICATE_EMAIL);
+      throw new GeneralException(UserErrorCode.DUPLICATE_EMAIL);
     }
     if (userRepository.existsByStudentId(request.getStudentId())) {
-      throw new GeneralException(ErrorCode.DUPLICATE_STUDENT_ID);
+      throw new GeneralException(UserErrorCode.DUPLICATE_STUDENT_ID);
     }
 
     User user = User.builder()
