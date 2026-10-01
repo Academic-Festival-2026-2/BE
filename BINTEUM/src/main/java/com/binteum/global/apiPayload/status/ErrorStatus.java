@@ -1,7 +1,7 @@
-package com.binteum.global.status;
+package com.binteum.global.apiPayload.status;
 
-import com.binteum.global.code.BaseErrorCode;
-import com.binteum.global.code.ErrorReasonDTO;
+import com.binteum.global.apiPayload.code.BaseErrorCode;
+import com.binteum.global.apiPayload.code.ErrorReasonDTO;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;

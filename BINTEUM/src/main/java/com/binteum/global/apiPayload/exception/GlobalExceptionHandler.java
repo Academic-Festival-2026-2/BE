@@ -1,11 +1,12 @@
-package com.binteum.global.exception;
+package com.binteum.global.apiPayload.exception;
 
 import com.binteum.global.apiPayload.ApiResponse;
-import com.binteum.global.code.BaseErrorCode;
-import com.binteum.global.code.ErrorCode;
-import com.binteum.global.code.ErrorReasonDTO;
+import com.binteum.global.apiPayload.code.BaseErrorCode;
+import com.binteum.global.apiPayload.code.ErrorCode;
+import com.binteum.global.apiPayload.code.ErrorReasonDTO;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -44,13 +45,19 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ApiResponse<Object>> handleException(Exception ex) {
+    // 에러 추적용 고유 ID 생성
+    String errorTraceId = UUID.randomUUID().toString();
+    // 서버 로그(콘솔 또는 파일)에는 에러의 원문 스택 트레이스와 Trace ID를 모두 기록
+    log.error("[TraceID: {}] 500 Internal Server Error: {}", errorTraceId, ex.getMessage(), ex);
+
     ErrorCode errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
     return ResponseEntity
         .status(errorCode.getHttpStatus())
         .body(ApiResponse.onFailure(
             errorCode.getCode(),
             errorCode.getMessage(),
-            ex.getMessage())); //디버깅용 메시지 (배포 시에는 null로 변경)
+            "Error Trace ID: " + errorTraceId
+        ));
   }
 }
 

@@ -1,7 +1,7 @@
 package com.binteum.global.apiPayload;
 
-import com.binteum.global.code.BaseCode;
-import com.binteum.global.status.SuccessStatus;
+import com.binteum.global.apiPayload.code.BaseCode;
+import com.binteum.global.apiPayload.status.SuccessStatus;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;

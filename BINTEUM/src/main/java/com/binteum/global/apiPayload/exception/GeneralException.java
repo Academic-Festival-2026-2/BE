@@ -1,7 +1,6 @@
-package com.binteum.global.exception;
+package com.binteum.global.apiPayload.exception;
 
-import com.binteum.global.code.BaseErrorCode;
-import com.binteum.global.code.ErrorCode;
+import com.binteum.global.apiPayload.code.BaseErrorCode;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 

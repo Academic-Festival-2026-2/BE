@@ -1,7 +1,7 @@
 package com.binteum.domain.user.exception.code;
 
-import com.binteum.global.code.BaseCode;
-import com.binteum.global.code.ReasonDTO;
+import com.binteum.global.apiPayload.code.BaseCode;
+import com.binteum.global.apiPayload.code.ReasonDTO;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
@@ -9,8 +9,8 @@ import org.springframework.http.HttpStatus;
 @Getter
 @AllArgsConstructor
 public enum UserSuccessCode implements BaseCode {
-  _FOUND(HttpStatus.OK, "MEMBER200", "성공적으로 사용자를 조회했습니다."),
-  _CREATED(HttpStatus.CREATED, "MEMBER201", "회원가입에 성공하였습니다.")
+  _FOUND(HttpStatus.OK, "MEMBER200_1", "성공적으로 사용자를 조회했습니다."),
+  _CREATED(HttpStatus.CREATED, "MEMBER201_1", "회원가입에 성공하였습니다.")
   ;
 
   private final HttpStatus httpStatus;

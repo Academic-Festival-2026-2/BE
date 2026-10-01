@@ -1,4 +1,4 @@
-package com.binteum.global.code;
+package com.binteum.global.apiPayload.code;
 
 import lombok.Builder;
 import lombok.Getter;
