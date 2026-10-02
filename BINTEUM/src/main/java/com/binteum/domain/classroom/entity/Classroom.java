@@ -15,7 +15,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import com.binteum.global.common.BaseEntity;@Getter
+import com.binteum.global.common.BaseEntity;
+
+@Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
@@ -34,10 +36,10 @@ public class Classroom extends BaseEntity {
   @Column(name = "room_number", length = 20, nullable = false)
   private String roomNumber;
 
-  @Column(name = "capacity", nullable = false)
+  @Column(name = "capacity")
   private Integer capacity;
 
-  @Column(name = "has_outlet", nullable = false)
+  @Column(name = "has_outlet")
   private Boolean hasOutlet = false;
 }
 
