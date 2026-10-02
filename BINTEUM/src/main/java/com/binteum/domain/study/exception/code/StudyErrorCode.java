@@ -11,7 +11,9 @@ import org.springframework.http.HttpStatus;
 public enum StudyErrorCode implements BaseErrorCode {
   STUDY_TIME_PAST(HttpStatus.BAD_REQUEST, "STUDY400_1", "시작 시간은 현재 이후여야 합니다."),
   STUDY_TIME_ORDER(HttpStatus.BAD_REQUEST, "STUDY400_2", "종료 시간은 시작 시간보다 빠를 수 없습니다."),
-  STUDY_TIME_DIFFERENT_DATE(HttpStatus.BAD_REQUEST, "STUDY400_3", "스터디는 당일에 끝나야 합니다.");
+  STUDY_TIME_DIFFERENT_DATE(HttpStatus.BAD_REQUEST, "STUDY400_3", "스터디는 당일에 끝나야 합니다."),
+  STUDY_NOT_FOUND(HttpStatus.NOT_FOUND, "STUDY404_1", "존재하지 않는 스터디입니다."),
+  ;
 
   private final HttpStatus httpStatus;
   private final String code;
