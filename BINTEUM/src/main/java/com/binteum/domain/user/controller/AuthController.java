@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.binteum.domain.user.dto.ReissueRequest;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -31,9 +32,16 @@ public class AuthController {
   }
 
   @PostMapping("/login")
-  public ResponseEntity<ApiResponse<TokenResponse>> login(@Valid @RequestBody LoginRequest request) {
-    return ResponseEntity
-        .status(HttpStatus.OK)
-        .body(ApiResponse.onSuccess(new TokenResponse("sample-access-token", "sample-refresh-token")));
+  public ResponseEntity<ApiResponse<TokenResponse>> login(
+      @Valid @RequestBody LoginRequest request) {
+    TokenResponse tokenResponse = authService.login(request);
+    return ResponseEntity.ok(ApiResponse.of(UserSuccessCode._LOGIN, tokenResponse));
+  }
+
+  @PostMapping("/reissue")
+  public ResponseEntity<ApiResponse<TokenResponse>> reissue(
+      @Valid @RequestBody ReissueRequest request) {
+    TokenResponse tokenResponse = authService.reissue(request);
+    return ResponseEntity.ok(ApiResponse.of(UserSuccessCode._TOKEN_REISSUED, tokenResponse));
   }
 }
