@@ -1,9 +1,8 @@
 package com.binteum.domain.study.controller;
 
 import com.binteum.domain.study.dto.StudyCreateRequest;
+import com.binteum.domain.study.dto.StudyDetailResponse;
 import com.binteum.domain.study.dto.StudyResponse;
-import com.binteum.domain.study.enums.StudyCategory;
-import com.binteum.domain.study.enums.StudyStatus;
 import com.binteum.domain.study.exception.code.StudySuccessCode;
 import com.binteum.domain.study.service.StudyService;
 import com.binteum.global.apiPayload.ApiResponse;
@@ -27,20 +26,16 @@ public class StudyController {
   private final StudyService studyService;
 
   @GetMapping("/{studyId}")
-  public ResponseEntity<StudyResponse> getStudy(@PathVariable Long studyId) {
-    return ResponseEntity.ok(StudyResponse.builder().
-        studyId(studyId)
-        .title("알고리즘 스터디")
-        .category(StudyCategory.MAJOR)
-        .maxParticipant(5)
-        .status(StudyStatus.ACTIVE)
-        .build());
+  public ResponseEntity<ApiResponse<StudyDetailResponse>> getStudy(@PathVariable Long studyId,
+      @AuthenticationPrincipal Long userId) {
+    StudyDetailResponse response = studyService.getStudy(studyId, userId);
+    return ResponseEntity.ok(ApiResponse.of(StudySuccessCode._FOUND, response));
+
   }
 
   @PostMapping
   public ResponseEntity<ApiResponse<StudyResponse>> createStudy(
-      @AuthenticationPrincipal Long userId, @Valid @RequestBody
-      StudyCreateRequest request) {
+      @AuthenticationPrincipal Long userId, @Valid @RequestBody StudyCreateRequest request) {
     StudyResponse response = studyService.createStudy(userId, request);
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(ApiResponse.of(StudySuccessCode._CREATED, response));
