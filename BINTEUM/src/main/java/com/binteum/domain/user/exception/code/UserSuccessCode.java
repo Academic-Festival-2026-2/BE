@@ -13,6 +13,7 @@ public enum UserSuccessCode implements BaseCode {
   _CREATED(HttpStatus.CREATED, "USER201_1", "회원가입에 성공하였습니다."),
   _LOGIN(HttpStatus.OK, "USER200_2", "로그인에 성공했습니다."),
   _TOKEN_REISSUED(HttpStatus.OK, "USER200_3", "토큰이 재발급되었습니다."),
+  _LOGOUT(HttpStatus.OK, "USER200_4", "로그아웃되었습니다."),
   ;
 
   private final HttpStatus httpStatus;

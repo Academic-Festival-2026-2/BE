@@ -84,6 +84,12 @@ public class AuthServiceImpl implements AuthService {
     return issueTokens(user);
   }
 
+  @Override
+  public void logout(Long userId) {
+    refreshTokenRepository.findByUserUserId(userId)
+        .ifPresent(refreshTokenRepository::delete);
+  }
+
   private TokenResponse issueTokens(User user) {
     String accessToken = jwtTokenProvider.createAccessToken(user.getUserId());
     String refreshToken = jwtTokenProvider.createRefreshToken(user.getUserId());

@@ -34,9 +34,10 @@ public class SecurityConfig {
         .exceptionHandling(exception -> exception
             .authenticationEntryPoint(jwtAuthenticationEntryPoint))
         .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/health", "/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**",
-                "/error").permitAll()
-            .anyRequest().authenticated()
+            .requestMatchers("/api/auth/logout").authenticated()
+                .requestMatchers("/health", "/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**",
+                   "/error").permitAll()
+                .anyRequest().authenticated()
         )
         .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
             UsernamePasswordAuthenticationFilter.class);

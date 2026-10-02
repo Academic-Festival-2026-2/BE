@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -43,5 +44,11 @@ public class AuthController {
       @Valid @RequestBody ReissueRequest request) {
     TokenResponse tokenResponse = authService.reissue(request);
     return ResponseEntity.ok(ApiResponse.of(UserSuccessCode._TOKEN_REISSUED, tokenResponse));
+  }
+
+  @PostMapping("/logout")
+  public ResponseEntity<ApiResponse<Void>> logout(@AuthenticationPrincipal Long userId) {
+    authService.logout(userId);
+    return ResponseEntity.ok(ApiResponse.of(UserSuccessCode._LOGOUT, null));
   }
 }

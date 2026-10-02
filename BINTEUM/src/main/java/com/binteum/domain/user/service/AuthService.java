@@ -12,4 +12,6 @@ public interface AuthService {
   TokenResponse login(LoginRequest request);
 
   TokenResponse reissue(ReissueRequest request);
+
+  void logout(Long userId);
 }
