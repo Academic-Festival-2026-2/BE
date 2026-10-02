@@ -1,9 +1,12 @@
 package com.binteum.domain.study.converter;
 
+import com.binteum.domain.building.entity.Building;
 import com.binteum.domain.classroom.entity.Classroom;
 import com.binteum.domain.study.dto.StudyCreateRequest;
+import com.binteum.domain.study.dto.StudyDetailResponse;
 import com.binteum.domain.study.dto.StudyResponse;
 import com.binteum.domain.study.entity.Study;
+import com.binteum.domain.study.enums.StudyDisplayStatus;
 import com.binteum.domain.user.entity.User;
 
 public class StudyConverter {
@@ -37,6 +40,33 @@ public class StudyConverter {
         .endTime(study.getEndTime())
         .status(study.getStatus())
         .currentParticipants(currentParticipants)
+        .build();
+  }
+
+  public static StudyDetailResponse toStudyDetailResponse(Study study, long currentParticipants,
+      StudyDisplayStatus displayStatus, boolean isHost, boolean isJoined) {
+    Classroom classroom = study.getClassroom();
+    Building building = classroom.getBuilding();
+    User host = study.getHost();
+
+    return StudyDetailResponse.builder()
+        .studyId(study.getStudyId())
+        .title(study.getTitle())
+        .description(study.getDescription())
+        .category(study.getCategory())
+        .startTime(study.getStartTime())
+        .endTime(study.getEndTime())
+        .maxParticipant(study.getMaxParticipant())
+        .currentParticipants(currentParticipants)
+        .displayStatus(displayStatus)
+        .hostId(host.getUserId())
+        .hostNickname(host.getNickname())
+        .buildingId(building.getBuildingId())
+        .buildingName(building.getName())
+        .roomId(classroom.getRoomId())
+        .roomNumber(classroom.getRoomNumber())
+        .isHost(isHost)
+        .isJoined(isJoined)
         .build();
   }
 }
