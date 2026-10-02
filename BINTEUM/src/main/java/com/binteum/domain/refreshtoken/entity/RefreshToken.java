@@ -30,10 +30,10 @@ public class RefreshToken {
   private Long tokenId;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "user_id", nullable = false)
+  @JoinColumn(name = "user_id", nullable = false, unique = true)
   private User user;
 
-  @Column(name = "refresh_token", length = 255, nullable = false, unique = true)
+  @Column(name = "refresh_token", length = 512, nullable = false, unique = true)
   private String refreshToken;
 
   @Column(name = "expired_at", nullable = false)

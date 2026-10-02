@@ -19,8 +19,7 @@ class JwtTokenProviderTest {
   void createAccessToken_andExtractUserId() {
     String token = jwtTokenProvider.createAccessToken(1L);
 
-    assertThat(jwtTokenProvider.validateAccessToken(token)).isTrue();
-    assertThat(jwtTokenProvider.getUserId(token)).isEqualTo(1L);
+    assertThat(jwtTokenProvider.resolveAccessUserId(token)).contains(1L);
   }
 
   @Test
@@ -28,7 +27,7 @@ class JwtTokenProviderTest {
   void refreshToken_failsAccessTokenValidation() {
     String refreshToken = jwtTokenProvider.createRefreshToken(1L);
 
-    assertThat(jwtTokenProvider.validateAccessToken(refreshToken)).isFalse();
+    assertThat(jwtTokenProvider.resolveAccessUserId(refreshToken)).isEmpty();
     assertThat(jwtTokenProvider.validateRefreshToken(refreshToken)).isTrue();
   }
 
@@ -38,7 +37,7 @@ class JwtTokenProviderTest {
     JwtTokenProvider expiredProvider = new JwtTokenProvider(TEST_SECRET, -1000L, -1000L);
     String token = expiredProvider.createAccessToken(1L);
 
-    assertThat(jwtTokenProvider.validateAccessToken(token)).isFalse();
+    assertThat(jwtTokenProvider.resolveAccessUserId(token)).isEmpty();
   }
 
   @Test
@@ -46,6 +45,15 @@ class JwtTokenProviderTest {
   void tamperedToken_failsValidation() {
     String token = jwtTokenProvider.createAccessToken(1L);
 
-    assertThat(jwtTokenProvider.validateAccessToken(token + "x")).isFalse();
+    assertThat(jwtTokenProvider.resolveAccessUserId(token + "x")).isEmpty();
+  }
+
+  @Test
+  @DisplayName("같은 유저에게 연속 발급한 RefreshToken은 서로 다르다")
+  void refreshTokens_issuedInSameSecond_areDifferent() {
+    String first = jwtTokenProvider.createRefreshToken(1L);
+    String second = jwtTokenProvider.createRefreshToken(1L);
+
+    assertThat(first).isNotEqualTo(second);
   }
 }
