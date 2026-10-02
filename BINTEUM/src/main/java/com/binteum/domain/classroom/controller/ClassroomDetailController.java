@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
 
 @RestController
 @RequiredArgsConstructor
@@ -17,11 +18,9 @@ public class ClassroomDetailController {
   private final ClassroomService classroomService;
 
   @GetMapping("/{roomId}")
-  public ApiResponse<ClassroomDetailResponse> getClassroomDetail(
-      @PathVariable("roomId") Long roomId
-  ) {
-    return ApiResponse.onSuccess(
-        classroomService.getClassroomDetail(roomId)
-    );
+  public ResponseEntity<ApiResponse<ClassroomDetailResponse>> getClassroomDetail(
+      @PathVariable("roomId") Long roomId) {
+    return ResponseEntity.ok(
+        ApiResponse.onSuccess(classroomService.getClassroomDetail(roomId)));
   }
 }
