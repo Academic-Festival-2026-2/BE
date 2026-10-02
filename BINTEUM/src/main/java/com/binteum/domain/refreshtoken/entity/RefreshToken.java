@@ -12,16 +12,17 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
-import com.binteum.global.common.BaseEntity;@Getter
-@Setter
+@Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(name = "refresh_token")
-public class RefreshToken extends BaseEntity {
+public class RefreshToken {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,16 +30,32 @@ public class RefreshToken extends BaseEntity {
   private Long tokenId;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "user_id", nullable = false)
+  @JoinColumn(name = "user_id", nullable = false, unique = true)
   private User user;
 
-  @Column(name = "refresh_token", length = 255, nullable = false, unique = true)
+  @Column(name = "refresh_token", length = 512, nullable = false, unique = true)
   private String refreshToken;
 
   @Column(name = "expired_at", nullable = false)
   private LocalDateTime expiredAt;
+
+  @CreationTimestamp
+  @Column(name = "created_at", updatable = false)
+  private LocalDateTime createdAt;
+
+  @UpdateTimestamp
+  @Column(name = "updated_at")
+  private LocalDateTime updatedAt;
+
+  @Builder
+  private RefreshToken(User user, String refreshToken, LocalDateTime expiredAt) {
+    this.user = user;
+    this.refreshToken = refreshToken;
+    this.expiredAt = expiredAt;
+  }
+
+  public void updateToken(String refreshToken, LocalDateTime expiredAt) {
+    this.refreshToken = refreshToken;
+    this.expiredAt = expiredAt;
+  }
 }
-
-
-
-

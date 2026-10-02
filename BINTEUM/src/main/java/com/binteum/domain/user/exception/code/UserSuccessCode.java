@@ -10,7 +10,10 @@ import org.springframework.http.HttpStatus;
 @AllArgsConstructor
 public enum UserSuccessCode implements BaseCode {
   _FOUND(HttpStatus.OK, "USER200_1", "성공적으로 사용자를 조회했습니다."),
-  _CREATED(HttpStatus.CREATED, "USER201_1", "회원가입에 성공하였습니다.")
+  _CREATED(HttpStatus.CREATED, "USER201_1", "회원가입에 성공하였습니다."),
+  _LOGIN(HttpStatus.OK, "USER200_2", "로그인에 성공했습니다."),
+  _TOKEN_REISSUED(HttpStatus.OK, "USER200_3", "토큰이 재발급되었습니다."),
+  _LOGOUT(HttpStatus.OK, "USER200_4", "로그아웃되었습니다."),
   ;
 
   private final HttpStatus httpStatus;
