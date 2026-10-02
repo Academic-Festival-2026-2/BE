@@ -6,11 +6,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface ClassScheduleRepository
-        extends JpaRepository<ClassSchedule, Long> {
+    extends JpaRepository<ClassSchedule, Long> {
 
-    List<ClassSchedule>
-    findByClassroom_RoomIdAndDayOfWeekOrderByStartTimeAsc(
-            Long roomId,
-            String dayOfWeek
-    );
+  List<ClassSchedule>
+  findByClassroom_RoomIdAndDayOfWeekOrderByStartTimeAsc(
+      Long roomId,
+      String dayOfWeek
+  );
 }

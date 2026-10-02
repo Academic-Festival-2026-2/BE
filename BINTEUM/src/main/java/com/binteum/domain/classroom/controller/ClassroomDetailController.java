@@ -14,14 +14,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/classrooms")
 public class ClassroomDetailController {
 
-    private final ClassroomService classroomService;
+  private final ClassroomService classroomService;
 
-    @GetMapping("/{roomId}")
-    public ApiResponse<ClassroomDetailResponse> getClassroomDetail(
-            @PathVariable("roomId") Long roomId
-    ) {
-        return ApiResponse.onSuccess(
-                classroomService.getClassroomDetail(roomId)
-        );
-    }
+  @GetMapping("/{roomId}")
+  public ApiResponse<ClassroomDetailResponse> getClassroomDetail(
+      @PathVariable("roomId") Long roomId
+  ) {
+    return ApiResponse.onSuccess(
+        classroomService.getClassroomDetail(roomId)
+    );
+  }
 }
