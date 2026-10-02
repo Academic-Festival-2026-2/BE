@@ -1,5 +1,6 @@
 package com.binteum.global.security.auth;
 
+import com.binteum.global.security.jwt.JwtAuthenticationEntryPoint;
 import com.binteum.global.security.jwt.JwtAuthenticationFilter;
 import com.binteum.global.security.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
   private final JwtTokenProvider jwtTokenProvider;
+  private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -29,6 +31,8 @@ public class SecurityConfig {
         .httpBasic(AbstractHttpConfigurer::disable)
         .sessionManagement(session -> session
             .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .exceptionHandling(exception -> exception
+            .authenticationEntryPoint(jwtAuthenticationEntryPoint))
         .authorizeHttpRequests(auth -> auth
             .requestMatchers("/health", "/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**",
                 "/error").permitAll()
