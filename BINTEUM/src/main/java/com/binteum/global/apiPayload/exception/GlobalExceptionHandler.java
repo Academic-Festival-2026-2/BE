@@ -2,8 +2,8 @@ package com.binteum.global.apiPayload.exception;
 
 import com.binteum.global.apiPayload.ApiResponse;
 import com.binteum.global.apiPayload.code.BaseErrorCode;
-import com.binteum.global.apiPayload.code.ErrorCode;
 import com.binteum.global.apiPayload.code.ErrorReasonDTO;
+import com.binteum.global.apiPayload.status.ErrorStatus;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -33,14 +33,14 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ApiResponse<Object>> handleValidationException(
       MethodArgumentNotValidException ex) {
-    ErrorCode errorCode = ErrorCode.INVALID_INPUT;
+    ErrorStatus errorStatus = ErrorStatus._BAD_REQUEST;
     Map<String, String> errors = new LinkedHashMap<>();
     for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
       errors.putIfAbsent(fieldError.getField(), fieldError.getDefaultMessage());
     }
     return ResponseEntity
-        .status(errorCode.getHttpStatus())
-        .body(ApiResponse.onFailure(errorCode.getCode(), errorCode.getMessage(), errors));
+        .status(errorStatus.getHttpStatus())
+        .body(ApiResponse.onFailure(errorStatus.getCode(), errorStatus.getMessage(), errors));
   }
 
   @ExceptionHandler(Exception.class)
@@ -50,12 +50,12 @@ public class GlobalExceptionHandler {
     // 서버 로그(콘솔 또는 파일)에는 에러의 원문 스택 트레이스와 Trace ID를 모두 기록
     log.error("[TraceID: {}] 500 Internal Server Error: {}", errorTraceId, ex.getMessage(), ex);
 
-    ErrorCode errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
+    ErrorStatus errorStatus = ErrorStatus._INTERNAL_SERVER_ERROR;
     return ResponseEntity
-        .status(errorCode.getHttpStatus())
+        .status(errorStatus.getHttpStatus())
         .body(ApiResponse.onFailure(
-            errorCode.getCode(),
-            errorCode.getMessage(),
+            errorStatus.getCode(),
+            errorStatus.getMessage(),
             "Error Trace ID: " + errorTraceId
         ));
   }
