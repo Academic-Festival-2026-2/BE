@@ -31,7 +31,7 @@ public class StudyController {
     return ResponseEntity.ok(StudyResponse.builder().
         studyId(studyId)
         .title("알고리즘 스터디")
-        .category(StudyCategory.IT)
+        .category(StudyCategory.MAJOR)
         .maxParticipant(5)
         .status(StudyStatus.ACTIVE)
         .build());

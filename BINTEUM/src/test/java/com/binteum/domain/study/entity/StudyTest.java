@@ -17,7 +17,7 @@ public class StudyTest {
   private Study createStudy() {
     return Study.builder()
         .title("테스트 스터디")
-        .category(StudyCategory.IT)
+        .category(StudyCategory.MAJOR)
         .maxParticipant(4)
         .startTime(LocalDateTime.of(2026, 10, 12, 14, 0))
         .endTime(LocalDateTime.of(2026, 10, 12, 16, 0))
