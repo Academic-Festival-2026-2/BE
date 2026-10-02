@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface ClassroomRepository extends JpaRepository<Classroom, Long> {
 
-    List<Classroom> findByBuilding_BuildingId(Long buildingId);
+  List<Classroom> findByBuilding_BuildingId(Long buildingId);
 }

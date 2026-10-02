@@ -16,14 +16,14 @@ import java.util.List;
 @RequestMapping("/api/buildings")
 public class ClassroomController {
 
-    private final ClassroomService classroomService;
+  private final ClassroomService classroomService;
 
-    @GetMapping("/{buildingId}/classrooms")
-    public ApiResponse<List<ClassroomResponse>> getClassrooms(
-            @PathVariable("buildingId") Long buildingId
-    ) {
-        return ApiResponse.onSuccess(
-                classroomService.getClassrooms(buildingId)
-        );
-    }
+  @GetMapping("/{buildingId}/classrooms")
+  public ApiResponse<List<ClassroomResponse>> getClassrooms(
+      @PathVariable("buildingId") Long buildingId
+  ) {
+    return ApiResponse.onSuccess(
+        classroomService.getClassrooms(buildingId)
+    );
+  }
 }

@@ -16,23 +16,23 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class ClassroomService {
 
-    private final BuildingRepository buildingRepository;
-    private final ClassroomRepository classroomRepository;
+  private final BuildingRepository buildingRepository;
+  private final ClassroomRepository classroomRepository;
 
-    public List<ClassroomResponse> getClassrooms(Long buildingId) {
-        if (!buildingRepository.existsById(buildingId)) {
-            throw new GeneralException(ErrorStatus.BUILDING_NOT_FOUND);
-        }
-
-        return classroomRepository
-                .findByBuilding_BuildingId(buildingId)
-                .stream()
-                .map(classroom -> new ClassroomResponse(
-                        classroom.getRoomId(),
-                        classroom.getRoomNumber(),
-                        classroom.getCapacity(),
-                        classroom.getHasOutlet()
-                ))
-                .toList();
+  public List<ClassroomResponse> getClassrooms(Long buildingId) {
+    if (!buildingRepository.existsById(buildingId)) {
+      throw new GeneralException(ErrorStatus.BUILDING_NOT_FOUND);
     }
+
+    return classroomRepository
+        .findByBuilding_BuildingId(buildingId)
+        .stream()
+        .map(classroom -> new ClassroomResponse(
+            classroom.getRoomId(),
+            classroom.getRoomNumber(),
+            classroom.getCapacity(),
+            classroom.getHasOutlet()
+        ))
+        .toList();
+  }
 }
