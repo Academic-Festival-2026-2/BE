@@ -4,10 +4,14 @@ import com.binteum.domain.building.entity.Building;
 import com.binteum.domain.classroom.entity.Classroom;
 import com.binteum.domain.study.dto.StudyCreateRequest;
 import com.binteum.domain.study.dto.StudyDetailResponse;
+import com.binteum.domain.study.dto.StudyListResponse;
 import com.binteum.domain.study.dto.StudyResponse;
+import com.binteum.domain.study.dto.StudySummaryResponse;
 import com.binteum.domain.study.entity.Study;
 import com.binteum.domain.study.enums.StudyDisplayStatus;
 import com.binteum.domain.user.entity.User;
+import java.util.List;
+import org.springframework.data.domain.Page;
 
 public class StudyConverter {
 
@@ -67,6 +71,37 @@ public class StudyConverter {
         .roomNumber(classroom.getRoomNumber())
         .isHost(isHost)
         .isJoined(isJoined)
+        .build();
+  }
+
+  public static StudySummaryResponse toStudySummaryResponse(Study study, long currentParticipants,
+      StudyDisplayStatus displayStatus) {
+    Classroom classroom = study.getClassroom();
+    Building building = classroom.getBuilding();
+
+    return StudySummaryResponse.builder()
+        .studyId(study.getStudyId())
+        .category(study.getCategory())
+        .title(study.getTitle())
+        .startTime(study.getStartTime())
+        .endTime(study.getEndTime())
+        .currentParticipants(currentParticipants)
+        .maxParticipant(study.getMaxParticipant())
+        .displayStatus(displayStatus)
+        .buildingName(building.getName())
+        .roomNumber(classroom.getRoomNumber())
+        .build();
+  }
+
+  public static StudyListResponse toStudyListResponse(Page<Study> studyPage,
+      List<StudySummaryResponse> cards) {
+    return StudyListResponse.builder()
+        .studies(cards)
+        .page(studyPage.getNumber())
+        .size(studyPage.getSize())
+        .totalElements(studyPage.getTotalElements())
+        .totalPages(studyPage.getTotalPages())
+        .hasNext(studyPage.hasNext())
         .build();
   }
 }
