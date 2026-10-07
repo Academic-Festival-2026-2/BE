@@ -10,7 +10,9 @@ import org.springframework.http.HttpStatus;
 @AllArgsConstructor
 public enum StudySuccessCode implements BaseCode {
   _CREATED(HttpStatus.CREATED, "STUDY201_1", "스터디가 생성되었습니다."),
-  _FOUND(HttpStatus.OK, "STUDY200_1", "스터디를 조회했습니다.");
+  _FOUND(HttpStatus.OK, "STUDY200_1", "스터디를 조회했습니다."),
+  _LIST_FOUND(HttpStatus.OK, "STUDY200_2", "스터디 목록을 조회했습니다."),
+  ;
   private final HttpStatus httpStatus;
   private final String code;
   private final String message;
@@ -33,6 +35,4 @@ public enum StudySuccessCode implements BaseCode {
         .httpStatus(httpStatus)
         .build();
   }
-
-
 }
