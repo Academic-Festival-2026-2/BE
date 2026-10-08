@@ -2,6 +2,7 @@ package com.binteum.domain.study.entity;
 
 import com.binteum.domain.classroom.entity.Classroom;
 import com.binteum.domain.study.enums.StudyCategory;
+import com.binteum.domain.study.enums.StudyDisplayStatus;
 import com.binteum.domain.study.enums.StudyStatus;
 import com.binteum.domain.user.entity.User;
 import com.binteum.global.common.BaseEntity;
@@ -84,6 +85,22 @@ public class Study extends BaseEntity {
     this.maxParticipant = maxParticipant;
     this.startTime = startTime;
     this.endTime = endTime;
+  }
+
+  public StudyDisplayStatus calculateDisplayStatus(long currentParticipants, LocalDateTime now) {
+    if (status == StudyStatus.CANCELLED) {
+      return StudyDisplayStatus.CANCELLED;
+    }
+    if (!endTime.isAfter(now)) {
+      return StudyDisplayStatus.COMPLETED;
+    }
+    if (!startTime.isAfter(now)) {
+      return StudyDisplayStatus.IN_PROGRESS;
+    }
+    if (currentParticipants >= maxParticipant) {
+      return StudyDisplayStatus.FULL;
+    }
+    return StudyDisplayStatus.RECRUITING;
   }
 }
 
