@@ -34,7 +34,8 @@ public class AuthServiceImpl implements AuthService {
     if (userRepository.existsByEmail(request.getEmail())) {
       throw new GeneralException(UserErrorCode.DUPLICATE_EMAIL);
     }
-    if (userRepository.existsByStudentId(request.getStudentId())) {
+    if (request.getStudentId() != null
+        && userRepository.existsByStudentId(request.getStudentId())) {
       throw new GeneralException(UserErrorCode.DUPLICATE_STUDENT_ID);
     }
 

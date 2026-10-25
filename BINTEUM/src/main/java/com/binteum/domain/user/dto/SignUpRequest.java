@@ -13,7 +13,6 @@ import lombok.Setter;
 @NoArgsConstructor
 public class SignUpRequest {
 
-  @NotBlank(message = "학번은 필수입니다.")
   @Size(max = 20, message = "학번은 20자 이하여야 합니다.")
   private String studentId;
 
@@ -21,7 +20,6 @@ public class SignUpRequest {
   @Size(max = 30, message = "이름은 30자 이하여야 합니다.")
   private String name;
 
-  @NotBlank(message = "닉네임은 필수입니다.")
   @Size(max = 30, message = "닉네임은 30자 이하여야 합니다.")
   private String nickname;
 
