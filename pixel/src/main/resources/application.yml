@@ -1,6 +1,6 @@
 spring:
   application:
-    name: BINTEUM
+    name: pixel
 
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:local}
