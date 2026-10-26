@@ -26,7 +26,8 @@ server:
   port: ${SERVER_PORT:8080}
 
 jwt:
-  secret: ${JWT_SECRET}
+  # 로컬/데모 전용 기본키(공개됨). 배포 환경은 application-prod.yml에서 JWT_SECRET 필수
+  secret: ${JWT_SECRET:cQO5+HLU/JP8dpllmAJRenERnhm0eKPsdvpQ0vxkY1ZqdW/avvtPZ4GmOV5itgqnIMNe8TRqKAomZRyKI7deTQ==}
   access-token-expiration: 1800000      # 30분 (ms)
   refresh-token-expiration: 1209600000  # 14일 (ms)
 
