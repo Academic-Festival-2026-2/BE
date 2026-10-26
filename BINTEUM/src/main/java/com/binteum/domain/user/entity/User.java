@@ -33,10 +33,10 @@ public class User extends BaseEntity {
   @Column(name = "student_id", length = 20, unique = true)
   private String studentId;
 
-  @Column(name = "name", length = 30, nullable = false)
+  @Column(name = "name", length = 30)
   private String name;
 
-  @Column(name = "nickname", length = 30)
+  @Column(name = "nickname", length = 16, nullable = false)
   private String nickname;
 
   @Column(name = "email", length = 100, nullable = false, unique = true)

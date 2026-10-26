@@ -16,25 +16,22 @@ public class SignUpRequest {
   @Size(max = 20, message = "학번은 20자 이하여야 합니다.")
   private String studentId;
 
-  @NotBlank(message = "이름은 필수입니다.")
   @Size(max = 30, message = "이름은 30자 이하여야 합니다.")
   private String name;
 
-  @Size(max = 30, message = "닉네임은 30자 이하여야 합니다.")
+  @NotBlank(message = "닉네임은 필수입니다.")
+  @Size(min = 2, max = 16, message = "닉네임은 2~16자여야 합니다.")
   private String nickname;
 
   @NotBlank(message = "이메일은 필수입니다.")
   @Email(message = "이메일 형식이 올바르지 않습니다.")
-  @Pattern(
-      regexp = "^[A-Za-z0-9._%+-]+@catholic\\.ac\\.kr$",
-      message = "가톨릭대학교 이메일(@catholic.ac.kr)만 사용할 수 있습니다.")
   @Size(max = 100, message = "이메일은 100자 이하여야 합니다.")
   private String email;
 
   @NotBlank(message = "비밀번호는 필수입니다.")
   @Pattern(
-      regexp = "^[\\x21-\\x7E]{8,20}$",
-      message = "비밀번호는 공백 없는 영문, 숫자, 특수문자 8~20자여야 합니다.")
+      regexp = "^(?=.*[A-Za-z])(?=.*\\d)[\\x21-\\x7E]{8,20}$",
+      message = "비밀번호는 영문과 숫자를 함께 포함한 8~20자여야 합니다.")
   private String password;
 
   @Size(max = 50, message = "학과는 50자 이하여야 합니다.")
