@@ -10,7 +10,7 @@
 - **MVP 범위:** 부천시 37개 행정동 × 가을(9–11월) × 시간 4구간(새벽·낮·노을·밤) = 148칸
 - **프론트엔드 레포지토리:** https://github.com/Academic-Festival-2026-2/FE
 
-> ℹ️ 초기 기획명이 `BINTEUM`이어서 폴더명(`BINTEUM/`)과 패키지명(`com.binteum`)에 이전 이름이 남아 있습니다. 이후 리팩터링할 예정입니다.
+> ℹ️ 초기 기획명이 `BINTEUM`이어서 패키지명(`com.binteum`)에 이전 이름이 남아 있습니다. 이후 리팩터링할 예정입니다.
 
 ## 기술 스택
 
@@ -94,7 +94,7 @@ CREATE DATABASE binteum DEFAULT CHARACTER SET utf8mb4;
 ### 3. 실행
 
 ```bash
-cd BINTEUM
+cd pixel
 ./gradlew bootRun
 ```
 
@@ -104,14 +104,14 @@ cd BINTEUM
 ### 4. 테스트
 
 ```bash
-cd BINTEUM
+cd pixel
 ./gradlew test
 ```
 
 ## 프로젝트 구조
 
 ```
-BINTEUM/src/main/java/com/binteum
+pixel/src/main/java/com/binteum
 ├── domain
 │   ├── user          # 회원 (controller, dto, entity, repository, service, exception)
 │   └── refreshtoken  # Refresh Token 저장소

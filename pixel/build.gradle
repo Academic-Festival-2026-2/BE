@@ -6,7 +6,7 @@ plugins {
 
 group = 'com.binteum'
 version = '0.0.1-SNAPSHOT'
-description = 'BINTEUM backend'
+description = 'Pixel backend'
 
 java {
     toolchain {
