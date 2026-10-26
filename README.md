@@ -83,9 +83,11 @@ CREATE DATABASE binteum DEFAULT CHARACTER SET utf8mb4;
 
 ### 2. 환경 변수
 
+로컬에서는 환경 변수 없이도 아래 기본값으로 실행됩니다. 바꾸고 싶은 값만 `pixel/src/main/resources/.env.example`을 참고해 지정하세요.
+
 | 변수 | 기본값 | 설명 |
 |---|---|---|
-| `JWT_SECRET` | (없음, **필수**) | JWT 서명 키 (Base64, 256bit 이상) |
+| `JWT_SECRET` | 로컬용 기본키 (`application.yml`) | JWT 서명 키 (Base64, 256bit 이상). **배포(`prod`) 환경에서는 기본값이 없어 반드시 지정** |
 | `DB_URL` | `jdbc:mysql://localhost:3306/binteum...` | DB 접속 URL |
 | `DB_USERNAME` | `root` | DB 사용자 |
 | `DB_PASSWORD` | `password` | DB 비밀번호 |
