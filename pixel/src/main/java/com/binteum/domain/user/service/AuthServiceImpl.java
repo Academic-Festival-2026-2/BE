@@ -34,18 +34,18 @@ public class AuthServiceImpl implements AuthService {
     if (userRepository.existsByEmail(request.getEmail())) {
       throw new GeneralException(UserErrorCode.DUPLICATE_EMAIL);
     }
-    if (request.getStudentId() != null
-        && userRepository.existsByStudentId(request.getStudentId())) {
-      throw new GeneralException(UserErrorCode.DUPLICATE_STUDENT_ID);
+    if (userRepository.existsByNickname(request.getNickname())) {
+      throw new GeneralException(UserErrorCode.DUPLICATE_NICKNAME);
     }
 
+    LocalDateTime now = LocalDateTime.now();
     User user = User.builder()
-        .studentId(request.getStudentId())
-        .name(request.getName())
-        .nickname(request.getNickname())
         .email(request.getEmail())
-        .password(passwordEncoder.encode(request.getPassword()))
-        .department(request.getDepartment())
+        .passwordHash(passwordEncoder.encode(request.getPassword()))
+        .nickname(request.getNickname())
+        .termsAgreedAt(now)
+        .privacyAgreedAt(now)
+        .locationAgreedAt(Boolean.TRUE.equals(request.getLocationAgreed()) ? now : null)
         .build();
 
     userRepository.save(user);
@@ -56,7 +56,7 @@ public class AuthServiceImpl implements AuthService {
     User user = userRepository.findByEmail(request.getEmail())
         .orElseThrow(() -> new GeneralException(UserErrorCode.INVALID_CREDENTIALS));
 
-    if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+    if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
       throw new GeneralException(UserErrorCode.INVALID_CREDENTIALS);
     }
     if (user.getStatus() != UserStatus.ACTIVE) {
