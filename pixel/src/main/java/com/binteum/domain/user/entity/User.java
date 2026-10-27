@@ -10,6 +10,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -30,41 +31,37 @@ public class User extends BaseEntity {
   @Column(name = "user_id")
   private Long userId;
 
-  @Column(name = "student_id", length = 20, unique = true)
-  private String studentId;
-
-  @Column(name = "name", length = 30)
-  private String name;
-
-  @Column(name = "nickname", length = 16, nullable = false)
-  private String nickname;
-
-  @Column(name = "email", length = 100, nullable = false, unique = true)
+  @Column(name = "email", length = 255, nullable = false, unique = true)
   private String email;
 
-  @Column(name = "password", length = 255, nullable = false)
-  private String password;
+  @Column(name = "password_hash", length = 100, nullable = false)
+  private String passwordHash;
 
-  @Column(name = "department", length = 50)
-  private String department;
+  @Column(name = "nickname", length = 16, nullable = false, unique = true)
+  private String nickname;
 
   @Enumerated(EnumType.STRING)
   @JdbcTypeCode(SqlTypes.VARCHAR)
   @Column(name = "status", length = 10, nullable = false)
   private UserStatus status = UserStatus.ACTIVE;
 
+  @Column(name = "terms_agreed_at", nullable = false)
+  private LocalDateTime termsAgreedAt;
+
+  @Column(name = "privacy_agreed_at", nullable = false)
+  private LocalDateTime privacyAgreedAt;
+
+  @Column(name = "location_agreed_at")
+  private LocalDateTime locationAgreedAt;
+
   @Builder
-  private User(String studentId, String name, String nickname, String email, String password,
-      String department) {
-    this.studentId = studentId;
-    this.name = name;
-    this.nickname = nickname;
+  private User(String email, String passwordHash, String nickname, LocalDateTime termsAgreedAt,
+      LocalDateTime privacyAgreedAt, LocalDateTime locationAgreedAt) {
     this.email = email;
-    this.password = password;
-    this.department = department;
+    this.passwordHash = passwordHash;
+    this.nickname = nickname;
+    this.termsAgreedAt = termsAgreedAt;
+    this.privacyAgreedAt = privacyAgreedAt;
+    this.locationAgreedAt = locationAgreedAt;
   }
 }
-
-
-
-
