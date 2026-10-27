@@ -1,5 +1,6 @@
 -- 부천 행정동 37개 경계 (출처: 국가데이터처 SGIS 행정구역 경계, 기준일 20250630)
 -- 좌표계: WGS84(SRID 4326). 테이블은 ERD의 dongs. 프론트용 경계는 data/bucheon_dong_light.geojson 파일을 쓴다.
+SET NAMES utf8mb4;
 CREATE TABLE IF NOT EXISTS dongs (
   dong_code        CHAR(10)     PRIMARY KEY,   -- 통계청 행정구역분류 8자리(SGIS)를 넣는다
   name             VARCHAR(20)  NOT NULL,
