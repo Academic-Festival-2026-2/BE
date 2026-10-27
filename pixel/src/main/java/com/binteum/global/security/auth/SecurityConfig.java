@@ -38,7 +38,7 @@ public class SecurityConfig {
             .requestMatchers("/api/auth/logout").authenticated()
                 .requestMatchers("/health", "/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**",
                    "/error").permitAll()
-            .requestMatchers(HttpMethod.GET, "/api/map/**").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/map/boundaries").permitAll()
                 .anyRequest().authenticated()
         )
         .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),

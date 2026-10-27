@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 public class Dong {
 
   @Id
-  @Column(name = "dong_code", length = 10)
+  @Column(name = "dong_code", columnDefinition = "CHAR(10)")
   private String dongCode;
 
   @Column(name = "name", length = 20, nullable = false)

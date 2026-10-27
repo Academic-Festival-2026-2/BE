@@ -9,11 +9,12 @@ import org.springframework.http.HttpStatus;
 @Getter
 @AllArgsConstructor
 public enum MapSuccessCode implements BaseCode {
-  _BOUNDARIES_FOUND(HttpStatus.OK, "MAP200_2","부천 동 경계 조회 완료"),;
+  _BOUNDARIES_FOUND(HttpStatus.OK, "MAP200_2", "부천 동 경계를 조회했습니다."),
+  ;
 
-  private HttpStatus httpStatus;
-  private String code;
-  private String message;
+  private final HttpStatus httpStatus;
+  private final String code;
+  private final String message;
 
   @Override
   public ReasonDTO getReason() {
@@ -25,7 +26,7 @@ public enum MapSuccessCode implements BaseCode {
   }
 
   @Override
-  public ReasonDTO getReasonHttpStatus(){
+  public ReasonDTO getReasonHttpStatus() {
     return ReasonDTO.builder()
         .message(message)
         .code(code)
@@ -33,5 +34,4 @@ public enum MapSuccessCode implements BaseCode {
         .httpStatus(httpStatus)
         .build();
   }
-
 }

@@ -18,10 +18,8 @@ public class MapController {
   private final MapService mapService;
 
   @GetMapping("/boundaries")
-  public ResponseEntity<ApiResponse<BoundaryResponse>>
-  getBoundaries() {
-  return ResponseEntity.ok(
-      ApiResponse.of(MapSuccessCode._BOUNDARIES_FOUND,
-      mapService.getBoundaries()));
+  public ResponseEntity<ApiResponse<BoundaryResponse>> getBoundaries() {
+    return ResponseEntity.ok(
+        ApiResponse.of(MapSuccessCode._BOUNDARIES_FOUND, mapService.getBoundaries()));
   }
 }
