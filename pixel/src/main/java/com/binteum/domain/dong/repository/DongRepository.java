@@ -16,4 +16,7 @@ public interface DongRepository extends JpaRepository<Dong, String> {
       + "ORDER BY dong_code ",
       nativeQuery = true)
   List<DongBoundaryView> findAllBoundaries();
+
+  @Query("SELECT MAX(d.boundaryVersion) FROM Dong d")
+  String findBoundaryVersion();
 }
