@@ -1,5 +1,6 @@
 package com.binteum.domain.colorcell.entity;
 
+import com.binteum.domain.colorcell.enums.CellStatus;
 import com.binteum.domain.colorcell.enums.TimeBand;
 import com.binteum.domain.dong.entity.Dong;
 import com.binteum.domain.season.entity.Season;
@@ -26,6 +27,8 @@ import org.hibernate.type.SqlTypes;
 @Entity
 @Table(name = "color_cells")
 public class ColorCell {
+
+  private static final int MIN_SHOTS_FOR_OK = 5;
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -56,4 +59,14 @@ public class ColorCell {
 
   @Column(name = "dominant_color", columnDefinition = "CHAR(7)")
   private String dominantColor;
+
+  public CellStatus getStatus() {
+    if (photoCount == 0) {
+      return CellStatus.EMPTY;
+    }
+    if (shotCount < MIN_SHOTS_FOR_OK) {
+      return CellStatus.INSUFFICIENT;
+    }
+    return CellStatus.OK;
+  }
 }
