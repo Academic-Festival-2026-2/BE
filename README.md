@@ -75,13 +75,55 @@
 ### 1. 사전 준비
 
 - JDK 17
-- MySQL 8 (`binteum` 데이터베이스 생성)
+- MySQL 8.0.17 이상
 
-```sql
-CREATE DATABASE binteum DEFAULT CHARACTER SET utf8mb4;
+### 2. 데이터베이스 만들기
+
+테이블은 `pixel/db/`의 SQL로 만들고, 서버는 엔티티와 맞는지만 검사합니다(`ddl-auto: validate`). **SQL을 먼저 실행해야 서버가 뜹니다.**
+
+```
+pixel/db/
+├── 01_schema.sql   # 테이블 전체
+├── 02_dongs.sql    # 부천 37개 동 경계 (SGIS, 기준일 20250630)
+├── 03_seed.sql     # 2026 가을 판 + 148칸
+└── legacy/         # 옛 빈틈 테이블 정리용 (자동 실행 안 함)
 ```
 
-### 2. 환경 변수
+**Docker로 실행할 때** — DB가 처음 만들어질 때 세 파일이 순서대로 자동 실행되고, 끝난 뒤에 서버가 켜집니다.
+
+```bash
+cd pixel
+docker compose up -d
+```
+
+이전에 Docker DB를 띄운 적이 있다면 볼륨을 한 번 지워야 SQL이 다시 실행됩니다. (로컬 DB 데이터도 지워집니다)
+
+```bash
+docker compose down -v
+docker compose up -d
+```
+
+**로컬 MySQL로 실행할 때** — 데이터베이스를 만들고 세 파일을 순서대로 실행합니다. 예전에 `ddl-auto: update`로 만든 `binteum`이 있다면 지우고 다시 만드세요. (로컬 DB 데이터도 지워집니다)
+
+`pixel` 폴더에서 실행합니다. `source` 방식이라 PowerShell·cmd·Git Bash 어디서나 동작합니다. `root`는 본인 DB 사용자로 바꾸고, 줄마다 비밀번호를 입력합니다.
+
+```bash
+cd pixel
+mysql -u root -p -e "DROP DATABASE IF EXISTS binteum; CREATE DATABASE binteum DEFAULT CHARACTER SET utf8mb4;"
+mysql -u root -p --default-character-set=utf8mb4 binteum -e "source db/01_schema.sql"
+mysql -u root -p --default-character-set=utf8mb4 binteum -e "source db/02_dongs.sql"
+mysql -u root -p --default-character-set=utf8mb4 binteum -e "source db/03_seed.sql"
+```
+
+- Windows에서 `mysql`을 찾을 수 없다고 나오면 전체 경로로 실행합니다. PowerShell: `& "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" ...`
+- IntelliJ Ultimate·DataGrip을 쓰면 Database 창에서 MySQL을 연결한 뒤, 각 SQL 파일을 우클릭 → Run으로 `binteum`에 순서대로 실행해도 됩니다.
+- 확인: `SELECT (SELECT COUNT(*) FROM dongs), (SELECT COUNT(*) FROM color_cells);` → `37`, `148`
+
+**운영 DB(RDS)** 도 자동 실행되지 않으므로 처음 한 번 위와 같은 순서로 실행합니다.
+
+**스키마를 바꿀 때** — `01_schema.sql`과 엔티티를 같은 PR에서 고칩니다. 운영 DB를 띄운 뒤에는 `01`을 고쳐도 운영에 반영되지 않으니, 바뀐 부분만 담은 SQL 파일을 따로 추가합니다.
+
+### 3. 환경 변수
 
 로컬에서는 환경 변수 없이도 아래 기본값으로 실행됩니다. 바꾸고 싶은 값만 `pixel/src/main/resources/.env.example`을 참고해 지정하세요.
 
@@ -93,7 +135,7 @@ CREATE DATABASE binteum DEFAULT CHARACTER SET utf8mb4;
 | `DB_PASSWORD` | `password` | DB 비밀번호 |
 | `SERVER_PORT` | `8080` | 서버 포트 |
 
-### 3. 실행
+### 4. 실행
 
 ```bash
 cd pixel
@@ -103,7 +145,7 @@ cd pixel
 - Swagger UI: http://localhost:8080/swagger-ui/index.html
 - 헬스 체크: http://localhost:8080/health
 
-### 4. 테스트
+### 5. 테스트
 
 ```bash
 cd pixel
