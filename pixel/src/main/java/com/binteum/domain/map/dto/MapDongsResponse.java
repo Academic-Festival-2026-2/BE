@@ -20,7 +20,7 @@ public class MapDongsResponse {
   public static class DongColor {
 
     private final String dongCode;
-    private final String dongName;
+    private final String name;
     private final String dominantColor;
     private final int photoCount;
     private final CellStatus status;
