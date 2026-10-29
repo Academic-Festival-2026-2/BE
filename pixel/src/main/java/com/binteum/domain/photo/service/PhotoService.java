@@ -1,0 +1,342 @@
+package com.binteum.domain.photo.service;
+
+import com.binteum.domain.colorcell.enums.TimeBand;
+import com.binteum.domain.dong.entity.Dong;
+import com.binteum.domain.dong.repository.DongRepository;
+import com.binteum.domain.photo.dto.PhotoUploadRequest;
+import com.binteum.domain.photo.dto.PhotoUploadResponse;
+import com.binteum.domain.photo.entity.Photo;
+import com.binteum.domain.photo.repository.PhotoRepository;
+import com.binteum.domain.photo.util.PhotoImageProcessor;
+import com.binteum.domain.photo.util.PhotoMetadataReader;
+import com.binteum.domain.season.entity.Season;
+import com.binteum.domain.season.repository.SeasonRepository;
+import com.binteum.domain.user.entity.User;
+import com.binteum.domain.user.repository.UserRepository;
+import com.binteum.global.storage.S3StorageService;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.HexFormat;
+import java.util.List;
+import java.util.UUID;
+import java.util.regex.Pattern;
+import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+@RequiredArgsConstructor
+public class PhotoService {
+
+  private static final long MAX_FILE_SIZE = 10L * 1024 * 1024;
+  private static final double GPS_EPSILON = 0.00001;
+  private static final Pattern HEX_COLOR = Pattern.compile("^#[0-9A-F]{6}$");
+
+  private final PhotoRepository photoRepository;
+  private final UserRepository userRepository;
+  private final DongRepository dongRepository;
+  private final SeasonRepository seasonRepository;
+  private final PhotoMetadataReader metadataReader;
+  private final PhotoImageProcessor imageProcessor;
+  private final S3StorageService storageService;
+
+  @Transactional
+  public PhotoUploadResponse upload(Long userId, MultipartFile file, PhotoUploadRequest request) {
+    if (file == null || file.isEmpty()) {
+      throw badRequest("사진 파일이 필요합니다.");
+    }
+    if (file.getSize() > MAX_FILE_SIZE) {
+      throw badRequest("사진은 최대 10MB까지 가능합니다.");
+    }
+    if (request == null) {
+      throw badRequest("사진 메타데이터가 필요합니다.");
+    }
+
+    validateColors(request);
+
+    User user =
+        userRepository
+            .findById(userId)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인 사용자를 찾을 수 없습니다."));
+
+    byte[] bytes;
+    try {
+      bytes = file.getBytes();
+    } catch (Exception e) {
+      throw badRequest("사진을 읽지 못했습니다.");
+    }
+
+    String imageType = detectImageType(bytes);
+    String imageHash = sha256(bytes);
+
+    if (photoRepository.existsByImageHash(imageHash)) {
+      throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 등록된 사진입니다.");
+    }
+
+    var exif = metadataReader.read(bytes);
+
+    LocalDateTime takenAt = request.takenAt() != null ? request.takenAt() : exif.takenAt();
+
+    if (takenAt == null) {
+      throw badRequest("촬영 날짜와 시간을 입력해야 합니다.");
+    }
+
+    LocalDate shotDate = request.shotDate() != null ? request.shotDate() : takenAt.toLocalDate();
+
+    if (!shotDate.equals(takenAt.toLocalDate())) {
+      throw badRequest("촬영 날짜가 촬영 일시와 다릅니다.");
+    }
+
+    if ((request.latitude() == null) != (request.longitude() == null)) {
+      throw badRequest("위도와 경도는 함께 입력해야 합니다.");
+    }
+
+    Double latitude = request.latitude() != null ? request.latitude() : exif.latitude();
+
+    Double longitude = request.longitude() != null ? request.longitude() : exif.longitude();
+
+    if ((latitude == null) != (longitude == null)) {
+      throw badRequest("위도와 경도는 함께 입력해야 합니다.");
+    }
+
+    String dongCode;
+    if (latitude != null) {
+      validateCoordinates(latitude, longitude);
+
+      dongCode =
+          dongRepository
+              .findDongCodeByCoordinates(latitude, longitude)
+              .orElseThrow(() -> badRequest("부천시 범위 밖의 GPS입니다."));
+
+      if (request.dongCode() != null
+          && !request.dongCode().isBlank()
+          && !request.dongCode().equals(dongCode)) {
+        throw badRequest("선택한 행정동과 GPS 위치가 다릅니다.");
+      }
+    } else {
+      dongCode = request.dongCode();
+      if (dongCode == null || dongCode.isBlank()) {
+        throw badRequest("행정동을 선택해야 합니다.");
+      }
+    }
+
+    Dong dong = dongRepository.findById(dongCode).orElseThrow(() -> badRequest("존재하지 않는 행정동입니다."));
+
+    Season season =
+        seasonRepository
+            .findCurrent(shotDate)
+            .orElseThrow(() -> badRequest("해당 날짜에 등록된 계절이 없습니다."));
+
+    TimeBand timeBand = resolveTimeBand(takenAt.toLocalTime());
+
+    boolean exifVerified =
+        exif.takenAt() != null
+            && exif.latitude() != null
+            && exif.longitude() != null
+            && exif.takenAt().equals(takenAt)
+            && nearlyEqual(exif.latitude(), latitude)
+            && nearlyEqual(exif.longitude(), longitude)
+            && shotDate.equals(exif.takenAt().toLocalDate());
+
+    byte[] thumbnail;
+    try {
+      thumbnail = imageProcessor.process(bytes).thumbnailBytes();
+    } catch (IllegalArgumentException e) {
+      throw badRequest("이미지를 처리할 수 없습니다.");
+    }
+
+    String fileId = UUID.randomUUID().toString();
+    String originalKey = "photos/original/" + fileId + "." + imageType;
+    String thumbnailKey = "photos/thumbnail/" + fileId + ".jpg";
+
+    List<String> uploadedKeys = new ArrayList<>();
+
+    // 외부 저장소(S3) 업로드 중 실패하면 성공한 파일을 정리한다.
+    try {
+      storageService.upload(
+          originalKey, bytes, imageType.equals("png") ? "image/png" : "image/jpeg");
+      uploadedKeys.add(originalKey);
+
+      storageService.upload(thumbnailKey, thumbnail, "image/jpeg");
+      uploadedKeys.add(thumbnailKey);
+    } catch (RuntimeException e) {
+      storageService.deleteAllQuietly(uploadedKeys);
+      throw e;
+    }
+
+    // S3와 DB는 하나의 트랜잭션이 아니므로
+    // DB 롤백 시 S3에 남은 파일을 제거한다.
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+      storageService.deleteAllQuietly(uploadedKeys);
+      throw new IllegalStateException("DB 트랜잭션이 활성화되지 않았습니다.");
+    }
+
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCompletion(int status) {
+            if (status != STATUS_COMMITTED) {
+              storageService.deleteAllQuietly(uploadedKeys);
+            }
+          }
+        });
+
+    // location은 JPA 매핑 대상에서 제외되어 있다.
+    // 따라서 우선 exif_verified=false로 저장한다.
+    Photo photo =
+        new Photo(
+            user,
+            dong,
+            season,
+            timeBand,
+            takenAt,
+            shotDate,
+            false,
+            request.palette(),
+            request.bins(),
+            originalKey,
+            thumbnailKey,
+            imageHash,
+            Boolean.TRUE.equals(request.isPublic()));
+
+    try {
+      photoRepository.saveAndFlush(photo);
+    } catch (DataIntegrityViolationException e) {
+      // 동시 요청의 image_hash UNIQUE 충돌만 중복 사진으로 처리한다.
+      for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+        if (cause instanceof SQLException sql
+            && sql.getErrorCode() == 1062
+            && sql.getMessage() != null
+            && sql.getMessage().contains("image_hash")) {
+          throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 등록된 사진입니다.", e);
+        }
+      }
+      throw e;
+    }
+
+    if (latitude != null) {
+      int updated =
+          photoRepository.updateLocationAndVerification(
+              photo.getPhotoId(), latitude, longitude, exifVerified);
+
+      if (updated != 1) {
+        throw new IllegalStateException("GPS 좌표 저장에 실패했습니다.");
+      }
+    }
+
+    return new PhotoUploadResponse(
+        photo.getPhotoId(),
+        dongCode,
+        timeBand.name(),
+        exifVerified,
+        Boolean.TRUE.equals(request.isPublic()));
+  }
+
+  private void validateColors(PhotoUploadRequest request) {
+    List<String> palette = request.palette();
+    List<Double> bins = request.bins();
+
+    if (palette == null || palette.size() != 5) {
+      throw badRequest("palette는 색상 5개가 필요합니다.");
+    }
+
+    for (String color : palette) {
+      if (color == null || !HEX_COLOR.matcher(color).matches()) {
+        throw badRequest("색상은 #RRGGBB 대문자 형식이어야 합니다.");
+      }
+    }
+
+    if (bins == null || bins.size() != 40) {
+      throw badRequest("bins는 40개 숫자가 필요합니다.");
+    }
+
+    double sum = 0.0;
+
+    for (Double value : bins) {
+      if (value == null || !Double.isFinite(value) || value < 0.0 || value > 1.0) {
+        throw badRequest("bins 값은 0~1이어야 합니다.");
+      }
+      sum += value;
+    }
+
+    if (Math.abs(sum - 1.0) > 0.02) {
+      throw badRequest("bins의 합은 1이어야 합니다.");
+    }
+  }
+
+  private void validateCoordinates(double latitude, double longitude) {
+    if (!Double.isFinite(latitude)
+        || !Double.isFinite(longitude)
+        || latitude < -90
+        || latitude > 90
+        || longitude < -180
+        || longitude > 180) {
+      throw badRequest("올바르지 않은 GPS 좌표입니다.");
+    }
+  }
+
+  private boolean nearlyEqual(double a, double b) {
+    return Math.abs(a - b) < GPS_EPSILON;
+  }
+
+  private TimeBand resolveTimeBand(LocalTime time) {
+    if (!time.isBefore(LocalTime.of(5, 0)) && time.isBefore(LocalTime.of(8, 0))) {
+      return TimeBand.DAWN;
+    }
+    if (!time.isBefore(LocalTime.of(8, 0)) && time.isBefore(LocalTime.of(16, 0))) {
+      return TimeBand.DAY;
+    }
+    if (!time.isBefore(LocalTime.of(16, 0)) && time.isBefore(LocalTime.of(19, 0))) {
+      return TimeBand.SUNSET;
+    }
+    return TimeBand.NIGHT;
+  }
+
+  private String detectImageType(byte[] bytes) {
+    if (bytes.length >= 3
+        && (bytes[0] & 0xFF) == 0xFF
+        && (bytes[1] & 0xFF) == 0xD8
+        && (bytes[2] & 0xFF) == 0xFF) {
+      return "jpg";
+    }
+
+    if (bytes.length >= 8
+        && (bytes[0] & 0xFF) == 0x89
+        && bytes[1] == 0x50
+        && bytes[2] == 0x4E
+        && bytes[3] == 0x47
+        && bytes[4] == 0x0D
+        && bytes[5] == 0x0A
+        && bytes[6] == 0x1A
+        && bytes[7] == 0x0A) {
+      return "png";
+    }
+
+    throw badRequest("JPEG 또는 PNG 파일만 지원합니다.");
+  }
+
+  private String sha256(byte[] bytes) {
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      return HexFormat.of().formatHex(digest.digest(bytes));
+    } catch (NoSuchAlgorithmException e) {
+      throw new IllegalStateException("SHA-256을 사용할 수 없습니다.", e);
+    }
+  }
+
+  private ResponseStatusException badRequest(String message) {
+    return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+  }
+}
