@@ -1,16 +1,20 @@
 package com.binteum.global.apiPayload.exception;
 
 import com.binteum.global.apiPayload.ApiResponse;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import com.binteum.global.apiPayload.code.BaseErrorCode;
 import com.binteum.global.apiPayload.code.ErrorReasonDTO;
 import com.binteum.global.apiPayload.status.ErrorStatus;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -74,6 +78,29 @@ public class GlobalExceptionHandler {
       return values + " 중 하나여야 합니다.";
     }
     return "올바르지 않은 값입니다.";
+  }
+
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ApiResponse<Object>> handleNotReadable(
+      HttpMessageNotReadableException ex) {
+    ErrorStatus errorStatus = ErrorStatus._BAD_REQUEST;
+    return ResponseEntity.status(errorStatus.getHttpStatus())
+        .body(ApiResponse.onFailure(
+            errorStatus.getCode(), "요청 본문 형식이 올바르지 않습니다.", notReadableErrors(ex)));
+  }
+
+  // 타입이 맞지 않는 필드가 있으면 fieldErrors로, 깨진 JSON·빈 바디면 null
+  private Map<String, String> notReadableErrors(HttpMessageNotReadableException ex) {
+    if (ex.getCause() instanceof MismatchedInputException cause) {
+      String field = cause.getPath().stream()
+          .map(JsonMappingException.Reference::getFieldName)
+          .filter(Objects::nonNull)
+          .collect(Collectors.joining("."));
+      if (!field.isEmpty()) {
+        return Map.of(field, "올바르지 않은 값입니다.");
+      }
+    }
+    return null;
   }
 
   @ExceptionHandler(Exception.class)
