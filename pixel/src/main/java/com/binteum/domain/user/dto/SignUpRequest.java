@@ -40,4 +40,9 @@ public class SignUpRequest {
 
   // 위치정보 이용 동의는 선택
   private Boolean locationAgreed;
+
+  // 앞뒤 공백을 제거한 값으로 길이 검증·중복 검사·저장이 이뤄지도록 역직렬화 시점에 정리
+  public void setNickname(String nickname) {
+    this.nickname = nickname == null ? null : nickname.strip();
+  }
 }
