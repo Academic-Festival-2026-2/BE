@@ -4,23 +4,34 @@ import com.binteum.global.apiPayload.ApiResponse;
 import com.binteum.global.apiPayload.code.BaseErrorCode;
 import com.binteum.global.apiPayload.code.ErrorReasonDTO;
 import com.binteum.global.apiPayload.status.ErrorStatus;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+  private static final int MYSQL_DUPLICATE_ENTRY = 1062;
 
   @ExceptionHandler(GeneralException.class)
   public ResponseEntity<ApiResponse<Object>> handleGeneralException(GeneralException ex) {
@@ -74,6 +85,78 @@ public class GlobalExceptionHandler {
       return values + " 중 하나여야 합니다.";
     }
     return "올바르지 않은 값입니다.";
+  }
+
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ApiResponse<Object>> handleNotReadable(
+      HttpMessageNotReadableException ex) {
+    ErrorStatus errorStatus = ErrorStatus._BAD_REQUEST;
+    return ResponseEntity.status(errorStatus.getHttpStatus())
+        .body(ApiResponse.onFailure(
+            errorStatus.getCode(), "요청 본문 형식이 올바르지 않습니다.", notReadableErrors(ex)));
+  }
+
+  // 타입이 맞지 않는 필드가 있으면 fieldErrors로, 깨진 JSON·빈 바디면 null
+  private Map<String, String> notReadableErrors(HttpMessageNotReadableException ex) {
+    if (ex.getCause() instanceof MismatchedInputException cause) {
+      String field = cause.getPath().stream()
+          .map(JsonMappingException.Reference::getFieldName)
+          .filter(Objects::nonNull)
+          .collect(Collectors.joining("."));
+      if (!field.isEmpty()) {
+        return Map.of(field, "올바르지 않은 값입니다.");
+      }
+    }
+    return null;
+  }
+
+  // 동시 요청이 사전 중복 검사를 함께 통과해 DB UNIQUE 제약에 걸린 경우만 409
+  // CHECK·FK·NOT NULL 위반은 코드 버그이므로 500으로 보내 Trace ID와 스택을 남김
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  public ResponseEntity<ApiResponse<Object>> handleDataIntegrityViolation(
+      DataIntegrityViolationException ex) {
+    if (!isDuplicateKey(ex)) {
+      return handleException(ex);
+    }
+    // MySQL 중복 메시지에는 이메일 등 입력값이 들어 있어 원문은 남기지 않음
+    log.warn("[DataIntegrityViolation] Duplicate key");
+    return failure(ErrorStatus._CONFLICT);
+  }
+
+  private boolean isDuplicateKey(Throwable ex) {
+    for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
+      if (cause instanceof SQLException sql && sql.getErrorCode() == MYSQL_DUPLICATE_ENTRY) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Spring MVC 기본 예외가 아래 Exception 핸들러로 떨어져 500이 되지 않도록 상태 코드를 맞춰 응답
+  @ExceptionHandler(NoResourceFoundException.class)
+  public ResponseEntity<ApiResponse<Object>> handleNoResource(NoResourceFoundException ex) {
+    return failure(ErrorStatus._NOT_FOUND);
+  }
+
+  @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+  public ResponseEntity<ApiResponse<Object>> handleMethodNotSupported(
+      HttpRequestMethodNotSupportedException ex) {
+    // 405 응답에는 지원하는 메서드 목록(Allow 헤더)을 함께 내려줌
+    ErrorStatus errorStatus = ErrorStatus._METHOD_NOT_ALLOWED;
+    return ResponseEntity.status(errorStatus.getHttpStatus())
+        .headers(ex.getHeaders())
+        .body(ApiResponse.onFailure(errorStatus.getCode(), errorStatus.getMessage(), null));
+  }
+
+  @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+  public ResponseEntity<ApiResponse<Object>> handleMediaTypeNotSupported(
+      HttpMediaTypeNotSupportedException ex) {
+    return failure(ErrorStatus._UNSUPPORTED_MEDIA_TYPE);
+  }
+
+  private ResponseEntity<ApiResponse<Object>> failure(ErrorStatus errorStatus) {
+    return ResponseEntity.status(errorStatus.getHttpStatus())
+        .body(ApiResponse.onFailure(errorStatus.getCode(), errorStatus.getMessage(), null));
   }
 
   @ExceptionHandler(Exception.class)
