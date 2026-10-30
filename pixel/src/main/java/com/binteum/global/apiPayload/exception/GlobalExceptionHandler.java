@@ -1,0 +1,96 @@
+package com.binteum.global.apiPayload.exception;
+
+import com.binteum.global.apiPayload.ApiResponse;
+import com.binteum.global.apiPayload.code.BaseErrorCode;
+import com.binteum.global.apiPayload.code.ErrorReasonDTO;
+import com.binteum.global.apiPayload.status.ErrorStatus;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
+@Slf4j
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+  @ExceptionHandler(GeneralException.class)
+  public ResponseEntity<ApiResponse<Object>> handleGeneralException(GeneralException ex) {
+    BaseErrorCode code = ex.getCode();
+    ErrorReasonDTO reason = code.getReasonHttpStatus();
+
+    log.warn("[GeneralException] Code: {}, Message: {}", reason.getCode(), reason.getMessage());
+
+    return ResponseEntity
+        .status(reason.getHttpStatus())
+        .body(ApiResponse.onFailure(reason.getCode(), reason.getMessage(), null));
+  }
+
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  public ResponseEntity<ApiResponse<Object>> handleValidationException(
+      MethodArgumentNotValidException ex) {
+    ErrorStatus errorStatus = ErrorStatus._BAD_REQUEST;
+    Map<String, String> errors = new LinkedHashMap<>();
+    for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
+      errors.putIfAbsent(fieldError.getField(), fieldError.getDefaultMessage());
+    }
+    return ResponseEntity
+        .status(errorStatus.getHttpStatus())
+        .body(ApiResponse.onFailure(errorStatus.getCode(), errorStatus.getMessage(), errors));
+  }
+
+  @ExceptionHandler(MissingServletRequestParameterException.class)
+  public ResponseEntity<ApiResponse<Object>> handleMissingParameter(
+      MissingServletRequestParameterException ex) {
+    ErrorStatus errorStatus = ErrorStatus._BAD_REQUEST;
+    Map<String, String> errors = Map.of(ex.getParameterName(), "필수 값입니다.");
+    return ResponseEntity.status(errorStatus.getHttpStatus())
+        .body(ApiResponse.onFailure(errorStatus.getCode(), errorStatus.getMessage(), errors));
+  }
+
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  public ResponseEntity<ApiResponse<Object>> handleTypeMismatch(
+      MethodArgumentTypeMismatchException ex) {
+    ErrorStatus errorStatus = ErrorStatus._BAD_REQUEST;
+    Map<String, String> errors = Map.of(ex.getName(), typeMismatchMessage(ex));
+    return ResponseEntity.status(errorStatus.getHttpStatus())
+        .body(ApiResponse.onFailure(errorStatus.getCode(), errorStatus.getMessage(), errors));
+  }
+
+  private String typeMismatchMessage(MethodArgumentTypeMismatchException ex) {
+    Class<?> type = ex.getRequiredType();
+    if (type != null && type.isEnum()) {
+      String values = Arrays.stream(type.getEnumConstants())
+          .map(String::valueOf)
+          .collect(Collectors.joining(", "));
+      return values + " 중 하나여야 합니다.";
+    }
+    return "올바르지 않은 값입니다.";
+  }
+
+  @ExceptionHandler(Exception.class)
+  public ResponseEntity<ApiResponse<Object>> handleException(Exception ex) {
+    // 에러 추적용 고유 ID 생성
+    String errorTraceId = UUID.randomUUID().toString();
+    // 서버 로그(콘솔 또는 파일)에는 에러의 원문 스택 트레이스와 Trace ID를 모두 기록
+    log.error("[TraceID: {}] 500 Internal Server Error: {}", errorTraceId, ex.getMessage(), ex);
+
+    ErrorStatus errorStatus = ErrorStatus._INTERNAL_SERVER_ERROR;
+    return ResponseEntity
+        .status(errorStatus.getHttpStatus())
+        .body(ApiResponse.onFailure(
+            errorStatus.getCode(),
+            errorStatus.getMessage(),
+            "Error Trace ID: " + errorTraceId
+        ));
+  }
+}
+
