@@ -17,11 +17,14 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @RestControllerAdvice
@@ -111,6 +114,29 @@ public class GlobalExceptionHandler {
     log.warn("[DataIntegrityViolation] {}", ex.getMostSpecificCause().getMessage());
 
     ErrorStatus errorStatus = ErrorStatus._CONFLICT;
+    return ResponseEntity.status(errorStatus.getHttpStatus())
+        .body(ApiResponse.onFailure(errorStatus.getCode(), errorStatus.getMessage(), null));
+  }
+
+  // Spring MVC 기본 예외가 아래 Exception 핸들러로 떨어져 500이 되지 않도록 상태 코드를 맞춰 응답
+  @ExceptionHandler(NoResourceFoundException.class)
+  public ResponseEntity<ApiResponse<Object>> handleNoResource(NoResourceFoundException ex) {
+    return failure(ErrorStatus._NOT_FOUND);
+  }
+
+  @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+  public ResponseEntity<ApiResponse<Object>> handleMethodNotSupported(
+      HttpRequestMethodNotSupportedException ex) {
+    return failure(ErrorStatus._METHOD_NOT_ALLOWED);
+  }
+
+  @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+  public ResponseEntity<ApiResponse<Object>> handleMediaTypeNotSupported(
+      HttpMediaTypeNotSupportedException ex) {
+    return failure(ErrorStatus._UNSUPPORTED_MEDIA_TYPE);
+  }
+
+  private ResponseEntity<ApiResponse<Object>> failure(ErrorStatus errorStatus) {
     return ResponseEntity.status(errorStatus.getHttpStatus())
         .body(ApiResponse.onFailure(errorStatus.getCode(), errorStatus.getMessage(), null));
   }

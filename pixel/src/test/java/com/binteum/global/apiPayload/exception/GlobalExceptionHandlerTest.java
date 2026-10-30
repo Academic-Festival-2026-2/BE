@@ -2,6 +2,7 @@ package com.binteum.global.apiPayload.exception;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.willThrow;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -75,5 +76,28 @@ class GlobalExceptionHandlerTest {
                 """))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value("COMMON409"));
+  }
+
+  @Test
+  void 없는_경로면_404() throws Exception {
+    mockMvc.perform(post("/api/auth/unknown"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("COMMON404"));
+  }
+
+  @Test
+  void 지원하지_않는_메서드면_405() throws Exception {
+    mockMvc.perform(get("/api/auth/login"))
+        .andExpect(status().isMethodNotAllowed())
+        .andExpect(jsonPath("$.code").value("COMMON405"));
+  }
+
+  @Test
+  void 지원하지_않는_Content_Type이면_415() throws Exception {
+    mockMvc.perform(post("/api/auth/login")
+            .contentType(MediaType.TEXT_PLAIN)
+            .content("email=a@test.com"))
+        .andExpect(status().isUnsupportedMediaType())
+        .andExpect(jsonPath("$.code").value("COMMON415"));
   }
 }
