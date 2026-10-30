@@ -1,11 +1,12 @@
 package com.binteum.global.apiPayload.exception;
 
 import com.binteum.global.apiPayload.ApiResponse;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import com.binteum.global.apiPayload.code.BaseErrorCode;
 import com.binteum.global.apiPayload.code.ErrorReasonDTO;
 import com.binteum.global.apiPayload.status.ErrorStatus;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -29,6 +30,8 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+  private static final int MYSQL_DUPLICATE_ENTRY = 1062;
 
   @ExceptionHandler(GeneralException.class)
   public ResponseEntity<ApiResponse<Object>> handleGeneralException(GeneralException ex) {
@@ -107,15 +110,26 @@ public class GlobalExceptionHandler {
     return null;
   }
 
-  // 동시 요청이 사전 중복 검사를 함께 통과해 DB UNIQUE 제약에 걸린 경우
+  // 동시 요청이 사전 중복 검사를 함께 통과해 DB UNIQUE 제약에 걸린 경우만 409
+  // CHECK·FK·NOT NULL 위반은 코드 버그이므로 500으로 보내 Trace ID와 스택을 남김
   @ExceptionHandler(DataIntegrityViolationException.class)
   public ResponseEntity<ApiResponse<Object>> handleDataIntegrityViolation(
       DataIntegrityViolationException ex) {
-    log.warn("[DataIntegrityViolation] {}", ex.getMostSpecificCause().getMessage());
+    if (!isDuplicateKey(ex)) {
+      return handleException(ex);
+    }
+    // MySQL 중복 메시지에는 이메일 등 입력값이 들어 있어 원문은 남기지 않음
+    log.warn("[DataIntegrityViolation] Duplicate key");
+    return failure(ErrorStatus._CONFLICT);
+  }
 
-    ErrorStatus errorStatus = ErrorStatus._CONFLICT;
-    return ResponseEntity.status(errorStatus.getHttpStatus())
-        .body(ApiResponse.onFailure(errorStatus.getCode(), errorStatus.getMessage(), null));
+  private boolean isDuplicateKey(Throwable ex) {
+    for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
+      if (cause instanceof SQLException sql && sql.getErrorCode() == MYSQL_DUPLICATE_ENTRY) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // Spring MVC 기본 예외가 아래 Exception 핸들러로 떨어져 500이 되지 않도록 상태 코드를 맞춰 응답
@@ -127,7 +141,11 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
   public ResponseEntity<ApiResponse<Object>> handleMethodNotSupported(
       HttpRequestMethodNotSupportedException ex) {
-    return failure(ErrorStatus._METHOD_NOT_ALLOWED);
+    // 405 응답에는 지원하는 메서드 목록(Allow 헤더)을 함께 내려줌
+    ErrorStatus errorStatus = ErrorStatus._METHOD_NOT_ALLOWED;
+    return ResponseEntity.status(errorStatus.getHttpStatus())
+        .headers(ex.getHeaders())
+        .body(ApiResponse.onFailure(errorStatus.getCode(), errorStatus.getMessage(), null));
   }
 
   @ExceptionHandler(HttpMediaTypeNotSupportedException.class)

@@ -15,6 +15,9 @@ import lombok.Setter;
 @NoArgsConstructor
 public class SignUpRequest {
 
+  private static final java.util.regex.Pattern EDGE_SPACES =
+      java.util.regex.Pattern.compile("^[\\s\\p{Z}]+|[\\s\\p{Z}]+$");
+
   @NotBlank(message = "닉네임은 필수입니다.")
   @Size(min = 2, max = 16, message = "닉네임은 2~16자여야 합니다.")
   private String nickname;
@@ -42,7 +45,8 @@ public class SignUpRequest {
   private Boolean locationAgreed;
 
   // 앞뒤 공백을 제거한 값으로 길이 검증·중복 검사·저장이 이뤄지도록 역직렬화 시점에 정리
+  // strip()은 NBSP 같은 유니코드 공백을 남기므로 \p{Z}까지 제거
   public void setNickname(String nickname) {
-    this.nickname = nickname == null ? null : nickname.strip();
+    this.nickname = nickname == null ? null : EDGE_SPACES.matcher(nickname).replaceAll("");
   }
 }

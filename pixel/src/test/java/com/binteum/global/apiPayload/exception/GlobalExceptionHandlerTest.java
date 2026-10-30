@@ -1,14 +1,17 @@
 package com.binteum.global.apiPayload.exception;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.binteum.domain.user.dto.SignUpRequest;
 import com.binteum.domain.user.service.AuthService;
+import java.sql.SQLIntegrityConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -23,6 +26,16 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class GlobalExceptionHandlerTest {
+
+  private static final String SIGNUP_BODY = """
+      {
+        "nickname": "tester",
+        "email": "tester@example.com",
+        "password": "password123",
+        "termsAgreed": true,
+        "privacyAgreed": true
+      }
+      """;
 
   @Autowired
   private MockMvc mockMvc;
@@ -59,23 +72,34 @@ class GlobalExceptionHandlerTest {
   }
 
   @Test
-  void DB_UNIQUE_제약에_걸리면_409() throws Exception {
-    willThrow(new DataIntegrityViolationException("Duplicate entry"))
+  void DB_중복_키_에러면_409() throws Exception {
+    willThrow(integrityViolation(1062))
         .given(authService).signUp(any(SignUpRequest.class));
 
     mockMvc.perform(post("/api/auth/signup")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {
-                  "nickname": "tester",
-                  "email": "tester@example.com",
-                  "password": "password123",
-                  "termsAgreed": true,
-                  "privacyAgreed": true
-                }
-                """))
+            .content(SIGNUP_BODY))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value("COMMON409"));
+  }
+
+  @Test
+  void 중복_외_DB_제약_위반이면_500() throws Exception {
+    // MySQL 3819: CHECK 제약 위반
+    willThrow(integrityViolation(3819))
+        .given(authService).signUp(any(SignUpRequest.class));
+
+    mockMvc.perform(post("/api/auth/signup")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(SIGNUP_BODY))
+        .andExpect(status().isInternalServerError())
+        .andExpect(jsonPath("$.code").value("COMMON500"));
+  }
+
+  private DataIntegrityViolationException integrityViolation(int mysqlErrorCode) {
+    return new DataIntegrityViolationException("constraint violation",
+        new SQLIntegrityConstraintViolationException("constraint violation", "23000",
+            mysqlErrorCode));
   }
 
   @Test
@@ -89,6 +113,7 @@ class GlobalExceptionHandlerTest {
   void 지원하지_않는_메서드면_405() throws Exception {
     mockMvc.perform(get("/api/auth/login"))
         .andExpect(status().isMethodNotAllowed())
+        .andExpect(header().string("Allow", containsString("POST")))
         .andExpect(jsonPath("$.code").value("COMMON405"));
   }
 

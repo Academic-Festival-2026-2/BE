@@ -39,6 +39,14 @@ class AuthRequestValidationTest {
   }
 
   @Test
+  void NBSP만_있는_닉네임은_필수값_오류() throws Exception {
+    SignUpRequest request = signUpRequest("  ");
+
+    assertThat(request.getNickname()).isEmpty();
+    assertThat(messages(validator.validate(request))).contains("닉네임은 필수입니다.");
+  }
+
+  @Test
   void 로그인_요청_검증_메시지는_한글이다() throws Exception {
     LoginRequest request = objectMapper.readValue(
         "{\"email\": \"not-email\", \"password\": \"\"}", LoginRequest.class);
