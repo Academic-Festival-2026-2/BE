@@ -13,6 +13,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
@@ -101,6 +102,17 @@ public class GlobalExceptionHandler {
       }
     }
     return null;
+  }
+
+  // 동시 요청이 사전 중복 검사를 함께 통과해 DB UNIQUE 제약에 걸린 경우
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  public ResponseEntity<ApiResponse<Object>> handleDataIntegrityViolation(
+      DataIntegrityViolationException ex) {
+    log.warn("[DataIntegrityViolation] {}", ex.getMostSpecificCause().getMessage());
+
+    ErrorStatus errorStatus = ErrorStatus._CONFLICT;
+    return ResponseEntity.status(errorStatus.getHttpStatus())
+        .body(ApiResponse.onFailure(errorStatus.getCode(), errorStatus.getMessage(), null));
   }
 
   @ExceptionHandler(Exception.class)
