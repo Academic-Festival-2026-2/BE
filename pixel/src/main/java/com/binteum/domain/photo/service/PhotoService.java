@@ -57,7 +57,7 @@ public class PhotoService {
       throw new GeneralException(PhotoErrorCode.FILE_REQUIRED);
     }
     if (file.getSize() > MAX_FILE_SIZE) {
-      throw new GeneralException(PhotoErrorCode.FILE_TOO_LARGE);
+      throw new GeneralException(PhotoErrorCode.PAYLOAD_TOO_LARGE);
     }
     if (request == null) {
       throw new GeneralException(PhotoErrorCode.METADATA_REQUIRED);
@@ -150,9 +150,9 @@ public class PhotoService {
             && nearlyEqual(exif.longitude(), longitude)
             && shotDate.equals(exif.takenAt().toLocalDate());
 
-    byte[] thumbnail;
+    PhotoImageProcessor.ImageData processed;
     try {
-      thumbnail = imageProcessor.process(bytes).thumbnailBytes();
+      processed = imageProcessor.process(bytes);
     } catch (IllegalArgumentException e) {
       throw new GeneralException(PhotoErrorCode.INVALID_IMAGE);
     }
@@ -166,10 +166,10 @@ public class PhotoService {
     // 외부 저장소(S3) 업로드 중 실패하면 성공한 파일을 정리한다.
     try {
       storageService.upload(
-          originalKey, bytes, imageType.equals("png") ? "image/png" : "image/jpeg");
+          originalKey, processed.originalBytes(), imageType.equals("png") ? "image/png" : "image/jpeg");
       uploadedKeys.add(originalKey);
 
-      storageService.upload(thumbnailKey, thumbnail, "image/jpeg");
+      storageService.upload(thumbnailKey, processed.thumbnailBytes(), "image/jpeg");
       uploadedKeys.add(thumbnailKey);
     } catch (RuntimeException e) {
       storageService.deleteAllQuietly(uploadedKeys);

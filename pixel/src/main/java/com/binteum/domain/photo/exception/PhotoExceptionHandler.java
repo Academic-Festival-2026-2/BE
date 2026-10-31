@@ -11,7 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 @Order(-1)
@@ -26,9 +25,4 @@ public class PhotoExceptionHandler {
         new GeneralException(PhotoErrorCode.INVALID_MULTIPART));
   }
 
-  @ExceptionHandler(MaxUploadSizeExceededException.class)
-  public ResponseEntity<ApiResponse<Object>> handleUploadSize(MaxUploadSizeExceededException ex) {
-    return globalExceptionHandler.handleGeneralException(
-        new GeneralException(PhotoErrorCode.PAYLOAD_TOO_LARGE));
-  }
 }

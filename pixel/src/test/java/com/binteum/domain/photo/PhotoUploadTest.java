@@ -69,7 +69,7 @@ class PhotoUploadTest {
     when(dongs.findById("31050110")).thenReturn(Optional.of(dong));
     when(seasons.findCurrent(any())).thenReturn(Optional.of(season));
     when(metadata.read(any())).thenReturn(new PhotoMetadataReader.PhotoMetadata(null, null, null));
-    when(images.process(any())).thenReturn(new PhotoImageProcessor.ImageData(new byte[] {1}));
+    when(images.process(any())).thenReturn(new PhotoImageProcessor.ImageData(new byte[] {2}, new byte[] {1}));
     when(photos.saveAndFlush(any()))
         .thenAnswer(
             invocation -> {
@@ -222,7 +222,7 @@ class PhotoUploadTest {
         assertThrows(
             GeneralException.class,
             () -> service.upload(1L, oversized, request("13:00", null, null)));
-    assertEquals(HttpStatus.BAD_REQUEST, ex.getCode().getReasonHttpStatus().getHttpStatus());
+    assertEquals(HttpStatus.PAYLOAD_TOO_LARGE, ex.getCode().getReasonHttpStatus().getHttpStatus());
     verifyNoInteractions(storage, photos);
   }
 
@@ -255,7 +255,12 @@ class PhotoUploadTest {
         new java.awt.image.BufferedImage(1200, 600, java.awt.image.BufferedImage.TYPE_INT_ARGB);
     var output = new java.io.ByteArrayOutputStream();
     javax.imageio.ImageIO.write(source, "png", output);
-    byte[] thumbnail = new PhotoImageProcessor().process(output.toByteArray()).thumbnailBytes();
+    var processed = new PhotoImageProcessor().process(output.toByteArray());
+    var full = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(processed.originalBytes()));
+    assertEquals(1200, full.getWidth());
+    assertEquals(600, full.getHeight());
+    assertTrue(full.getColorModel().hasAlpha());
+    byte[] thumbnail = processed.thumbnailBytes();
     var decoded = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(thumbnail));
     assertEquals(600, decoded.getWidth());
     assertEquals(300, decoded.getHeight());
@@ -337,6 +342,32 @@ class PhotoUploadTest {
         .andExpect(jsonPath("$.isSuccess").value(false))
         .andExpect(jsonPath("$.code").value("PHOTO400_21"));
     verifyNoInteractions(untouched);
+  }
+
+  @Test
+  void storageReceivesSanitizedFullResolutionImageAndThumbnail() throws Exception {
+    byte[] original = PhotoImageProcessorTest.exifJpeg(6);
+    var realProcessor = new PhotoImageProcessor();
+    when(dongs.findDongCodeByCoordinates(37.5, 126.7)).thenReturn(Optional.of("31050110"));
+    when(photos.updateLocationAndVerification(7L, 37.5, 126.7, false)).thenReturn(1);
+    var uploadService = new PhotoService(photos, users, dongs, seasons, new PhotoMetadataReader(),
+        realProcessor, storage);
+    uploadService.upload(1L,
+        new MockMultipartFile("image", "gps.jpg", "image/jpeg", original),
+        request("13:00", null, null));
+    verify(photos).updateLocationAndVerification(7L, 37.5, 126.7, false);
+    var captured = org.mockito.ArgumentCaptor.forClass(byte[].class);
+    verify(storage, times(2)).upload(anyString(), captured.capture(), eq("image/jpeg"));
+    for (byte[] stored : captured.getAllValues()) {
+      assertFalse(java.util.Arrays.equals(original, stored));
+      var parsed = com.drew.imaging.ImageMetadataReader.readMetadata(
+          new java.io.ByteArrayInputStream(stored));
+      assertNull(parsed.getFirstDirectoryOfType(com.drew.metadata.exif.GpsDirectory.class));
+      assertNull(parsed.getFirstDirectoryOfType(com.drew.metadata.exif.ExifIFD0Directory.class));
+      var decoded = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(stored));
+      assertEquals(40, decoded.getWidth());
+      assertEquals(80, decoded.getHeight());
+    }
   }
 
   // SQL 선언 회귀 검사이며 실제 MySQL 실행 검증은 아니다.

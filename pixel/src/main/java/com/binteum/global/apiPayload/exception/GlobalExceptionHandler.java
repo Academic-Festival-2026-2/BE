@@ -1,5 +1,6 @@
 package com.binteum.global.apiPayload.exception;
 
+import com.binteum.domain.photo.exception.code.PhotoErrorCode;
 import com.binteum.global.apiPayload.ApiResponse;
 import com.binteum.global.apiPayload.code.BaseErrorCode;
 import com.binteum.global.apiPayload.code.ErrorReasonDTO;
@@ -17,10 +18,17 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+  // Multipart parsing can fail before a controller is selected.
+  @ExceptionHandler(MaxUploadSizeExceededException.class)
+  public ResponseEntity<ApiResponse<Object>> handleUploadSize(MaxUploadSizeExceededException ex) {
+    return handleGeneralException(new GeneralException(PhotoErrorCode.PAYLOAD_TOO_LARGE));
+  }
 
   @ExceptionHandler(GeneralException.class)
   public ResponseEntity<ApiResponse<Object>> handleGeneralException(GeneralException ex) {
