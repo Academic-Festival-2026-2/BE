@@ -6,6 +6,7 @@ import com.binteum.domain.dong.repository.DongRepository;
 import com.binteum.domain.photo.dto.PhotoUploadRequest;
 import com.binteum.domain.photo.dto.PhotoUploadResponse;
 import com.binteum.domain.photo.entity.Photo;
+import com.binteum.domain.photo.exception.code.PhotoErrorCode;
 import com.binteum.domain.photo.repository.PhotoRepository;
 import com.binteum.domain.photo.util.PhotoImageProcessor;
 import com.binteum.domain.photo.util.PhotoMetadataReader;
@@ -13,6 +14,7 @@ import com.binteum.domain.season.entity.Season;
 import com.binteum.domain.season.repository.SeasonRepository;
 import com.binteum.domain.user.entity.User;
 import com.binteum.domain.user.repository.UserRepository;
+import com.binteum.global.apiPayload.exception.GeneralException;
 import com.binteum.global.storage.S3StorageService;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -27,13 +29,11 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
@@ -54,13 +54,13 @@ public class PhotoService {
   @Transactional
   public PhotoUploadResponse upload(Long userId, MultipartFile file, PhotoUploadRequest request) {
     if (file == null || file.isEmpty()) {
-      throw badRequest("사진 파일이 필요합니다.");
+      throw new GeneralException(PhotoErrorCode.FILE_REQUIRED);
     }
     if (file.getSize() > MAX_FILE_SIZE) {
-      throw badRequest("사진은 최대 10MB까지 가능합니다.");
+      throw new GeneralException(PhotoErrorCode.FILE_TOO_LARGE);
     }
     if (request == null) {
-      throw badRequest("사진 메타데이터가 필요합니다.");
+      throw new GeneralException(PhotoErrorCode.METADATA_REQUIRED);
     }
 
     validateColors(request);
@@ -69,20 +69,20 @@ public class PhotoService {
         userRepository
             .findById(userId)
             .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인 사용자를 찾을 수 없습니다."));
+                () -> new GeneralException(PhotoErrorCode.UNAUTHORIZED));
 
     byte[] bytes;
     try {
       bytes = file.getBytes();
     } catch (Exception e) {
-      throw badRequest("사진을 읽지 못했습니다.");
+      throw new GeneralException(PhotoErrorCode.FILE_UNREADABLE);
     }
 
     String imageType = detectImageType(bytes);
     String imageHash = sha256(bytes);
 
     if (photoRepository.existsByImageHash(imageHash)) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 등록된 사진입니다.");
+      throw new GeneralException(PhotoErrorCode.DUPLICATE_PHOTO);
     }
 
     var exif = metadataReader.read(bytes);
@@ -90,17 +90,17 @@ public class PhotoService {
     LocalDateTime takenAt = request.takenAt() != null ? request.takenAt() : exif.takenAt();
 
     if (takenAt == null) {
-      throw badRequest("촬영 날짜와 시간을 입력해야 합니다.");
+      throw new GeneralException(PhotoErrorCode.TAKEN_AT_REQUIRED);
     }
 
     LocalDate shotDate = request.shotDate() != null ? request.shotDate() : takenAt.toLocalDate();
 
     if (!shotDate.equals(takenAt.toLocalDate())) {
-      throw badRequest("촬영 날짜가 촬영 일시와 다릅니다.");
+      throw new GeneralException(PhotoErrorCode.SHOT_DATE_MISMATCH);
     }
 
     if ((request.latitude() == null) != (request.longitude() == null)) {
-      throw badRequest("위도와 경도는 함께 입력해야 합니다.");
+      throw new GeneralException(PhotoErrorCode.GPS_PAIR_REQUIRED);
     }
 
     Double latitude = request.latitude() != null ? request.latitude() : exif.latitude();
@@ -108,7 +108,7 @@ public class PhotoService {
     Double longitude = request.longitude() != null ? request.longitude() : exif.longitude();
 
     if ((latitude == null) != (longitude == null)) {
-      throw badRequest("위도와 경도는 함께 입력해야 합니다.");
+      throw new GeneralException(PhotoErrorCode.GPS_PAIR_REQUIRED);
     }
 
     String dongCode;
@@ -118,26 +118,26 @@ public class PhotoService {
       dongCode =
           dongRepository
               .findDongCodeByCoordinates(latitude, longitude)
-              .orElseThrow(() -> badRequest("부천시 범위 밖의 GPS입니다."));
+              .orElseThrow(() -> new GeneralException(PhotoErrorCode.GPS_OUTSIDE_AREA));
 
       if (request.dongCode() != null
           && !request.dongCode().isBlank()
           && !request.dongCode().equals(dongCode)) {
-        throw badRequest("선택한 행정동과 GPS 위치가 다릅니다.");
+        throw new GeneralException(PhotoErrorCode.DONG_GPS_MISMATCH);
       }
     } else {
       dongCode = request.dongCode();
       if (dongCode == null || dongCode.isBlank()) {
-        throw badRequest("행정동을 선택해야 합니다.");
+        throw new GeneralException(PhotoErrorCode.DONG_REQUIRED);
       }
     }
 
-    Dong dong = dongRepository.findById(dongCode).orElseThrow(() -> badRequest("존재하지 않는 행정동입니다."));
+    Dong dong = dongRepository.findById(dongCode).orElseThrow(() -> new GeneralException(PhotoErrorCode.DONG_NOT_FOUND));
 
     Season season =
         seasonRepository
             .findCurrent(shotDate)
-            .orElseThrow(() -> badRequest("해당 날짜에 등록된 계절이 없습니다."));
+            .orElseThrow(() -> new GeneralException(PhotoErrorCode.SEASON_NOT_FOUND));
 
     TimeBand timeBand = resolveTimeBand(takenAt.toLocalTime());
 
@@ -154,7 +154,7 @@ public class PhotoService {
     try {
       thumbnail = imageProcessor.process(bytes).thumbnailBytes();
     } catch (IllegalArgumentException e) {
-      throw badRequest("이미지를 처리할 수 없습니다.");
+      throw new GeneralException(PhotoErrorCode.INVALID_IMAGE);
     }
 
     String fileId = UUID.randomUUID().toString();
@@ -220,7 +220,7 @@ public class PhotoService {
             && sql.getErrorCode() == 1062
             && sql.getMessage() != null
             && sql.getMessage().contains("image_hash")) {
-          throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 등록된 사진입니다.", e);
+          throw new GeneralException(PhotoErrorCode.DUPLICATE_PHOTO);
         }
       }
       throw e;
@@ -239,6 +239,8 @@ public class PhotoService {
     return new PhotoUploadResponse(
         photo.getPhotoId(),
         dongCode,
+        dong.getName(),
+        season.getSeason(),
         timeBand.name(),
         exifVerified,
         Boolean.TRUE.equals(request.isPublic()));
@@ -249,30 +251,30 @@ public class PhotoService {
     List<Double> bins = request.bins();
 
     if (palette == null || palette.size() != 5) {
-      throw badRequest("palette는 색상 5개가 필요합니다.");
+      throw new GeneralException(PhotoErrorCode.INVALID_PALETTE_SIZE);
     }
 
     for (String color : palette) {
       if (color == null || !HEX_COLOR.matcher(color).matches()) {
-        throw badRequest("색상은 #RRGGBB 대문자 형식이어야 합니다.");
+        throw new GeneralException(PhotoErrorCode.INVALID_PALETTE_COLOR);
       }
     }
 
     if (bins == null || bins.size() != 40) {
-      throw badRequest("bins는 40개 숫자가 필요합니다.");
+      throw new GeneralException(PhotoErrorCode.INVALID_BINS_SIZE);
     }
 
     double sum = 0.0;
 
     for (Double value : bins) {
       if (value == null || !Double.isFinite(value) || value < 0.0 || value > 1.0) {
-        throw badRequest("bins 값은 0~1이어야 합니다.");
+        throw new GeneralException(PhotoErrorCode.INVALID_BINS_VALUE);
       }
       sum += value;
     }
 
     if (Math.abs(sum - 1.0) > 0.02) {
-      throw badRequest("bins의 합은 1이어야 합니다.");
+      throw new GeneralException(PhotoErrorCode.INVALID_BINS_SUM);
     }
   }
 
@@ -283,7 +285,7 @@ public class PhotoService {
         || latitude > 90
         || longitude < -180
         || longitude > 180) {
-      throw badRequest("올바르지 않은 GPS 좌표입니다.");
+      throw new GeneralException(PhotoErrorCode.INVALID_COORDINATES);
     }
   }
 
@@ -324,7 +326,7 @@ public class PhotoService {
       return "png";
     }
 
-    throw badRequest("JPEG 또는 PNG 파일만 지원합니다.");
+    throw new GeneralException(PhotoErrorCode.UNSUPPORTED_IMAGE_TYPE);
   }
 
   private String sha256(byte[] bytes) {
@@ -334,9 +336,5 @@ public class PhotoService {
     } catch (NoSuchAlgorithmException e) {
       throw new IllegalStateException("SHA-256을 사용할 수 없습니다.", e);
     }
-  }
-
-  private ResponseStatusException badRequest(String message) {
-    return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
   }
 }

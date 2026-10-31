@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.binteum.domain.dong.entity.Dong;
@@ -11,14 +12,18 @@ import com.binteum.domain.dong.repository.DongRepository;
 import com.binteum.domain.photo.controller.PhotoController;
 import com.binteum.domain.photo.dto.PhotoUploadRequest;
 import com.binteum.domain.photo.entity.Photo;
+import com.binteum.domain.photo.exception.PhotoExceptionHandler;
+import com.binteum.domain.photo.exception.code.PhotoErrorCode;
 import com.binteum.domain.photo.repository.PhotoRepository;
 import com.binteum.domain.photo.service.PhotoService;
 import com.binteum.domain.photo.util.PhotoImageProcessor;
 import com.binteum.domain.photo.util.PhotoMetadataReader;
 import com.binteum.domain.season.entity.Season;
+import com.binteum.domain.season.enums.SeasonType;
 import com.binteum.domain.season.repository.SeasonRepository;
 import com.binteum.domain.user.entity.User;
 import com.binteum.domain.user.repository.UserRepository;
+import com.binteum.global.apiPayload.exception.GeneralException;
 import com.binteum.global.apiPayload.exception.GlobalExceptionHandler;
 import com.binteum.global.storage.S3StorageService;
 import java.time.LocalDateTime;
@@ -38,7 +43,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.springframework.web.server.ResponseStatusException;
 
 class PhotoUploadTest {
   private final PhotoRepository photos = mock(PhotoRepository.class);
@@ -52,13 +56,18 @@ class PhotoUploadTest {
       new PhotoService(photos, users, dongs, seasons, metadata, images, storage);
   private final MockMultipartFile file =
       new MockMultipartFile(
-          "file", "test.jpg", "image/jpeg", new byte[] {(byte) 255, (byte) 216, (byte) 255, 1});
+          "image", "test.jpg", "image/jpeg", new byte[] {(byte) 255, (byte) 216, (byte) 255, 1});
 
   @BeforeEach
   void setup() {
     when(users.findById(1L)).thenReturn(Optional.of(mock(User.class)));
-    when(dongs.findById("31050110")).thenReturn(Optional.of(mock(Dong.class)));
-    when(seasons.findCurrent(any())).thenReturn(Optional.of(mock(Season.class)));
+    Dong dong = org.springframework.beans.BeanUtils.instantiateClass(Dong.class);
+    ReflectionTestUtils.setField(dong, "dongCode", "31050110");
+    ReflectionTestUtils.setField(dong, "name", "심곡동");
+    Season season = org.springframework.beans.BeanUtils.instantiateClass(Season.class);
+    ReflectionTestUtils.setField(season, "season", SeasonType.AUTUMN);
+    when(dongs.findById("31050110")).thenReturn(Optional.of(dong));
+    when(seasons.findCurrent(any())).thenReturn(Optional.of(season));
     when(metadata.read(any())).thenReturn(new PhotoMetadataReader.PhotoMetadata(null, null, null));
     when(images.process(any())).thenReturn(new PhotoImageProcessor.ImageData(new byte[] {1}));
     when(photos.saveAndFlush(any()))
@@ -116,9 +125,9 @@ class PhotoUploadTest {
                 LocalDateTime.parse("2026-10-29T13:00"), 37.5, 126.7));
     var ex =
         assertThrows(
-            ResponseStatusException.class,
+            GeneralException.class,
             () -> service.upload(1L, file, request("13:00", 37.6, null)));
-    assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+    assertEquals(HttpStatus.BAD_REQUEST, ex.getCode().getReasonHttpStatus().getHttpStatus());
     verifyNoInteractions(storage);
   }
 
@@ -141,9 +150,9 @@ class PhotoUploadTest {
     when(photos.existsByImageHash(anyString())).thenReturn(true);
     var ex =
         assertThrows(
-            ResponseStatusException.class,
+            GeneralException.class,
             () -> service.upload(1L, file, request("13:00", null, null)));
-    assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+    assertEquals(HttpStatus.CONFLICT, ex.getCode().getReasonHttpStatus().getHttpStatus());
     verifyNoInteractions(storage);
   }
 
@@ -152,9 +161,9 @@ class PhotoUploadTest {
     when(images.process(any())).thenThrow(new IllegalArgumentException("broken"));
     var ex =
         assertThrows(
-            ResponseStatusException.class,
+            GeneralException.class,
             () -> service.upload(1L, file, request("13:00", null, null)));
-    assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+    assertEquals(HttpStatus.BAD_REQUEST, ex.getCode().getReasonHttpStatus().getHttpStatus());
     verifyNoInteractions(storage);
   }
 
@@ -191,17 +200,18 @@ class PhotoUploadTest {
   void uploadStatusSurvivesGlobalExceptionHandler(int statusCode) throws Exception {
     PhotoService failing = mock(PhotoService.class);
     when(failing.upload(anyLong(), any(), any()))
-        .thenThrow(new ResponseStatusException(HttpStatus.valueOf(statusCode), "invalid"));
+        .thenThrow(new GeneralException(statusCode == 409 ? PhotoErrorCode.DUPLICATE_PHOTO : PhotoErrorCode.INVALID_IMAGE));
     var mvc =
         MockMvcBuilders.standaloneSetup(new PhotoController(failing))
-            .setControllerAdvice(new GlobalExceptionHandler())
+            .setControllerAdvice(new PhotoExceptionHandler(new GlobalExceptionHandler()), new GlobalExceptionHandler())
             .build();
     mvc.perform(
             multipart("/api/photos")
                 .file(file)
-                .file(new MockMultipartFile("metadata", "", "application/json", "{}".getBytes()))
+                .file(new MockMultipartFile("data", "", "application/json", "{}".getBytes()))
                 .principal(new UsernamePasswordAuthenticationToken(1L, null, List.of())))
-        .andExpect(status().is(statusCode));
+        .andExpect(status().is(statusCode))
+        .andExpect(jsonPath("$.code").value(statusCode == 409 ? "PHOTO409_1" : PhotoErrorCode.INVALID_IMAGE.getCode()));
   }
 
   @Test
@@ -210,9 +220,9 @@ class PhotoUploadTest {
     when(oversized.getSize()).thenReturn(10L * 1024 * 1024 + 1);
     var ex =
         assertThrows(
-            ResponseStatusException.class,
+            GeneralException.class,
             () -> service.upload(1L, oversized, request("13:00", null, null)));
-    assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+    assertEquals(HttpStatus.BAD_REQUEST, ex.getCode().getReasonHttpStatus().getHttpStatus());
     verifyNoInteractions(storage, photos);
   }
 
@@ -220,12 +230,12 @@ class PhotoUploadTest {
   void invalidPngSignatureRejected() {
     var invalid =
         new MockMultipartFile(
-            "file",
+            "image",
             "fake.png",
             "image/png",
             new byte[] {(byte) 0x89, 0x50, 0x4E, 0x47, 0, 0, 0, 0});
     assertThrows(
-        ResponseStatusException.class,
+        GeneralException.class,
         () -> service.upload(1L, invalid, request("13:00", null, null)));
     verifyNoInteractions(storage);
   }
@@ -234,7 +244,7 @@ class PhotoUploadTest {
   void missingMetadataReturns400() throws Exception {
     var mvc =
         MockMvcBuilders.standaloneSetup(new PhotoController(service))
-            .setControllerAdvice(new GlobalExceptionHandler())
+            .setControllerAdvice(new PhotoExceptionHandler(new GlobalExceptionHandler()), new GlobalExceptionHandler())
             .build();
     mvc.perform(multipart("/api/photos").file(file)).andExpect(status().isBadRequest());
   }
@@ -252,5 +262,97 @@ class PhotoUploadTest {
     assertEquals(0xFF, thumbnail[0] & 0xFF);
     assertEquals(0xD8, thumbnail[1] & 0xFF);
     assertNull(new PhotoMetadataReader().read(output.toByteArray()).takenAt());
+  }
+
+  @Test
+  void unauthenticatedUploadUsesPhotoErrorCode() throws Exception {
+    var mvc = MockMvcBuilders.standaloneSetup(new PhotoController(service))
+        .setControllerAdvice(new GlobalExceptionHandler()).build();
+    mvc.perform(multipart("/api/photos").file(file)
+        .file(new MockMultipartFile("data", "", "application/json", "{}".getBytes())))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("PHOTO401_1"));
+  }
+
+  @Test
+  void malformedMetadataUsesPhotoErrorCode() throws Exception {
+    var mvc = MockMvcBuilders.standaloneSetup(new PhotoController(service))
+        .setControllerAdvice(new PhotoExceptionHandler(new GlobalExceptionHandler()),
+            new GlobalExceptionHandler()).build();
+    mvc.perform(multipart("/api/photos").file(file)
+        .file(new MockMultipartFile("data", "", "application/json", "{".getBytes())))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("PHOTO400_21"));
+  }
+
+  @Test
+  void concurrentHashDuplicateUsesPhotoConflictAndCleansObjects() {
+    doThrow(new DataIntegrityViolationException("duplicate",
+        new java.sql.SQLException("Duplicate entry for key 'photos.image_hash'", "23000", 1062)))
+        .when(photos).saveAndFlush(any());
+    var ex = assertThrows(GeneralException.class,
+        () -> service.upload(1L, file, request("13:00", null, null)));
+    assertEquals(PhotoErrorCode.DUPLICATE_PHOTO, ex.getCode());
+    complete(TransactionSynchronization.STATUS_ROLLED_BACK);
+    verify(storage).deleteAllQuietly(argThat(keys -> keys.size() == 2));
+  }
+
+  @Test
+  void uploadReturnsCommonResponseWithResolvedDongAndSeason() throws Exception {
+    var mvc = MockMvcBuilders.standaloneSetup(new PhotoController(service))
+        .setControllerAdvice(new PhotoExceptionHandler(new GlobalExceptionHandler()),
+            new GlobalExceptionHandler()).build();
+    var mapper = new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules();
+    mvc.perform(multipart("/api/photos").file(file)
+        .file(new MockMultipartFile("data", "", "application/json",
+            mapper.writeValueAsBytes(request("13:00", null, null))))
+        .principal(new UsernamePasswordAuthenticationToken(1L, null, List.of())))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.isSuccess").value(true))
+        .andExpect(jsonPath("$.code").value("PHOTO201_1"))
+        .andExpect(jsonPath("$.message").value("사진 업로드에 성공했습니다."))
+        .andExpect(jsonPath("$.result.photoId").value(7))
+        .andExpect(jsonPath("$.result.dongCode").value("31050110"))
+        .andExpect(jsonPath("$.result.name").value("심곡동"))
+        .andExpect(jsonPath("$.result.season").value("AUTUMN"))
+        .andExpect(jsonPath("$.result.timeBand").value("DAY"))
+        .andExpect(jsonPath("$.result.exifVerified").value(false))
+        .andExpect(jsonPath("$.result.isPublic").value(true))
+        .andExpect(jsonPath("$.result.cellPhotoCount").doesNotExist())
+        .andExpect(jsonPath("$.result.firstInCell").doesNotExist());
+  }
+
+  @ParameterizedTest
+  @CsvSource({"file,data", "image,metadata", "file,metadata"})
+  void legacyPartNamesReturnPhotoBadRequest(String imagePart, String dataPart) throws Exception {
+    PhotoService untouched = mock(PhotoService.class);
+    var mvc = MockMvcBuilders.standaloneSetup(new PhotoController(untouched))
+        .setControllerAdvice(new PhotoExceptionHandler(new GlobalExceptionHandler()),
+            new GlobalExceptionHandler()).build();
+    mvc.perform(multipart("/api/photos")
+        .file(new MockMultipartFile(imagePart, "test.jpg", "image/jpeg", file.getBytes()))
+        .file(new MockMultipartFile(dataPart, "", "application/json", "{}".getBytes()))
+        .principal(new UsernamePasswordAuthenticationToken(1L, null, List.of())))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.isSuccess").value(false))
+        .andExpect(jsonPath("$.code").value("PHOTO400_21"));
+    verifyNoInteractions(untouched);
+  }
+
+  // SQL 선언 회귀 검사이며 실제 MySQL 실행 검증은 아니다.
+  @Test
+  void spatialSqlPreservesAxisOrderAndDeterministicSelection() throws Exception {
+    String update = PhotoRepository.class.getMethod("updateLocationAndVerification",
+        Long.class, Double.class, Double.class, boolean.class)
+        .getAnnotation(org.springframework.data.jpa.repository.Query.class).value();
+    assertFalse(update.contains("ㅡㅋ"));
+    assertTrue(update.contains("CONCAT('POINT(', :longitude, ' ', :latitude, ')')"));
+    assertTrue(update.contains("4326,"));
+    assertTrue(update.contains("'axis-order=long-lat'"));
+    assertTrue(update.contains("exif_verified = :verified"));
+    String lookup = DongRepository.class.getMethod("findDongCodeByCoordinates",
+        double.class, double.class)
+        .getAnnotation(org.springframework.data.jpa.repository.Query.class).value();
+    assertTrue(lookup.replaceAll("\\s+", " ").contains("ORDER BY dong_code LIMIT 1"));
   }
 }

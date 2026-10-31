@@ -37,6 +37,7 @@ public interface DongRepository extends JpaRepository<Dong, String> {
                   'axis-order=long-lat'
               )
           )
+          ORDER BY dong_code
           LIMIT 1
           """,
       nativeQuery = true)

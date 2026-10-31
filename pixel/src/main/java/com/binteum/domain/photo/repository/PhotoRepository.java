@@ -21,7 +21,7 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
               SET location = ST_GeomFromText(
                       CONCAT('POINT(', :longitude, ' ', :latitude, ')'),
                       4326,
-               ㅡㅋ       'axis-order=long-lat'
+                      'axis-order=long-lat'
                   ),
                   exif_verified = :verified
               WHERE photo_id = :photoId
