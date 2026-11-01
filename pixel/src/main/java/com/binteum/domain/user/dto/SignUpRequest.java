@@ -20,6 +20,7 @@ public class SignUpRequest {
 
   @NotBlank(message = "닉네임은 필수입니다.")
   @Size(min = 2, max = 16, message = "닉네임은 2~16자여야 합니다.")
+  @Pattern(regexp = "(?s)^(?!탈퇴회원).*$", message = "사용할 수 없는 닉네임입니다.")
   private String nickname;
 
   @NotBlank(message = "이메일은 필수입니다.")
