@@ -117,6 +117,67 @@ class PhotoUploadTest {
     verify(storage, never()).deleteAllQuietly(any());
   }
 
+  @ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(booleans = {true, false})
+  void exifTimeOverridesRequestAndDeterminesSeasonAndTimeBand(boolean hasGps) {
+    var exifTime = LocalDateTime.parse("2026-06-01T17:00:00");
+    when(metadata.read(any())).thenReturn(new PhotoMetadataReader.PhotoMetadata(
+        exifTime, hasGps ? 37.5 : null, hasGps ? 126.7 : null));
+    Season summer = org.springframework.beans.BeanUtils.instantiateClass(Season.class);
+    ReflectionTestUtils.setField(summer, "season", SeasonType.SUMMER);
+    when(seasons.findCurrent(exifTime.toLocalDate())).thenReturn(Optional.of(summer));
+    if (hasGps) {
+      when(dongs.findDongCodeByCoordinates(37.5, 126.7)).thenReturn(Optional.of("31050110"));
+      when(photos.updateLocationAndVerification(7L, 37.5, 126.7, true)).thenReturn(1);
+    }
+
+    var response = service.upload(1L, file, request("13:00", null, null));
+
+    assertEquals(hasGps, response.exifVerified());
+    assertEquals("SUNSET", response.timeBand());
+    assertEquals(SeasonType.SUMMER, response.season());
+    var saved = org.mockito.ArgumentCaptor.forClass(Photo.class);
+    verify(photos).saveAndFlush(saved.capture());
+    assertEquals(exifTime, saved.getValue().getTakenAt());
+    assertEquals(exifTime.toLocalDate(), saved.getValue().getShotDate());
+    verify(seasons).findCurrent(exifTime.toLocalDate());
+  }
+
+  @Test
+  void missingExifTimeUsesRequestWithoutVerificationEvenWithExifGps() {
+    when(metadata.read(any())).thenReturn(new PhotoMetadataReader.PhotoMetadata(null, 37.5, 126.7));
+    when(dongs.findDongCodeByCoordinates(37.5, 126.7)).thenReturn(Optional.of("31050110"));
+    when(photos.updateLocationAndVerification(7L, 37.5, 126.7, false)).thenReturn(1);
+    var request = request("13:00", null, null);
+
+    var response = service.upload(1L, file, request);
+
+    assertFalse(response.exifVerified());
+    var saved = org.mockito.ArgumentCaptor.forClass(Photo.class);
+    verify(photos).saveAndFlush(saved.capture());
+    assertEquals(request.takenAt(), saved.getValue().getTakenAt());
+    verify(seasons).findCurrent(request.takenAt().toLocalDate());
+  }
+
+  @ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(strings = {
+    "2026-10-29T13:00:00Z", "2026-10-29T13:00:00+09:00", "2026-10-29T13:00",
+    "2026-02-30T13:00:00", "2026-10-29T13:00:00.123"
+  })
+  void unsupportedTakenAtFormatReturns400BeforeService(String takenAt) throws Exception {
+    PhotoService untouched = mock(PhotoService.class);
+    var mvc = MockMvcBuilders.standaloneSetup(new PhotoController(untouched))
+        .setControllerAdvice(new PhotoExceptionHandler(new GlobalExceptionHandler()),
+            new GlobalExceptionHandler()).build();
+    String json = "{\"takenAt\":\"" + takenAt + "\"}";
+    mvc.perform(multipart("/api/photos").file(file)
+        .file(new MockMultipartFile("data", "", "application/json", json.getBytes()))
+        .principal(new UsernamePasswordAuthenticationToken(1L, null, List.of())))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("PHOTO400_21"));
+    verifyNoInteractions(untouched);
+  }
+
   @Test
   void partialManualGpsCannotMixWithExif() {
     when(metadata.read(any()))

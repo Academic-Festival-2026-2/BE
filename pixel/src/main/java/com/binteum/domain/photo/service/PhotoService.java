@@ -89,7 +89,8 @@ public class PhotoService {
 
     var exif = metadataReader.read(bytes);
 
-    LocalDateTime takenAt = request.takenAt() != null ? request.takenAt() : exif.takenAt();
+    // 유효한 EXIF 촬영 시각을 우선하고, 누락된 경우에만 요청의 KST 시각을 사용한다.
+    LocalDateTime takenAt = exif.takenAt() != null ? exif.takenAt() : request.takenAt();
 
     if (takenAt == null) {
       throw new GeneralException(PhotoErrorCode.TAKEN_AT_REQUIRED);
