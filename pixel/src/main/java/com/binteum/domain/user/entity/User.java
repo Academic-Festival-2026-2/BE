@@ -64,4 +64,24 @@ public class User extends BaseEntity {
     this.privacyAgreedAt = privacyAgreedAt;
     this.locationAgreedAt = locationAgreedAt;
   }
+
+  public void changeNickname(String nickname) {
+    this.nickname = nickname;
+  }
+
+  public void changeLocationAgreement(boolean agreed) {
+    this.locationAgreedAt = agreed ? LocalDateTime.now() : null;
+  }
+
+  public void changePassword(String passwordHash) {
+    this.passwordHash = passwordHash;
+  }
+
+  // 같은 이메일로 재가입할 수 있게 이메일·닉네임을 익명 값으로 바꾼다
+  public void withdraw() {
+    this.status = UserStatus.DELETED;
+    this.email = "deleted_" + userId + "@deleted.local";
+    this.nickname = "탈퇴회원" + userId;
+    markDeleted();
+  }
 }
