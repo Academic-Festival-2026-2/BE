@@ -48,7 +48,33 @@ class PhotoImageProcessorTest {
     }
   }
 
-  // Real JPEG bytes with an APP1 EXIF TIFF directory, GPS rationals and camera make.
+  @org.junit.jupiter.api.Test
+  void defaultOrientationReusesDecodedImage() throws Exception {
+    var source = new BufferedImage(80, 40, BufferedImage.TYPE_INT_RGB);
+    var method = PhotoImageProcessor.class.getDeclaredMethod(
+        "orient", BufferedImage.class, int.class, boolean.class);
+    method.setAccessible(true);
+    assertSame(source, method.invoke(new PhotoImageProcessor(), source, 1, false));
+  }
+
+  @org.junit.jupiter.api.Test
+  void jpegUsesExplicitHighQualityQuantization() throws Exception {
+    byte[] encoded = new PhotoImageProcessor().process(exifJpeg(1)).originalBytes();
+    var reader = ImageIO.getImageReadersByFormatName("jpeg").next();
+    try (var input = ImageIO.createImageInputStream(new ByteArrayInputStream(encoded))) {
+      reader.setInput(input);
+      var tree = reader.getImageMetadata(0).getAsTree("javax_imageio_jpeg_image_1.0");
+      var tables = ((org.w3c.dom.Element) tree).getElementsByTagName("dqtable");
+      var table = (javax.imageio.plugins.jpeg.JPEGQTable)
+          ((javax.imageio.metadata.IIOMetadataNode) tables.item(0)).getUserObject();
+      // 품질 0.90의 표준 휘도 양자화 첫 값은 3이며 기본 0.75의 값 8보다 작다.
+      assertEquals(3, table.getTable()[0]);
+    } finally {
+      reader.dispose();
+    }
+  }
+
+  // APP1 EXIF 디렉터리, GPS 좌표와 기기 제조사 정보를 포함한 실제 JPEG 바이트를 생성한다.
   static byte[] exifJpeg(int orientation) throws Exception {
     BufferedImage image = new BufferedImage(80, 40, BufferedImage.TYPE_INT_RGB);
     for (int y = 0; y < 40; y++) {

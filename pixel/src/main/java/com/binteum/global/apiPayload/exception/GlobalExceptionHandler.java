@@ -1,6 +1,5 @@
 package com.binteum.global.apiPayload.exception;
 
-import com.binteum.domain.photo.exception.code.PhotoErrorCode;
 import com.binteum.global.apiPayload.ApiResponse;
 import com.binteum.global.apiPayload.code.BaseErrorCode;
 import com.binteum.global.apiPayload.code.ErrorReasonDTO;
@@ -24,10 +23,10 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-  // Multipart parsing can fail before a controller is selected.
+  // 멀티파트 파싱은 컨트롤러가 선택되기 전에 실패할 수 있다.
   @ExceptionHandler(MaxUploadSizeExceededException.class)
   public ResponseEntity<ApiResponse<Object>> handleUploadSize(MaxUploadSizeExceededException ex) {
-    return handleGeneralException(new GeneralException(PhotoErrorCode.PAYLOAD_TOO_LARGE));
+    return handleGeneralException(new GeneralException(ErrorStatus.COMMON413));
   }
 
   @ExceptionHandler(GeneralException.class)

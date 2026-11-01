@@ -42,7 +42,7 @@ class PhotoMultipartLimitTest {
   }
 
   @ParameterizedTest
-  @CsvSource({"0,401,PHOTO401_1", "1,413,PHOTO413_1"})
+  @CsvSource({"0,401,PHOTO401_1", "1,413,COMMON413"})
   void realMultipartParserEnforcesFileLimit(int extra, int status, String code) throws Exception {
     String boundary = "PixelBoundary";
     byte[] prefix = ("--" + boundary + "\r\nContent-Disposition: form-data; name=\"image\"; "

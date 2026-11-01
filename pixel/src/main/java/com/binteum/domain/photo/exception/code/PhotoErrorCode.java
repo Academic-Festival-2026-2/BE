@@ -10,7 +10,6 @@ import org.springframework.http.HttpStatus;
 @AllArgsConstructor
 public enum PhotoErrorCode implements BaseErrorCode {
   FILE_REQUIRED(HttpStatus.BAD_REQUEST, "PHOTO400_1", "사진 파일이 필요합니다."),
-  FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "PHOTO400_2", "사진은 최대 10MB까지 가능합니다."),
   METADATA_REQUIRED(HttpStatus.BAD_REQUEST, "PHOTO400_3", "사진 메타데이터가 필요합니다."),
   FILE_UNREADABLE(HttpStatus.BAD_REQUEST, "PHOTO400_4", "사진을 읽지 못했습니다."),
   TAKEN_AT_REQUIRED(HttpStatus.BAD_REQUEST, "PHOTO400_5", "촬영 날짜와 시간을 입력해야 합니다."),
@@ -31,8 +30,7 @@ public enum PhotoErrorCode implements BaseErrorCode {
   UNSUPPORTED_IMAGE_TYPE(HttpStatus.BAD_REQUEST, "PHOTO400_20", "JPEG 또는 PNG 파일만 지원합니다."),
   UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "PHOTO401_1", "로그인 사용자를 찾을 수 없습니다."),
   DUPLICATE_PHOTO(HttpStatus.CONFLICT, "PHOTO409_1", "이미 등록된 사진입니다."),
-  INVALID_MULTIPART(HttpStatus.BAD_REQUEST, "PHOTO400_21", "사진 파일과 올바른 메타데이터가 필요합니다."),
-  PAYLOAD_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE, "PHOTO413_1", "업로드 가능한 파일 크기를 초과했습니다.");
+  INVALID_MULTIPART(HttpStatus.BAD_REQUEST, "PHOTO400_21", "사진 파일과 올바른 메타데이터가 필요합니다.");
 
   private final HttpStatus httpStatus;
   private final String code;

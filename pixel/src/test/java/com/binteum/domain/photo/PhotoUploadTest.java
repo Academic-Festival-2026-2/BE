@@ -223,6 +223,7 @@ class PhotoUploadTest {
             GeneralException.class,
             () -> service.upload(1L, oversized, request("13:00", null, null)));
     assertEquals(HttpStatus.PAYLOAD_TOO_LARGE, ex.getCode().getReasonHttpStatus().getHttpStatus());
+    assertEquals("COMMON413", ex.getCode().getReasonHttpStatus().getCode());
     verifyNoInteractions(storage, photos);
   }
 

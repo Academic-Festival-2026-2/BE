@@ -15,6 +15,7 @@ import com.binteum.domain.season.repository.SeasonRepository;
 import com.binteum.domain.user.entity.User;
 import com.binteum.domain.user.repository.UserRepository;
 import com.binteum.global.apiPayload.exception.GeneralException;
+import com.binteum.global.apiPayload.status.ErrorStatus;
 import com.binteum.global.storage.S3StorageService;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -56,8 +57,9 @@ public class PhotoService {
     if (file == null || file.isEmpty()) {
       throw new GeneralException(PhotoErrorCode.FILE_REQUIRED);
     }
+    // HTTP 멀티파트 처리를 거치지 않는 내부 호출에도 용량 제한을 적용한다.
     if (file.getSize() > MAX_FILE_SIZE) {
-      throw new GeneralException(PhotoErrorCode.PAYLOAD_TOO_LARGE);
+      throw new GeneralException(ErrorStatus.COMMON413);
     }
     if (request == null) {
       throw new GeneralException(PhotoErrorCode.METADATA_REQUIRED);
