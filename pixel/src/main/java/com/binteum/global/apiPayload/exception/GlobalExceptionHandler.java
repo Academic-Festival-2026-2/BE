@@ -25,12 +25,18 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+  // 멀티파트 파싱은 컨트롤러가 선택되기 전에 실패할 수 있다.
+  @ExceptionHandler(MaxUploadSizeExceededException.class)
+  public ResponseEntity<ApiResponse<Object>> handleUploadSize(MaxUploadSizeExceededException ex) {
+    return handleGeneralException(new GeneralException(ErrorStatus.COMMON413));
+  }
   private static final int MYSQL_DUPLICATE_ENTRY = 1062;
 
   @ExceptionHandler(GeneralException.class)
