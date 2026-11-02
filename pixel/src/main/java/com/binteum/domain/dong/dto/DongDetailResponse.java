@@ -38,6 +38,6 @@ public class DongDetailResponse {
     private final Double lat;
     private final Double lng;
     private final String color;
-    private final String timeBand;
+    private final TimeBand timeBand;
   }
 }

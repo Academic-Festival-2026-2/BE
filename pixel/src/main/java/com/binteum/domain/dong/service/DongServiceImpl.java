@@ -60,7 +60,7 @@ public class DongServiceImpl implements DongService {
         .stream()
         .map(view -> new DongDetailResponse.Point(
             view.getPhotoId(), view.getLat(),
-            view.getLng(), view.getColor(), view.getTimeBand()))
+            view.getLng(), view.getColor(), TimeBand.valueOf(view.getTimeBand())))
         .toList();
 
     return new DongDetailResponse(
