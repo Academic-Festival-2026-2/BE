@@ -39,9 +39,9 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
           """
               SELECT p.photo_id AS photoId,
                     ROUND(ST_Latitude(p.location),3) AS lat,
-                    ROUND(ST_Longitude(p.location),3) AS lng,
+                    ROUND(ST_Longitude(p.location), 3) AS lng,
                     JSON_UNQUOTE(JSON_EXTRACT(p.palette, '$[0]')) AS color,
-                    p.time_band AS timeBand   
+                    p.time_band AS timeBand 
               FROM photos p
               WHERE p.dong_code = :dongCode
                 AND p.season_id = :seasonId

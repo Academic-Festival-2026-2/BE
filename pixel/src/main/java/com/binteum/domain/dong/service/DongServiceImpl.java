@@ -6,7 +6,6 @@ import com.binteum.domain.colorcell.enums.TimeBand;
 import com.binteum.domain.colorcell.repository.ColorCellRepository;
 import com.binteum.domain.colorcell.util.ColorBins;
 import com.binteum.domain.dong.dto.DongDetailResponse;
-import com.binteum.domain.dong.dto.DongDetailResponse.TimeBandSummary;
 import com.binteum.domain.dong.entity.Dong;
 import com.binteum.domain.dong.exception.code.DongErrorCode;
 import com.binteum.domain.dong.repository.DongRepository;
@@ -51,7 +50,7 @@ public class DongServiceImpl implements DongService {
         .stream()
         .collect(Collectors.toMap(ColorCell::getTimeBand, Function.identity()));
 
-    List<TimeBandSummary> timeBands = Arrays.stream(TimeBand.values())
+    List<DongDetailResponse.TimeBandSummary> timeBands = Arrays.stream(TimeBand.values())
         .map(band -> toSummary(band, cells.get(band)))
         .toList();
 
@@ -59,8 +58,8 @@ public class DongServiceImpl implements DongService {
     List<DongDetailResponse.Point> points = photoRepository
         .findPhotoPoints(dongCode, season.getSeasonId(), pointBand)
         .stream()
-        .map(view -> new DongDetailResponse
-            .Point(view.getPhotoId(), view.getLat(),
+        .map(view -> new DongDetailResponse.Point(
+            view.getPhotoId(), view.getLat(),
             view.getLng(), view.getColor(), view.getTimeBand()))
         .toList();
 
