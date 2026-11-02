@@ -36,10 +36,11 @@ public class SecurityConfig {
             .authenticationEntryPoint(jwtAuthenticationEntryPoint))
         .authorizeHttpRequests(auth -> auth
             .requestMatchers("/api/auth/logout").authenticated()
-                .requestMatchers("/health", "/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**",
-                   "/error").permitAll()
-            .requestMatchers(HttpMethod.GET, "/api/map/boundaries", "/api/map/dongs").permitAll()
-                .anyRequest().authenticated()
+            .requestMatchers("/health", "/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**",
+                "/error").permitAll()
+            .requestMatchers(HttpMethod.GET,
+                "/api/map/boundaries", "/api/map/dongs", "/api/dongs/*").permitAll()
+            .anyRequest().authenticated()
         )
         .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
             UsernamePasswordAuthenticationFilter.class);

@@ -2,6 +2,7 @@ package com.binteum.domain.colorcell.repository;
 
 import com.binteum.domain.colorcell.entity.ColorCell;
 import com.binteum.domain.colorcell.enums.TimeBand;
+import com.binteum.domain.dong.entity.Dong;
 import com.binteum.domain.season.entity.Season;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,4 +20,6 @@ public interface ColorCellRepository extends JpaRepository<ColorCell, Long> {
       """)
   List<ColorCell> findForMap(@Param("season") Season season,
       @Param("timeBand") TimeBand timeBand);
+
+  List<ColorCell> findByDongAndSeason(Dong dong, Season season);
 }
