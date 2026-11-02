@@ -1,5 +1,6 @@
 package com.binteum.domain.photo.repository;
 
+import com.binteum.domain.photo.dto.PhotoPointView;
 import com.binteum.domain.photo.entity.Photo;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -32,4 +33,28 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
       @Param("latitude") Double latitude,
       @Param("longitude") Double longitude,
       @Param("verified") boolean verified);
+
+  @Query(
+      value =
+          """
+              SELECT p.photo_id AS photoId,
+                    ROUND(ST_Latitude(p.location),3) AS lat,
+                    ROUND(ST_Longitude(p.location),3) AS lng,
+                    JSON_UNQUOTE(JSON_EXTRACT(p.palette, '$[0]')) AS color,
+                    p.time_band AS timeBand   
+              FROM photos p
+              WHERE p.dong_code = :dongCode
+                AND p.season_id = :seasonId
+                AND p.exif_verified = TRUE
+                AND p.is_public = TRUE
+                AND p.location IS NOT NULL
+                AND (:timeBand IS NULL OR p.time_band = :timeBand)
+              ORDER BY p.created_at DESC
+              LIMIT 300
+              """,
+      nativeQuery = true)
+  List<PhotoPointView> findPhotoPoints(
+      @Param("dongCode") String dongCode,
+      @Param("seasonId") Short seasonId,
+      @Param("timeBand") String timeBand);
 }
