@@ -15,12 +15,10 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Getter
-@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(name = "users")
@@ -63,5 +61,31 @@ public class User extends BaseEntity {
     this.termsAgreedAt = termsAgreedAt;
     this.privacyAgreedAt = privacyAgreedAt;
     this.locationAgreedAt = locationAgreedAt;
+  }
+
+  public void changeNickname(String nickname) {
+    this.nickname = nickname;
+  }
+
+  // 이미 동의한 상태면 처음 동의한 시각을 유지한다
+  public void changeLocationAgreement(boolean agreed) {
+    if (!agreed) {
+      this.locationAgreedAt = null;
+    } else if (this.locationAgreedAt == null) {
+      this.locationAgreedAt = LocalDateTime.now();
+    }
+  }
+
+  public void changePassword(String passwordHash) {
+    this.passwordHash = passwordHash;
+  }
+
+  // 같은 이메일로 재가입할 수 있게 이메일·닉네임을 익명 값으로 바꾼다
+  // 이메일은 @Email 검증을 통과하지 못하는 형식, 닉네임 "탈퇴회원"은 가입·수정에서 막아 선점을 방지
+  public void withdraw() {
+    this.status = UserStatus.DELETED;
+    this.email = "deleted:" + userId;
+    this.nickname = "탈퇴회원" + userId;
+    markDeleted();
   }
 }

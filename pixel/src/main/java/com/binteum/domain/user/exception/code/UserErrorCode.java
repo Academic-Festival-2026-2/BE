@@ -15,6 +15,8 @@ public enum UserErrorCode implements BaseErrorCode {
   INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "USER401_1", "이메일 또는 비밀번호가 올바르지 않습니다."),
   INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "USER401_2", "유효하지 않은 리프레시 토큰입니다."),
   INACTIVE_USER(HttpStatus.FORBIDDEN, "USER403_1", "이용할 수 없는 계정입니다."),
+  PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "USER400_1", "비밀번호가 올바르지 않습니다."),
+  SAME_PASSWORD(HttpStatus.BAD_REQUEST, "USER400_2", "새 비밀번호가 현재 비밀번호와 같습니다."),
   ;
 
   private final HttpStatus httpStatus;
