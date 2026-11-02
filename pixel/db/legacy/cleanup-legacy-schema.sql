@@ -1,4 +1,4 @@
--- Run against the intended BINTEUM database to remove only the old product tables.
+-- Run against the intended Pixel database to remove only the old product tables.
 -- User accounts and refresh tokens are intentionally preserved.
 DROP TABLE IF EXISTS participation;
 DROP TABLE IF EXISTS feedback;
