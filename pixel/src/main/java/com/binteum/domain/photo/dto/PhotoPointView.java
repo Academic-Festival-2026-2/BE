@@ -11,5 +11,4 @@ public interface PhotoPointView {
   String getColor();
 
   String getTimeBand();
-
 }
