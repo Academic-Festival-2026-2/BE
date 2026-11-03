@@ -2,13 +2,19 @@ package com.pixel.domain.dong.repository;
 
 import com.pixel.domain.dong.dto.DongBoundaryView;
 import com.pixel.domain.dong.entity.Dong;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface DongRepository extends JpaRepository<Dong, String> {
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT d FROM Dong d WHERE d.dongCode = :dongCode")
+  Optional<Dong> findForUpdate(@Param("dongCode") String dongCode);
 
   @Query(
       value =

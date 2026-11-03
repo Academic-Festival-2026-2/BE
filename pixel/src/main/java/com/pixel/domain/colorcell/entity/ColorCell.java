@@ -2,6 +2,7 @@ package com.pixel.domain.colorcell.entity;
 
 import com.pixel.domain.colorcell.enums.CellStatus;
 import com.pixel.domain.colorcell.enums.TimeBand;
+import com.pixel.domain.colorcell.util.ColorBins;
 import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.season.entity.Season;
 import jakarta.persistence.Column;
@@ -15,6 +16,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -25,7 +29,8 @@ import org.hibernate.type.SqlTypes;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
-@Table(name = "color_cells")
+@Table(name = "color_cells", uniqueConstraints = @UniqueConstraint(
+    columnNames = {"dong_code", "season_id", "time_band"}))
 public class ColorCell {
 
   private static final int MIN_SHOTS_FOR_OK = 5;
@@ -59,6 +64,41 @@ public class ColorCell {
 
   @Column(name = "dominant_color", columnDefinition = "CHAR(7)")
   private String dominantColor;
+
+  @Column(name = "first_photo_id")
+  private Long firstPhotoId;
+
+  public ColorCell(Dong dong, Season season, TimeBand timeBand) {
+    this.dong = dong;
+    this.season = season;
+    this.timeBand = timeBand;
+    this.binsSum = new ArrayList<>(Collections.nCopies(40, 0.0));
+  }
+
+  public void contribute(Long photoId, List<Double> bins, float weight, boolean newShot) {
+    ColorBins.dominantColor(bins);
+    if (photoId == null || !Float.isFinite(weight) || weight < 0 || weight > 1) {
+      throw new IllegalArgumentException("사진 ID 또는 가중치가 유효하지 않습니다.");
+    }
+    List<Double> accumulated = new ArrayList<>(binsSum);
+    for (int i = 0; i < 40; i++) {
+      accumulated.set(i, accumulated.get(i) + bins.get(i) * weight);
+    }
+    String color = ColorBins.dominantColor(accumulated);
+    // 현재 업로드 가중치는 1이다. 전부 0인 집계는 DB의 비어 있지 않은 셀 제약과 충돌한다.
+    if (color == null) {
+      throw new IllegalArgumentException("집계된 색상 분포 합계는 0보다 커야 합니다.");
+    }
+    if (photoCount == 0) {
+      firstPhotoId = photoId;
+    }
+    photoCount = Math.addExact(photoCount, 1);
+    if (newShot) {
+      shotCount = Math.addExact(shotCount, 1);
+    }
+    binsSum = accumulated;
+    dominantColor = color;
+  }
 
   public CellStatus getStatus() {
     if (photoCount == 0) {

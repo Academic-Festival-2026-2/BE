@@ -26,6 +26,30 @@ public final class ColorBins {
   private ColorBins() {
   }
 
+  public static String dominantColor(List<Double> bins) {
+    if (bins == null || bins.size() != HEX.size()
+        || bins.stream().anyMatch(v -> v == null || !Double.isFinite(v) || v < 0)) {
+      throw new IllegalArgumentException("색상 분포는 40개의 유효한 음이 아닌 숫자여야 합니다.");
+    }
+    double total = bins.stream().mapToDouble(Double::doubleValue).sum();
+    if (!Double.isFinite(total)) {
+      throw new IllegalArgumentException("색상 분포 합계가 유효하지 않습니다.");
+    }
+    if (total == 0) {
+      return null;
+    }
+    double chromatic = bins.subList(0, 36).stream().mapToDouble(Double::doubleValue).sum();
+    int start = chromatic / total >= 0.15 ? 0 : 36;
+    int end = start == 0 ? 36 : 40;
+    int best = start;
+    for (int i = start + 1; i < end; i++) {
+      if (bins.get(i) > bins.get(best)) {
+        best = i;
+      }
+    }
+    return HEX.get(best);
+  }
+
   public static List<ColorRatio> topRatios(List<Double> bins, int limit) {
     double total = bins.stream().mapToDouble(Double::doubleValue).sum();
     if (total == 0) {

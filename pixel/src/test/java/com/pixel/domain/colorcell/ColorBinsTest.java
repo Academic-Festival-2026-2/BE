@@ -32,4 +32,39 @@ public class ColorBinsTest {
     assertThat(result.get(0)).isEqualTo(new ColorRatio("#E37B1C", 0.43));
     assertThat(result.get(3).hex()).isEqualTo("#131886");
   }
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.CsvSource({"0.15,0", "0.16,0", "0.14,36"})
+  void dominantThreshold(double chromatic, int expected) {
+    var bins = new ArrayList<>(Collections.nCopies(40, 0.0));
+    bins.set(0, chromatic);
+    bins.set(36, 1 - chromatic);
+    assertThat(ColorBins.dominantColor(bins)).isEqualTo(ColorBins.HEX.get(expected));
+  }
+
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(ints = {0, 36})
+  void tiedMaximumUsesSmallestIndex(int start) {
+    var bins = new ArrayList<>(Collections.nCopies(40, 0.0));
+    bins.set(start, 0.5);
+    bins.set(start + 1, 0.5);
+    assertThat(ColorBins.dominantColor(bins)).isEqualTo(ColorBins.HEX.get(start));
+  }
+
+  @Test
+  void zeroHasNoDominantColor() {
+    assertThat(ColorBins.dominantColor(Collections.nCopies(40, 0.0))).isNull();
+  }
+
+  @Test
+  void rejectsInvalidDistribution() {
+    org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+        () -> ColorBins.dominantColor(null));
+    org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+        () -> ColorBins.dominantColor(Collections.nCopies(39, 0.0)));
+    for (Double value : java.util.Arrays.asList(null, -1.0, Double.NaN,
+        Double.POSITIVE_INFINITY, Double.MAX_VALUE)) {
+      org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+          () -> ColorBins.dominantColor(Collections.nCopies(40, value)));
+    }
+  }
 }
