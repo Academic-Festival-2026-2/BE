@@ -1,0 +1,12 @@
+package com.pixel.domain.map.service;
+
+import com.pixel.domain.colorcell.enums.TimeBand;
+import com.pixel.domain.map.dto.BoundaryResponse;
+import com.pixel.domain.map.dto.MapDongsResponse;
+
+public interface MapService {
+
+  BoundaryResponse getBoundaries();
+
+  MapDongsResponse getDongs(TimeBand timeBand);
+}
