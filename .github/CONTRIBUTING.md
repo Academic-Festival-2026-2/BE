@@ -27,11 +27,15 @@
 ### 커밋 템플릿
 
 레포 최상위의 `.gitmessage`를 커밋 템플릿으로 쓰면 커밋 창에 형식 안내가 표시됩니다.
-레포 안 어느 폴더에서든 한 번만 실행합니다. (PowerShell, Git Bash, macOS 터미널 공통)
+레포 안 어느 폴더에서든 한 번만 실행합니다. (PowerShell, cmd, Git Bash, macOS 터미널 공통)
 
 ```bash
-git config commit.template "$(git rev-parse --show-toplevel)/.gitmessage"
+git config commit.template .gitmessage
+git config commit.cleanup strip
 ```
+
+- 두 번째 줄은 IntelliJ 커밋 창처럼 메시지를 파일로 넘기는 방식에서도 `#` 안내 줄이 커밋 메시지에 남지 않게 합니다.
+- 이 설정을 쓰면 메시지에서 `#`으로 시작하는 줄은 모두 지워지므로, 이슈번호는 제목 끝에 붙입니다.
 
 ## 이슈
 
