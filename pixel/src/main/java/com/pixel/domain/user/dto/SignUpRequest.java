@@ -1,0 +1,53 @@
+package com.pixel.domain.user.dto;
+
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter
+@Setter
+@NoArgsConstructor
+public class SignUpRequest {
+
+  private static final java.util.regex.Pattern EDGE_SPACES =
+      java.util.regex.Pattern.compile("^[\\s\\p{Z}]+|[\\s\\p{Z}]+$");
+
+  @NotBlank(message = "닉네임은 필수입니다.")
+  @Size(min = 2, max = 16, message = "닉네임은 2~16자여야 합니다.")
+  @Pattern(regexp = "(?s)^(?!탈퇴회원).*$", message = "사용할 수 없는 닉네임입니다.")
+  private String nickname;
+
+  @NotBlank(message = "이메일은 필수입니다.")
+  @Email(message = "이메일 형식이 올바르지 않습니다.")
+  @Size(max = 255, message = "이메일은 255자 이하여야 합니다.")
+  private String email;
+
+  @NotBlank(message = "비밀번호는 필수입니다.")
+  @Pattern(
+      regexp = "^(?=.*[A-Za-z])(?=.*\\d)[\\x21-\\x7E]{8,20}$",
+      message = "비밀번호는 영문과 숫자를 함께 포함한 8~20자여야 합니다.")
+  private String password;
+
+  @NotNull(message = "이용약관 동의는 필수입니다.")
+  @AssertTrue(message = "이용약관 동의는 필수입니다.")
+  private Boolean termsAgreed;
+
+  @NotNull(message = "개인정보 수집·이용 동의는 필수입니다.")
+  @AssertTrue(message = "개인정보 수집·이용 동의는 필수입니다.")
+  private Boolean privacyAgreed;
+
+  // 위치정보 이용 동의는 선택
+  private Boolean locationAgreed;
+
+  // 앞뒤 공백을 제거한 값으로 길이 검증·중복 검사·저장이 이뤄지도록 역직렬화 시점에 정리
+  // strip()은 NBSP 같은 유니코드 공백을 남기므로 \p{Z}까지 제거
+  public void setNickname(String nickname) {
+    this.nickname = nickname == null ? null : EDGE_SPACES.matcher(nickname).replaceAll("");
+  }
+}

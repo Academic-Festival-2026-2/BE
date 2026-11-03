@@ -71,7 +71,7 @@ CREATE TABLE photos (
     taken_at        DATETIME(6)  NULL COMMENT 'EXIF 촬영 시각(KST)',
     shot_date       DATE         NOT NULL COMMENT '같은 사용자·같은 날 묶음 기준',
     location        POINT        SRID 4326 NULL COMMENT '촬영 좌표',
-    exif_verified   BOOLEAN      NOT NULL DEFAULT FALSE COMMENT '시각·좌표가 있고 좌표가 동 경계 안 → 나의 지도 반영',
+    exif_verified   BOOLEAN      NOT NULL DEFAULT FALSE COMMENT '시각·좌표가 있고 좌표가 동 경계 안 → 모두의 지도 반영(없으면 개인 지도만)',
     palette         JSON         NOT NULL COMMENT '대표색 5개 ["#RRGGBB", ...], 첫 번째가 점 색',
     bins            JSON         NOT NULL COMMENT '색 분포 40칸 숫자 배열, 합 1.0',
     weight          FLOAT        NOT NULL DEFAULT 1.0 COMMENT '0-1, 이상치 사진은 낮춤',

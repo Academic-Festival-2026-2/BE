@@ -1,0 +1,55 @@
+package com.pixel.domain.user.controller;
+
+import com.pixel.domain.user.dto.ChangePasswordRequest;
+import com.pixel.domain.user.dto.MyInfoResponse;
+import com.pixel.domain.user.dto.UpdateMyInfoRequest;
+import com.pixel.domain.user.dto.WithdrawRequest;
+import com.pixel.domain.user.exception.code.UserSuccessCode;
+import com.pixel.domain.user.service.UserService;
+import com.pixel.global.apiPayload.ApiResponse;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/users/me")
+@RequiredArgsConstructor
+public class UserController {
+
+  private final UserService userService;
+
+  @GetMapping
+  public ResponseEntity<ApiResponse<MyInfoResponse>> getMyInfo(
+      @AuthenticationPrincipal Long userId) {
+    return ResponseEntity.ok(ApiResponse.of(UserSuccessCode._FOUND,
+        userService.getMyInfo(userId)));
+  }
+
+  @PatchMapping
+  public ResponseEntity<ApiResponse<Void>> updateMyInfo(@AuthenticationPrincipal Long userId,
+      @Valid @RequestBody UpdateMyInfoRequest request) {
+    userService.updateMyInfo(userId, request);
+    return ResponseEntity.ok(ApiResponse.of(UserSuccessCode._UPDATED, null));
+  }
+
+  @PatchMapping("/password")
+  public ResponseEntity<ApiResponse<Void>> changePassword(@AuthenticationPrincipal Long userId,
+      @Valid @RequestBody ChangePasswordRequest request) {
+    userService.changePassword(userId, request);
+    return ResponseEntity.ok(ApiResponse.of(UserSuccessCode._PASSWORD_CHANGED, null));
+  }
+
+  @DeleteMapping
+  public ResponseEntity<ApiResponse<Void>> withdraw(@AuthenticationPrincipal Long userId,
+      @Valid @RequestBody WithdrawRequest request) {
+    userService.withdraw(userId, request);
+    return ResponseEntity.ok(ApiResponse.of(UserSuccessCode._WITHDRAWN, null));
+  }
+}
