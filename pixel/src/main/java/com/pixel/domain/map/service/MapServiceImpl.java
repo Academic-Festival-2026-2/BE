@@ -1,7 +1,9 @@
 package com.pixel.domain.map.service;
 
+import com.pixel.domain.colorcell.entity.ColorCell;
 import com.pixel.domain.colorcell.enums.TimeBand;
 import com.pixel.domain.colorcell.repository.ColorCellRepository;
+import com.pixel.domain.colorcell.util.ColorBins;
 import com.pixel.domain.dong.repository.DongRepository;
 import com.pixel.domain.map.dto.BoundaryResponse;
 import com.pixel.domain.map.dto.MapDongsResponse;
@@ -11,6 +13,7 @@ import com.pixel.domain.season.repository.SeasonRepository;
 import com.pixel.global.apiPayload.exception.GeneralException;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class MapServiceImpl implements MapService {
+
+  private static final int TOP_DONG_LIMIT = 3;
+  private static final int COLOR_RATIO_LIMIT = 5;
 
   private final DongRepository dongRepository;
   private final SeasonRepository seasonRepository;
@@ -42,15 +48,30 @@ public class MapServiceImpl implements MapService {
     Season season = seasonRepository.findCurrent(today)
         .orElseThrow(() -> new GeneralException(MapErrorCode._SEASON_NOT_FOUND));
 
-    List<MapDongsResponse.DongColor> dongs = colorCellRepository.findForMap(season, timeBand)
+    List<ColorCell> cells = colorCellRepository.findForMap(season, timeBand);
+
+    List<MapDongsResponse.DongColor> dongs = cells
         .stream()
-        .map(cell -> new MapDongsResponse.DongColor(cell.getDong().getDongCode(),
+        .map(cell -> new MapDongsResponse.DongColor(
+            cell.getDong().getDongCode(),
             cell.getDong().getName(),
             cell.getDominantColor(),
             cell.getPhotoCount(),
             cell.getStatus()))
         .toList();
 
-    return new MapDongsResponse(season.getSeason(), timeBand, dongs);
+    List<MapDongsResponse.TopDong> topDongs = cells.stream()
+        .filter(cell -> cell.getPhotoCount() > 0)
+        .sorted(Comparator.comparingInt(ColorCell::getPhotoCount).reversed())
+        .limit(TOP_DONG_LIMIT)
+        .map(cell -> new MapDongsResponse.TopDong(
+            cell.getDong().getDongCode(),
+            cell.getDong().getName(),
+            cell.getDong().getGuName(),
+            cell.getPhotoCount(),
+            ColorBins.topRatios(cell.getBinsSum(), COLOR_RATIO_LIMIT)))
+        .toList();
+
+    return new MapDongsResponse(season.getSeason(), timeBand, dongs, topDongs);
   }
 }
