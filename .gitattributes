@@ -1,0 +1,4 @@
+# 이 파일들은 Windows에서도 항상 LF로 꺼내라는 규칙
+gradlew text eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
