@@ -10,8 +10,6 @@
 - **MVP 범위:** 부천시 37개 행정동 × 가을(9–11월) × 시간 4구간(새벽·낮·노을·밤) = 148칸
 - **프론트엔드 레포지토리:** https://github.com/Academic-Festival-2026-2/FE
 
-> ℹ️ 초기 기획명이 `BINTEUM`이어서 패키지명(`com.binteum`)에 이전 이름이 남아 있습니다. 이후 리팩터링할 예정입니다.
-
 ## 기술 스택
 
 | 구분 | 현재 (1차) | 목표 |
@@ -103,20 +101,20 @@ docker compose down -v
 docker compose up -d
 ```
 
-**로컬 MySQL로 실행할 때** — 데이터베이스를 만들고 세 파일을 순서대로 실행합니다. 예전에 `ddl-auto: update`로 만든 `binteum`이 있다면 지우고 다시 만드세요. (로컬 DB 데이터도 지워집니다)
+**로컬 MySQL로 실행할 때** — 데이터베이스를 만들고 세 파일을 순서대로 실행합니다. 예전에 `ddl-auto: update`로 만든 `pixel`이 있다면 지우고 다시 만드세요. (로컬 DB 데이터도 지워집니다)
 
 `pixel` 폴더에서 실행합니다. `source` 방식이라 PowerShell·cmd·Git Bash 어디서나 동작합니다. `root`는 본인 DB 사용자로 바꾸고, 줄마다 비밀번호를 입력합니다.
 
 ```bash
 cd pixel
-mysql -u root -p -e "DROP DATABASE IF EXISTS binteum; CREATE DATABASE binteum DEFAULT CHARACTER SET utf8mb4;"
-mysql -u root -p --default-character-set=utf8mb4 binteum -e "source db/01_schema.sql"
-mysql -u root -p --default-character-set=utf8mb4 binteum -e "source db/02_dongs.sql"
-mysql -u root -p --default-character-set=utf8mb4 binteum -e "source db/03_seed.sql"
+mysql -u root -p -e "DROP DATABASE IF EXISTS pixel; CREATE DATABASE pixel DEFAULT CHARACTER SET utf8mb4;"
+mysql -u root -p --default-character-set=utf8mb4 pixel -e "source db/01_schema.sql"
+mysql -u root -p --default-character-set=utf8mb4 pixel -e "source db/02_dongs.sql"
+mysql -u root -p --default-character-set=utf8mb4 pixel -e "source db/03_seed.sql"
 ```
 
 - Windows에서 `mysql`을 찾을 수 없다고 나오면 전체 경로로 실행합니다. PowerShell: `& "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" ...`
-- IntelliJ Ultimate·DataGrip을 쓰면 Database 창에서 MySQL을 연결한 뒤, 각 SQL 파일을 우클릭 → Run으로 `binteum`에 순서대로 실행해도 됩니다.
+- IntelliJ Ultimate·DataGrip을 쓰면 Database 창에서 MySQL을 연결한 뒤, 각 SQL 파일을 우클릭 → Run으로 `pixel`에 순서대로 실행해도 됩니다.
 - 확인: `SELECT (SELECT COUNT(*) FROM dongs), (SELECT COUNT(*) FROM color_cells);` → `37`, `148`
 
 **운영 DB(RDS)** 도 자동 실행되지 않으므로 처음 한 번 위와 같은 순서로 실행합니다.
@@ -130,7 +128,7 @@ mysql -u root -p --default-character-set=utf8mb4 binteum -e "source db/03_seed.s
 | 변수 | 기본값 | 설명 |
 |---|---|---|
 | `JWT_SECRET` | 로컬용 기본키 (`application.yml`) | JWT 서명 키 (Base64, 256bit 이상). **배포(`prod`) 환경에서는 기본값이 없어 반드시 지정** |
-| `DB_URL` | `jdbc:mysql://localhost:3306/binteum...` | DB 접속 URL |
+| `DB_URL` | `jdbc:mysql://localhost:3306/pixel...` | DB 접속 URL |
 | `DB_USERNAME` | `root` | DB 사용자 |
 | `DB_PASSWORD` | `password` | DB 비밀번호 |
 | `SERVER_PORT` | `8080` | 서버 포트 |
@@ -155,7 +153,7 @@ cd pixel
 ## 프로젝트 구조
 
 ```
-pixel/src/main/java/com/binteum
+pixel/src/main/java/com/pixel
 ├── domain
 │   ├── user          # 회원 (controller, dto, entity, repository, service, exception)
 │   └── refreshtoken  # Refresh Token 저장소
