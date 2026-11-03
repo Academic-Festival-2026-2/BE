@@ -1,7 +1,6 @@
 package com.pixel.domain.map.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
@@ -12,9 +11,8 @@ import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.dong.repository.DongRepository;
 import com.pixel.domain.map.dto.MapDongsResponse;
 import com.pixel.domain.season.entity.Season;
-import com.pixel.domain.season.repository.SeasonRepository;
+import com.pixel.domain.season.service.SeasonService;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,7 +27,7 @@ class MapServiceImplTest {
   private DongRepository dongRepository;
 
   @Mock
-  private SeasonRepository seasonRepository;
+  private SeasonService seasonService;
 
   @Mock
   private ColorCellRepository colorCellRepository;
@@ -41,8 +39,7 @@ class MapServiceImplTest {
 
   @BeforeEach
   void setUp() {
-
-    given(seasonRepository.findCurrent(any())).willReturn(Optional.of(season));
+    given(seasonService.getCurrentSeason()).willReturn(season);
   }
 
   @Test
@@ -101,6 +98,4 @@ class MapServiceImplTest {
     given(cell.getPhotoCount()).willReturn(photoCount);
     return cell;
   }
-
-
 }

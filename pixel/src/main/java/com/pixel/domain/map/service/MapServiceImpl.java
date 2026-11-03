@@ -7,12 +7,8 @@ import com.pixel.domain.colorcell.util.ColorBins;
 import com.pixel.domain.dong.repository.DongRepository;
 import com.pixel.domain.map.dto.BoundaryResponse;
 import com.pixel.domain.map.dto.MapDongsResponse;
-import com.pixel.domain.map.exception.code.MapErrorCode;
 import com.pixel.domain.season.entity.Season;
-import com.pixel.domain.season.repository.SeasonRepository;
-import com.pixel.global.apiPayload.exception.GeneralException;
-import java.time.LocalDate;
-import java.time.ZoneId;
+import com.pixel.domain.season.service.SeasonService;
 import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -28,8 +24,8 @@ public class MapServiceImpl implements MapService {
   private static final int COLOR_RATIO_LIMIT = 5;
 
   private final DongRepository dongRepository;
-  private final SeasonRepository seasonRepository;
   private final ColorCellRepository colorCellRepository;
+  private final SeasonService seasonService;
 
   @Override
   public BoundaryResponse getBoundaries() {
@@ -43,10 +39,7 @@ public class MapServiceImpl implements MapService {
 
   @Override
   public MapDongsResponse getDongs(TimeBand timeBand) {
-    LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
-
-    Season season = seasonRepository.findCurrent(today)
-        .orElseThrow(() -> new GeneralException(MapErrorCode._SEASON_NOT_FOUND));
+    Season season = seasonService.getCurrentSeason();
 
     List<ColorCell> cells = colorCellRepository.findForMap(season, timeBand);
 
