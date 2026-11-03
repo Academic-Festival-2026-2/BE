@@ -181,6 +181,7 @@ pixel/src/main/java/com/pixel
 
 ## 협업 규칙
 
-- 브랜치: `{기능}/{이슈번호}-{내용}` (예: `feat/9-login`), PR은 `dev` 브랜치로
-- 커밋: `[feat] 로그인 구현 #9`
+브랜치·커밋·이슈·PR 규칙은 [CONTRIBUTING.md](.github/CONTRIBUTING.md)를 참고하세요.
+
+- 커밋: `[타입] 내용 #이슈번호` (예: `[feat] 로그인 구현 #9`)
 - 코드 스타일: Google Java Style
