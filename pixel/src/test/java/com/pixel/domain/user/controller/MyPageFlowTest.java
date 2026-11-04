@@ -2,6 +2,7 @@ package com.pixel.domain.user.controller;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -62,11 +63,22 @@ class MyPageFlowTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.code").value("USER200_9"));
 
-    // 탈퇴 후 남은 access token으로는 마이페이지를 이용할 수 없다
+    // 탈퇴 후 남은 access token은 인증에 쓰이지 않는다
     mockMvc.perform(get("/api/users/me")
             .header("Authorization", "Bearer " + accessToken))
-        .andExpect(status().isForbidden())
-        .andExpect(jsonPath("$.code").value("USER403_1"));
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("COMMON401"));
+
+    // 마이페이지 외 인증 API도 막힌다
+    mockMvc.perform(multipart("/api/photos")
+            .header("Authorization", "Bearer " + accessToken))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("COMMON401"));
+
+    // 공개 API는 비로그인 사용자로 정상 응답한다
+    mockMvc.perform(get("/health")
+            .header("Authorization", "Bearer " + accessToken))
+        .andExpect(status().isOk());
 
     signUp("password123").andExpect(status().isCreated());
   }
