@@ -9,7 +9,6 @@ import org.springframework.http.HttpStatus;
 @Getter
 @AllArgsConstructor
 public enum MapErrorCode implements BaseErrorCode {
-  _SEASON_NOT_FOUND(HttpStatus.NOT_FOUND, "MAP404_1", "진행 중인 시즌이 없습니다."),
   ;
 
   private final HttpStatus httpStatus;

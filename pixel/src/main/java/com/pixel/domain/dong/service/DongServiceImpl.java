@@ -9,13 +9,10 @@ import com.pixel.domain.dong.dto.DongDetailResponse;
 import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.dong.exception.code.DongErrorCode;
 import com.pixel.domain.dong.repository.DongRepository;
-import com.pixel.domain.map.exception.code.MapErrorCode;
 import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.season.entity.Season;
-import com.pixel.domain.season.repository.SeasonRepository;
+import com.pixel.domain.season.service.SeasonService;
 import com.pixel.global.apiPayload.exception.GeneralException;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -33,18 +30,16 @@ public class DongServiceImpl implements DongService {
   private static final int COLOR_RATIO_LIMIT = 5;
 
   private final DongRepository dongRepository;
-  private final SeasonRepository seasonRepository;
   private final ColorCellRepository colorCellRepository;
   private final PhotoRepository photoRepository;
+  private final SeasonService seasonService;
 
   @Override
   public DongDetailResponse getDetail(String dongCode, TimeBand timeBand) {
     Dong dong = dongRepository.findById(dongCode)
         .orElseThrow(() -> new GeneralException(DongErrorCode._DONG_NOT_FOUND));
 
-    LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
-    Season season = seasonRepository.findCurrent(today)
-        .orElseThrow(() -> new GeneralException(MapErrorCode._SEASON_NOT_FOUND));
+    Season season = seasonService.getCurrentSeason();
 
     Map<TimeBand, ColorCell> cells = colorCellRepository.findByDongAndSeason(dong, season)
         .stream()
