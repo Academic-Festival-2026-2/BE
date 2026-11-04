@@ -26,7 +26,8 @@ public final class ColorBins {
   private ColorBins() {
   }
 
-  public static String dominantColor(List<Double> bins) {
+  /** 색상 분포의 길이, 각 값과 합계가 유효한지 검사한다. */
+  public static void validateBins(List<Double> bins) {
     if (bins == null || bins.size() != HEX.size()
         || bins.stream().anyMatch(v -> v == null || !Double.isFinite(v) || v < 0)) {
       throw new IllegalArgumentException("색상 분포는 40개의 유효한 음이 아닌 숫자여야 합니다.");
@@ -35,11 +36,24 @@ public final class ColorBins {
     if (!Double.isFinite(total)) {
       throw new IllegalArgumentException("색상 분포 합계가 유효하지 않습니다.");
     }
+  }
+
+  /**
+   * 유채색 비율이 15% 이상이면 0~35, 미만이면 무채색 36~39 중 최댓값을 선택한다.
+   * 동점이면 작은 인덱스를 선택하며, 전체 합계가 0이면 null을 반환한다.
+   */
+  public static String dominantColor(List<Double> bins) {
+    validateBins(bins);
+    double total = bins.stream().mapToDouble(Double::doubleValue).sum();
     if (total == 0) {
       return null;
     }
     double chromatic = bins.subList(0, 36).stream().mapToDouble(Double::doubleValue).sum();
-    int start = chromatic / total >= 0.15 ? 0 : 36;
+    double ratio = chromatic / total;
+    double threshold = 0.15;
+    // 비율 크기에 비례하는 극소 오차만 허용해 반복 누적 시 15% 경계가 뒤집히지 않게 한다.
+    double tolerance = Math.max(Math.abs(ratio), threshold) * 1e-12;
+    int start = ratio >= threshold || threshold - ratio <= tolerance ? 0 : 36;
     int end = start == 0 ? 36 : 40;
     int best = start;
     for (int i = start + 1; i < end; i++) {

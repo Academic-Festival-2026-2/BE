@@ -3,6 +3,8 @@ package com.pixel.domain.colorcell;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.pixel.domain.colorcell.dto.ColorRatio;
+import com.pixel.domain.colorcell.entity.ColorCell;
+import com.pixel.domain.colorcell.enums.TimeBand;
 import com.pixel.domain.colorcell.util.ColorBins;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -67,4 +69,43 @@ public class ColorBinsTest {
           () -> ColorBins.dominantColor(Collections.nCopies(40, value)));
     }
   }
+
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(doubles = {1e-100, 1.0, 1e100})
+  void repeatedBoundaryDistributionStaysChromatic(double scale) {
+    var bins = new ArrayList<>(Collections.nCopies(40, 0.0));
+    for (int i = 0; i < 21; i++) {
+      bins.set(0, bins.get(0) + 0.15 * scale);
+      bins.set(36, bins.get(36) + 0.85 * scale);
+    }
+    assertThat(ColorBins.dominantColor(bins)).isEqualTo(ColorBins.HEX.get(0));
+  }
+
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(doubles = {1e-100, 1.0, 1e100})
+  void genuinelyBelowBoundaryStaysAchromatic(double scale) {
+    var bins = new ArrayList<>(Collections.nCopies(40, 0.0));
+    bins.set(0, (0.15 - 1e-10) * scale);
+    bins.set(36, (0.85 + 1e-10) * scale);
+    assertThat(ColorBins.dominantColor(bins)).isEqualTo(ColorBins.HEX.get(36));
+  }
+
+  @Test
+  void repeatedContributionsKeepBoundaryColor() {
+    var cell = new ColorCell(null, null, TimeBand.DAY);
+    var bins = new ArrayList<>(Collections.nCopies(40, 0.0));
+    bins.set(0, 0.15);
+    bins.set(36, 0.85);
+    for (long id = 1; id <= 21; id++) {
+      cell.contribute(id, bins, 1.0f, id == 1);
+    }
+    assertThat(cell.getDominantColor()).isEqualTo(ColorBins.HEX.get(0));
+    assertThat(cell.getPhotoCount()).isEqualTo(21);
+    assertThat(cell.getShotCount()).isEqualTo(1);
+    assertThat(cell.getFirstPhotoId()).isEqualTo(1L);
+    org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+        () -> cell.contribute(22L, Collections.nCopies(40, -1.0), 1.0f, false));
+    assertThat(cell.getPhotoCount()).isEqualTo(21);
+  }
+
 }

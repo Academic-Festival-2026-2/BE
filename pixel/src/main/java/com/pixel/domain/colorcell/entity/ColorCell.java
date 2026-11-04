@@ -76,7 +76,7 @@ public class ColorCell {
   }
 
   public void contribute(Long photoId, List<Double> bins, float weight, boolean newShot) {
-    ColorBins.dominantColor(bins);
+    ColorBins.validateBins(bins);
     if (photoId == null || !Float.isFinite(weight) || weight < 0 || weight > 1) {
       throw new IllegalArgumentException("사진 ID 또는 가중치가 유효하지 않습니다.");
     }
