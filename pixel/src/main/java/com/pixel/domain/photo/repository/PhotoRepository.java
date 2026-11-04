@@ -1,14 +1,32 @@
 package com.pixel.domain.photo.repository;
 
+import com.pixel.domain.colorcell.enums.TimeBand;
 import com.pixel.domain.photo.dto.PhotoPointView;
 import com.pixel.domain.photo.entity.Photo;
+import jakarta.persistence.LockModeType;
+import java.time.LocalDate;
 import java.util.List;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface PhotoRepository extends JpaRepository<Photo, Long> {
+
+  // 잠금 읽기로 MySQL REPEATABLE READ의 이전 스냅샷 대신 최신 커밋을 확인한다.
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("""
+      SELECT p FROM Photo p
+      WHERE p.user.userId = :userId AND p.shotDate = :shotDate
+        AND p.dong.dongCode = :dongCode AND p.season.seasonId = :seasonId
+        AND p.timeBand = :timeBand AND p.exifVerified = true AND p.photoId <> :photoId
+      """)
+  List<Photo> findPreviousShot(@Param("userId") Long userId,
+      @Param("shotDate") LocalDate shotDate, @Param("dongCode") String dongCode,
+      @Param("seasonId") Short seasonId, @Param("timeBand") TimeBand timeBand,
+      @Param("photoId") Long photoId, Pageable pageable);
 
   boolean existsByImageHash(String imageHash);
 
