@@ -65,8 +65,8 @@ class MapServiceImplTest {
   }
 
   @Test
-  void keepsOriginalOrderOnTie() {
-    givenCells(cell("A", 2), cell("B", 2), cell("C", 9));
+  void sortsTiesByDongCode() {
+    givenCells(cell("B", 2), cell("A", 2), cell("C", 9));
 
     MapDongsResponse response = mapService.getDongs(TimeBand.DAY);
 

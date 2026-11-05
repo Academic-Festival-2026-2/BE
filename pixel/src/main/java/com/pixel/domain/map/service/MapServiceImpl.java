@@ -55,7 +55,8 @@ public class MapServiceImpl implements MapService {
 
     List<MapDongsResponse.TopDong> topDongs = cells.stream()
         .filter(cell -> cell.getPhotoCount() > 0)
-        .sorted(Comparator.comparingInt(ColorCell::getPhotoCount).reversed())
+        .sorted(Comparator.comparingInt(ColorCell::getPhotoCount).reversed()
+            .thenComparing(cell -> cell.getDong().getDongCode()))
         .limit(TOP_DONG_LIMIT)
         .map(cell -> new MapDongsResponse.TopDong(
             cell.getDong().getDongCode(),
