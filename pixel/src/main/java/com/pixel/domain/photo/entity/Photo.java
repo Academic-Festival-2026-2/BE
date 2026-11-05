@@ -93,6 +93,10 @@ public class Photo {
   @Column(name = "created_at", insertable = false, updatable = false)
   private LocalDateTime createdAt;
 
+  public void changePublic(boolean isPublic) {
+    this.isPublic = isPublic;
+  }
+
   public Photo(
       User user,
       Dong dong,

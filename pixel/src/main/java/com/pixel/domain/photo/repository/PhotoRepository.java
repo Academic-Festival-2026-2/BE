@@ -6,6 +6,9 @@ import com.pixel.domain.photo.entity.Photo;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -25,6 +28,25 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
       """)
   List<Photo> findPreviousShot(@Param("userId") Long userId,
       @Param("shotDate") LocalDate shotDate, @Param("dongCode") String dongCode,
+      @Param("seasonId") Short seasonId, @Param("timeBand") TimeBand timeBand,
+      @Param("photoId") Long photoId, Pageable pageable);
+
+  @Query("SELECT p.dong.dongCode FROM Photo p WHERE p.photoId = :photoId")
+  Optional<String> findDongCodeByPhotoId(@Param("photoId") Long photoId);
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT p FROM Photo p WHERE p.photoId = :photoId")
+  Optional<Photo> findForUpdate(@Param("photoId") Long photoId);
+
+  @EntityGraph(attributePaths = {"dong", "user"})
+  Page<Photo> findByUserUserId(Long userId, Pageable pageable);
+
+  // 삭제 시에도 최신 커밋을 읽고, 다음 최초 기여 사진을 결정적으로 선택한다.
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT p FROM Photo p WHERE p.dong.dongCode = :dongCode"
+      + " AND p.season.seasonId = :seasonId AND p.timeBand = :timeBand"
+      + " AND p.exifVerified = true AND p.photoId <> :photoId ORDER BY p.photoId")
+  List<Photo> findRemainingInCell(@Param("dongCode") String dongCode,
       @Param("seasonId") Short seasonId, @Param("timeBand") TimeBand timeBand,
       @Param("photoId") Long photoId, Pageable pageable);
 
