@@ -1,5 +1,7 @@
 package com.pixel.global.security.jwt;
 
+import com.pixel.domain.user.enums.UserStatus;
+import com.pixel.domain.user.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,6 +21,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   private static final String BEARER_PREFIX = "Bearer ";
 
   private final JwtTokenProvider jwtTokenProvider;
+  private final UserRepository userRepository;
 
   @Override
   protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -26,11 +29,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     String token = resolveToken(request);
 
     if (token != null) {
-      jwtTokenProvider.resolveAccessUserId(token).ifPresent(userId -> {
-        UsernamePasswordAuthenticationToken authentication =
-            new UsernamePasswordAuthenticationToken(userId, null, List.of());
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-      });
+      // 탈퇴·비활성 회원의 토큰은 인증 정보로 쓰지 않는다 (비로그인 요청으로 처리)
+      jwtTokenProvider.resolveAccessUserId(token)
+          .filter(userId -> userRepository.existsByUserIdAndStatus(userId, UserStatus.ACTIVE))
+          .ifPresent(userId -> {
+            UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(userId, null, List.of());
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+          });
     }
 
     filterChain.doFilter(request, response);

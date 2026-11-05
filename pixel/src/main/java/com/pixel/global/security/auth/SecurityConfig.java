@@ -1,5 +1,6 @@
 package com.pixel.global.security.auth;
 
+import com.pixel.domain.user.repository.UserRepository;
 import com.pixel.global.security.jwt.JwtAuthenticationEntryPoint;
 import com.pixel.global.security.jwt.JwtAuthenticationFilter;
 import com.pixel.global.security.jwt.JwtTokenProvider;
@@ -23,6 +24,7 @@ public class SecurityConfig {
 
   private final JwtTokenProvider jwtTokenProvider;
   private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+  private final UserRepository userRepository;
 
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -42,7 +44,7 @@ public class SecurityConfig {
                 "/api/map/boundaries", "/api/map/dongs", "/api/dongs/*").permitAll()
             .anyRequest().authenticated()
         )
-        .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
+        .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, userRepository),
             UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
