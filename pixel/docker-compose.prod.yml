@@ -1,3 +1,4 @@
+name: pixel-prod
 # 운영 서버(EC2)용. 실행: docker compose -f docker-compose.prod.yml up -d --build
 # 비밀값은 같은 폴더의 .env(서버에만 있음, Git 제외)에서 읽는다. AWS 키는 넣지 않는다(EC2 IAM 역할 사용).
 services:
