@@ -28,7 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class MyMapServiceImpl implements MyMapService {
 
-  private static final int BIN_COUNT = 40;
+  private static final int BIN_COUNT = ColorBins.HEX.size();
 
   private final SeasonService seasonService;
   private final DongRepository dongRepository;
