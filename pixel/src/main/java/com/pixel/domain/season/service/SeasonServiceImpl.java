@@ -1,6 +1,7 @@
 package com.pixel.domain.season.service;
 
 import com.pixel.domain.season.entity.Season;
+import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.domain.season.exception.code.SeasonErrorCode;
 import com.pixel.domain.season.repository.SeasonRepository;
 import com.pixel.global.apiPayload.exception.GeneralException;
@@ -24,5 +25,11 @@ public class SeasonServiceImpl implements SeasonService {
     LocalDate today = LocalDate.now(SEOUL);
     return seasonRepository.findCurrent(today)
         .orElseThrow(() -> new GeneralException(SeasonErrorCode._SEASON_NOT_FOUND));
+  }
+
+  @Override
+  public Season getSeason(SeasonType season) {
+    return seasonRepository.findFirstBySeasonOrderByYearDesc(season)
+        .orElseThrow(() -> new GeneralException(SeasonErrorCode._SEASON_TYPE_NOT_FOUND));
   }
 }

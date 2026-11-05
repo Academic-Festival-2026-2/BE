@@ -31,4 +31,6 @@ public interface ColorCellRepository extends JpaRepository<ColorCell, Long> {
       @Param("timeBand") TimeBand timeBand);
 
   List<ColorCell> findByDongAndSeason(Dong dong, Season season);
+
+  List<ColorCell> findBySeason(Season season);
 }

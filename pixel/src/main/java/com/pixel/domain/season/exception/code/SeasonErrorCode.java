@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 @AllArgsConstructor
 public enum SeasonErrorCode implements BaseErrorCode {
   _SEASON_NOT_FOUND(HttpStatus.NOT_FOUND, "SEASON404_1", "진행 중인 시즌이 없습니다."),
+  _SEASON_TYPE_NOT_FOUND(HttpStatus.NOT_FOUND, "SEASON404_2", "해당 시즌이 없습니다."),
   ;
 
   private final HttpStatus httpStatus;
