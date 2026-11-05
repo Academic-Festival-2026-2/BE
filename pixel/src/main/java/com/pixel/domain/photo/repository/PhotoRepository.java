@@ -3,6 +3,7 @@ package com.pixel.domain.photo.repository;
 import com.pixel.domain.colorcell.enums.TimeBand;
 import com.pixel.domain.photo.dto.PhotoPointView;
 import com.pixel.domain.photo.entity.Photo;
+import com.pixel.domain.season.entity.Season;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDate;
 import java.util.List;
@@ -75,4 +76,12 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
       @Param("dongCode") String dongCode,
       @Param("seasonId") Short seasonId,
       @Param("timeBand") String timeBand);
+
+  @Query("""
+        SELECT p FROM Photo p
+        WHERE p.user.userId = :userId
+          AND p.season = :season
+          AND p.exifVerified = true
+      """)
+  List<Photo> findMyMapPhotos(@Param("userId") Long userId, @Param("season") Season season);
 }
