@@ -100,6 +100,38 @@ public class ColorCell {
     dominantColor = color;
   }
 
+  public void retract(List<Double> bins, float weight, boolean lastShot, Long nextFirstPhotoId) {
+    ColorBins.validateBins(bins);
+    if (photoCount <= 0 || !Float.isFinite(weight) || weight < 0 || weight > 1) {
+      throw new IllegalStateException("차감할 집계 또는 가중치가 유효하지 않습니다.");
+    }
+    int count = photoCount - 1;
+    int shots = shotCount - (lastShot ? 1 : 0);
+    if (shots < 0 || shots > count || (count > 0 && nextFirstPhotoId == null)) {
+      throw new IllegalStateException("사진 집계 정합성을 확인해야 합니다.");
+    }
+    List<Double> remaining = new ArrayList<>(binsSum);
+    for (int i = 0; i < 40; i++) {
+      double before = remaining.get(i);
+      double removed = bins.get(i) * weight;
+      double difference = before - removed;
+      double tolerance = Math.max(Math.abs(before), Math.abs(removed)) * 1e-12;
+      if (difference < -tolerance) {
+        throw new IllegalStateException("차감할 색상 분포가 기존 집계보다 큽니다.");
+      }
+      remaining.set(i, count == 0 ? 0.0 : Math.max(0.0, difference));
+    }
+    String color = ColorBins.dominantColor(remaining);
+    if (count > 0 && color == null) {
+      throw new IllegalStateException("남은 사진의 색상 분포가 비어 있습니다.");
+    }
+    photoCount = count;
+    shotCount = shots;
+    binsSum = remaining;
+    dominantColor = color;
+    firstPhotoId = count == 0 ? null : nextFirstPhotoId;
+  }
+
   public CellStatus getStatus() {
     if (photoCount == 0) {
       return CellStatus.EMPTY;

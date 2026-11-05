@@ -46,5 +46,26 @@ public class ColorCellService {
     return new Contribution(cell.getPhotoCount(), first);
   }
 
+  // 업로드와 동일하게 동 → 사진 → 셀 순서로 잠근 뒤 호출해야 한다.
+  public void retract(Photo photo) {
+    if (!photo.isExifVerified()) {
+      return;
+    }
+    ColorCell cell = cells.findForUpdate(photo.getDong(), photo.getSeason(), photo.getTimeBand())
+        .orElseThrow(() -> new IllegalStateException("차감할 색상 셀이 없습니다."));
+    boolean lastShot = photos.findPreviousShot(photo.getUser().getUserId(), photo.getShotDate(),
+        photo.getDong().getDongCode(), photo.getSeason().getSeasonId(), photo.getTimeBand(),
+        photo.getPhotoId(), PageRequest.of(0, 1)).isEmpty();
+    Long firstPhotoId = cell.getFirstPhotoId();
+    if (photo.getPhotoId().equals(firstPhotoId)) {
+      firstPhotoId = photos.findRemainingInCell(photo.getDong().getDongCode(),
+              photo.getSeason().getSeasonId(), photo.getTimeBand(), photo.getPhotoId(),
+              PageRequest.of(0, 1)).stream().map(Photo::getPhotoId).findFirst().orElse(null);
+    }
+    cell.retract(photo.getBins(), photo.getWeight(), lastShot, firstPhotoId);
+    // first_photo_id 외래키가 삭제 사진을 참조하지 않도록 사진 DELETE보다 먼저 반영한다.
+    cells.flush();
+  }
+
   public record Contribution(Integer cellPhotoCount, boolean firstInCell) {}
 }
