@@ -1,6 +1,7 @@
 package com.pixel.domain.photo.service;
 
 import com.pixel.domain.colorcell.enums.TimeBand;
+import com.pixel.domain.colorcell.service.ColorCellService;
 import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.dong.repository.DongRepository;
 import com.pixel.domain.photo.dto.PhotoUploadRequest;
@@ -51,6 +52,7 @@ public class PhotoService {
   private final PhotoMetadataReader metadataReader;
   private final PhotoImageProcessor imageProcessor;
   private final S3StorageService storageService;
+  private final ColorCellService colorCellService;
 
   @Transactional
   public PhotoUploadResponse upload(Long userId, MultipartFile file, PhotoUploadRequest request) {
@@ -196,6 +198,10 @@ public class PhotoService {
           }
         });
 
+    if (exifVerified) {
+      colorCellService.lockForUpload(dongCode);
+    }
+
     // location은 JPA 매핑 대상에서 제외되어 있다.
     // 따라서 우선 exif_verified=false로 저장한다.
     Photo photo =
@@ -239,6 +245,8 @@ public class PhotoService {
       }
     }
 
+    var contribution = colorCellService.aggregate(photo);
+
     return new PhotoUploadResponse(
         photo.getPhotoId(),
         dongCode,
@@ -246,7 +254,9 @@ public class PhotoService {
         season.getSeason(),
         timeBand.name(),
         exifVerified,
-        Boolean.TRUE.equals(request.isPublic()));
+        Boolean.TRUE.equals(request.isPublic()),
+        contribution.cellPhotoCount(),
+        contribution.firstInCell());
   }
 
   private void validateColors(PhotoUploadRequest request) {

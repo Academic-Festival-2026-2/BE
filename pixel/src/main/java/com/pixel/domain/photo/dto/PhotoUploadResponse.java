@@ -9,4 +9,6 @@ public record PhotoUploadResponse(
     SeasonType season,
     String timeBand,
     boolean exifVerified,
-    boolean isPublic) {}
+    boolean isPublic,
+    Integer cellPhotoCount,
+    boolean firstInCell) {}

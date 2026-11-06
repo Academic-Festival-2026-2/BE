@@ -133,6 +133,14 @@ mysql -u root -p --default-character-set=utf8mb4 pixel -e "source db/03_seed.sql
 | `DB_PASSWORD` | `password` | DB 비밀번호 |
 | `SERVER_PORT` | `8080` | 서버 포트 |
 
+| `AWS_S3_BUCKET` | 없음 | 사진 저장 버킷. 로컬은 `pixel-cs24-dev`. 없으면 사진 업로드만 500 |
+| `AWS_REGION` | `ap-northeast-2` | S3 리전 (서울) |
+| `AWS_ACCESS_KEY_ID` | 없음 | 로컬 개발용 S3 키. 팀원별로 따로 발급 |
+| `AWS_SECRET_ACCESS_KEY` | 없음 | 위 키의 비밀값. **Git·단체방에 올리지 않기** |
+`.env`는 Spring이 직접 읽지 않습니다. IntelliJ 실행 구성(Edit Configurations) → 환경 변수 → 폴더 아이콘으로 `.env` 파일을 연결해야 적용됩니다. `./gradlew bootRun`으로 실행할 때는 `.env`가 적용되지 않습니다.
+
+로컬 개발용 키는 `pixel-cs24-dev` 버킷의 `photos/` 아래만 쓸 수 있습니다. 배포 서버는 키 없이 IAM 역할로 접근합니다.
+
 ### 4. 실행
 
 ```bash
@@ -181,6 +189,7 @@ pixel/src/main/java/com/pixel
 
 ## 협업 규칙
 
-- 브랜치: `{기능}/{이슈번호}-{내용}` (예: `feat/9-login`), PR은 `dev` 브랜치로
-- 커밋: `[feat] 로그인 구현 #9`
+브랜치·커밋·이슈·PR 규칙은 [CONTRIBUTING.md](.github/CONTRIBUTING.md)를 참고하세요.
+
+- 커밋: `[타입] 내용 #이슈번호` (예: `[feat] 로그인 구현 #9`)
 - 코드 스타일: Google Java Style

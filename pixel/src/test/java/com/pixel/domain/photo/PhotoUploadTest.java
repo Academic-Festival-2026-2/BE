@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.pixel.domain.dong.entity.Dong;
+import com.pixel.domain.colorcell.service.ColorCellService;
 import com.pixel.domain.dong.repository.DongRepository;
 import com.pixel.domain.photo.controller.PhotoController;
 import com.pixel.domain.photo.dto.PhotoUploadRequest;
@@ -52,14 +53,16 @@ class PhotoUploadTest {
   private final PhotoMetadataReader metadata = mock(PhotoMetadataReader.class);
   private final PhotoImageProcessor images = mock(PhotoImageProcessor.class);
   private final S3StorageService storage = mock(S3StorageService.class);
+  private final ColorCellService aggregation = mock(ColorCellService.class);
   private final PhotoService service =
-      new PhotoService(photos, users, dongs, seasons, metadata, images, storage);
+      new PhotoService(photos, users, dongs, seasons, metadata, images, storage, aggregation);
   private final MockMultipartFile file =
       new MockMultipartFile(
           "image", "test.jpg", "image/jpeg", new byte[] {(byte) 255, (byte) 216, (byte) 255, 1});
 
   @BeforeEach
   void setup() {
+    when(aggregation.aggregate(any())).thenReturn(new ColorCellService.Contribution(null, false));
     when(users.findById(1L)).thenReturn(Optional.of(mock(User.class)));
     Dong dong = org.springframework.beans.BeanUtils.instantiateClass(Dong.class);
     ReflectionTestUtils.setField(dong, "dongCode", "31050110");
@@ -204,6 +207,40 @@ class PhotoUploadTest {
     var order = inOrder(photos);
     order.verify(photos).saveAndFlush(any());
     order.verify(photos).updateLocationAndVerification(7L, 37.5, 126.7, true);
+  }
+
+  @Test
+  void aggregationResultIsReturnedAfterGpsUpdateAndLockPrecedesInsert() {
+    when(metadata.read(any())).thenReturn(new PhotoMetadataReader.PhotoMetadata(
+        LocalDateTime.parse("2026-10-29T13:00"), 37.5, 126.7));
+    when(dongs.findDongCodeByCoordinates(37.5, 126.7)).thenReturn(Optional.of("31050110"));
+    when(photos.updateLocationAndVerification(7L, 37.5, 126.7, true)).thenReturn(1);
+    when(aggregation.aggregate(any())).thenReturn(new ColorCellService.Contribution(1, true));
+    var result = service.upload(1L, file, request("13:00", null, null));
+    assertEquals(1, result.cellPhotoCount());
+    assertTrue(result.firstInCell());
+    var order = inOrder(aggregation, photos);
+    order.verify(aggregation).lockForUpload("31050110");
+    order.verify(photos).saveAndFlush(any());
+    order.verify(photos).updateLocationAndVerification(7L, 37.5, 126.7, true);
+    order.verify(aggregation).aggregate(any());
+  }
+
+  @Test
+  void unverifiedResponseHasNoCellCountAndDoesNotLock() {
+    var result = service.upload(1L, file, request("13:00", null, null));
+    assertNull(result.cellPhotoCount());
+    assertFalse(result.firstInCell());
+    verify(aggregation, never()).lockForUpload(any());
+  }
+
+  @Test
+  void aggregationFailureUsesExistingRollbackCleanup() {
+    when(aggregation.aggregate(any())).thenThrow(new IllegalStateException("aggregation failed"));
+    assertThrows(IllegalStateException.class,
+        () -> service.upload(1L, file, request("13:00", null, null)));
+    complete(TransactionSynchronization.STATUS_ROLLED_BACK);
+    verify(storage).deleteAllQuietly(argThat(keys -> keys.size() == 2));
   }
 
   @Test
@@ -385,8 +422,8 @@ class PhotoUploadTest {
         .andExpect(jsonPath("$.result.timeBand").value("DAY"))
         .andExpect(jsonPath("$.result.exifVerified").value(false))
         .andExpect(jsonPath("$.result.isPublic").value(true))
-        .andExpect(jsonPath("$.result.cellPhotoCount").doesNotExist())
-        .andExpect(jsonPath("$.result.firstInCell").doesNotExist());
+        .andExpect(jsonPath("$.result.cellPhotoCount").value(org.hamcrest.Matchers.nullValue()))
+        .andExpect(jsonPath("$.result.firstInCell").value(false));
   }
 
   @ParameterizedTest
@@ -413,7 +450,7 @@ class PhotoUploadTest {
     when(dongs.findDongCodeByCoordinates(37.5, 126.7)).thenReturn(Optional.of("31050110"));
     when(photos.updateLocationAndVerification(7L, 37.5, 126.7, false)).thenReturn(1);
     var uploadService = new PhotoService(photos, users, dongs, seasons, new PhotoMetadataReader(),
-        realProcessor, storage);
+        realProcessor, storage, aggregation);
     uploadService.upload(1L,
         new MockMultipartFile("image", "gps.jpg", "image/jpeg", original),
         request("13:00", null, null));
