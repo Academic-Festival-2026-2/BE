@@ -1,0 +1,59 @@
+name: pixel-prod
+# 운영 서버(EC2)용. 실행: docker compose -f docker-compose.prod.yml up -d --build
+# 비밀값은 같은 폴더의 .env(서버에만 있음, Git 제외)에서 읽는다. AWS 키는 넣지 않는다(EC2 IAM 역할 사용).
+services:
+  backend:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DB_URL=jdbc:mysql://db:3306/pixel?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      - DB_USERNAME=pixel
+      - DB_PASSWORD=${DB_PASSWORD:?.env에 DB_PASSWORD가 없습니다}
+      - JWT_SECRET=${JWT_SECRET:?.env에 JWT_SECRET이 없습니다}
+      - AWS_REGION=ap-northeast-2
+      - AWS_S3_BUCKET=pixel-cs24-prod
+      - TZ=Asia/Seoul
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    # ports 없음: DB는 서버 밖으로 열지 않는다. backend는 compose 내부 네트워크의 db:3306으로 접속
+    environment:
+      - MYSQL_DATABASE=pixel
+      - MYSQL_USER=pixel
+      - MYSQL_PASSWORD=${DB_PASSWORD:?.env에 DB_PASSWORD가 없습니다}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:?.env에 MYSQL_ROOT_PASSWORD가 없습니다}
+      - TZ=Asia/Seoul
+    volumes:
+      - pixel_mysql_data:/var/lib/mysql
+      # 볼륨이 비어 있을 때(첫 실행)만 db/*.sql을 이름 순서대로 실행
+      - ./db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # $$는 compose가 아니라 컨테이너 안의 셸이 MYSQL_ROOT_PASSWORD를 읽게 한다
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  pixel_mysql_data:
