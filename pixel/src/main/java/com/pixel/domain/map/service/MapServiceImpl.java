@@ -50,7 +50,8 @@ public class MapServiceImpl implements MapService {
             cell.getDong().getName(),
             cell.getDominantColor(),
             cell.getPhotoCount(),
-            cell.getStatus()))
+            cell.getStatus(),
+            ColorBins.topRatios(cell.getBinsSum(), COLOR_RATIO_LIMIT)))
         .toList();
 
     List<MapDongsResponse.TopDong> topDongs = cells.stream()
