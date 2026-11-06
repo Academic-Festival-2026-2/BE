@@ -4,11 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
+import com.pixel.domain.colorcell.dto.ColorRatio;
 import com.pixel.domain.colorcell.entity.ColorCell;
 import com.pixel.domain.colorcell.enums.TimeBand;
 import com.pixel.domain.colorcell.repository.ColorCellRepository;
 import com.pixel.domain.colorcell.util.ColorBins;
-import com.pixel.domain.colorcell.dto.ColorRatio;
 import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.dong.repository.DongRepository;
 import com.pixel.domain.map.dto.MapDongsResponse;
@@ -91,19 +91,19 @@ class MapServiceImplTest {
 
   @Test
   void includesColorRatioForEachDong() {
-    givenCells(cellWithBins("A", 5, bins(Map.of(0, 0.6, 12, 0.4)))
-        , cell("B", 0));
+    givenCells(cellWithBins("A", 5, bins(Map.of(0, 0.6, 12, 0.4))),
+        cellWithBins("B", 0, bins(Map.of())));
 
     MapDongsResponse response = mapService.getDongs(TimeBand.DAY);
 
-    MapDongsResponse.DongColor dongA =response.getDongs().get(0);
+    MapDongsResponse.DongColor dongA = response.getDongs().get(0);
     assertThat(dongA.getColorRatio())
         .extracting(ColorRatio::hex)
-        .containsExactly(ColorBins.HEX.get(0),ColorBins.HEX.get(12));
+        .containsExactly(ColorBins.HEX.get(0), ColorBins.HEX.get(12));
 
     assertThat(dongA.getColorRatio())
         .extracting(ColorRatio::ratio)
-            .containsExactly(0.6, 0.4);
+        .containsExactly(0.6, 0.4);
 
     assertThat(response.getDongs().get(1).getColorRatio()).isEmpty();
 
