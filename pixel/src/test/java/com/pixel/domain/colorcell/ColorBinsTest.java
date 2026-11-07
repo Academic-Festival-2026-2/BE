@@ -108,4 +108,37 @@ public class ColorBinsTest {
     assertThat(cell.getPhotoCount()).isEqualTo(21);
   }
 
+  @Test
+  void excludesColorRoundedToZero() {
+    List<Double> bins = new ArrayList<>(Collections.nCopies(40, 0.0));
+    bins.set(0, 0.96);
+    bins.set(12, 0.004);
+
+    List<ColorRatio> result = ColorBins.topRatios(bins, 5);
+
+    assertThat(result)
+        .extracting(ColorRatio::hex)
+        .containsExactly(ColorBins.HEX.get(0));
+
+    assertThat(result)
+        .extracting(ColorRatio::ratio)
+        .containsExactly(1.0);
+  }
+
+  @Test
+  void keepsColorRoundedUpFromBoundary() {
+    List<Double> bins = new ArrayList<>(Collections.nCopies(40, 0.0));
+    bins.set(0, 0.995);
+    bins.set(12, 0.005);
+
+    List<ColorRatio> result = ColorBins.topRatios(bins, 5);
+
+    assertThat(result)
+        .extracting(ColorRatio::hex)
+        .containsExactly(ColorBins.HEX.get(0), ColorBins.HEX.get(12));
+
+    assertThat(result)
+        .extracting(ColorRatio::ratio)
+        .containsExactly(1.0, 0.01);
+  }
 }
