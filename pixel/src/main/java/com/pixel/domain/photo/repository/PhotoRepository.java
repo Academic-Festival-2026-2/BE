@@ -53,6 +53,8 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
 
   boolean existsByImageHash(String imageHash);
 
+  long countByUserUserId(Long userId);
+
   List<Photo> findAllByUserUserIdOrderByCreatedAtDesc(Long userId);
 
   @Modifying
