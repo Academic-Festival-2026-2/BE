@@ -7,6 +7,7 @@ import com.pixel.domain.season.repository.SeasonRepository;
 import com.pixel.global.apiPayload.exception.GeneralException;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,7 +30,12 @@ public class SeasonServiceImpl implements SeasonService {
 
   @Override
   public Season getSeason(SeasonType season) {
-    return seasonRepository.findFirstBySeasonOrderByYearDesc(season)
+    return findSeason(season)
         .orElseThrow(() -> new GeneralException(SeasonErrorCode._SEASON_TYPE_NOT_FOUND));
+  }
+
+  @Override
+  public Optional<Season> findSeason(SeasonType season) {
+    return seasonRepository.findFirstBySeasonOrderByYearDesc(season);
   }
 }

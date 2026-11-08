@@ -7,7 +7,6 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-import com.pixel.domain.mymap.dto.MyMapResponse;
 import com.pixel.domain.mymap.service.MyMapService;
 import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.refreshtoken.entity.RefreshToken;
@@ -25,7 +24,6 @@ import com.pixel.global.apiPayload.code.BaseErrorCode;
 import com.pixel.global.apiPayload.exception.GeneralException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.BeforeEach;
@@ -79,8 +77,7 @@ class UserServiceImplTest {
   void 내_정보에_사진_수와_나의_지도_채운_칸_수가_포함된다() {
     given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
     given(photoRepository.countByUserUserId(USER_ID)).willReturn(7L);
-    given(myMapService.getMyMap(USER_ID, SeasonType.AUTUMN))
-        .willReturn(new MyMapResponse(SeasonType.AUTUMN, 148, 3, List.of()));
+    given(myMapService.countFilledCells(USER_ID, SeasonType.AUTUMN)).willReturn(3);
 
     MyInfoResponse response = userService.getMyInfo(USER_ID);
 

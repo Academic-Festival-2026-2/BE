@@ -34,8 +34,8 @@ public class UserServiceImpl implements UserService {
   public MyInfoResponse getMyInfo(Long userId) {
     User user = getActiveUser(userId);
     long photoCount = photoRepository.countByUserUserId(userId);
-    // 나의 지도와 같은 계산을 재사용해 두 화면의 채운 칸 수가 항상 같게 한다.
-    int filledCellCount = myMapService.getMyMap(userId, SeasonType.AUTUMN).getFilledCellCount();
+    // 나의 지도와 같은 기준으로 세서 두 화면의 채운 칸 수가 항상 같게 한다.
+    int filledCellCount = myMapService.countFilledCells(userId, SeasonType.AUTUMN);
     return MyInfoResponse.of(user, photoCount, filledCellCount);
   }
 

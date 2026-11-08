@@ -41,10 +41,7 @@ public class MyMapServiceImpl implements MyMapService {
 
     List<Dong> dongs = dongRepository.findAll(Sort.by("dongCode"));
 
-    Map<CellKey, List<Photo>> myPhotos = photoRepository.findMyMapPhotos(userId, season)
-        .stream()
-        .collect(Collectors.groupingBy(
-            photo -> new CellKey(photo.getDong().getDongCode(), photo.getTimeBand())));
+    Map<CellKey, List<Photo>> myPhotos = groupMyPhotosByCell(userId, season);
 
     Map<CellKey, String> previewColors = colorCellRepository.findBySeason(season)
         .stream()
@@ -76,6 +73,21 @@ public class MyMapServiceImpl implements MyMapService {
 
     return new MyMapResponse.Cell(dong.getDongCode(), dong.getName(), timeBand, filled,
         myColor, photos.size(), previewColor);
+  }
+
+  @Override
+  public int countFilledCells(Long userId, SeasonType seasonType) {
+    return seasonService.findSeason(seasonType)
+        .map(season -> groupMyPhotosByCell(userId, season).size())
+        .orElse(0);
+  }
+
+  // 나의 지도 조회와 채운 칸 수 계산이 같은 기준을 쓰도록 한 곳에서만 사진을 고른다.
+  private Map<CellKey, List<Photo>> groupMyPhotosByCell(Long userId, Season season) {
+    return photoRepository.findMyMapPhotos(userId, season)
+        .stream()
+        .collect(Collectors.groupingBy(
+            photo -> new CellKey(photo.getDong().getDongCode(), photo.getTimeBand())));
   }
 
   private List<Double> sumBins(List<Photo> photos) {
