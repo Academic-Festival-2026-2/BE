@@ -28,7 +28,7 @@ import org.springframework.test.util.ReflectionTestUtils;
     "spring.test.database.replace=none"
 })
 @ActiveProfiles("test")
-public class MyMapPhotoQeuryTest {
+public class MyMapPhotoQueryTest {
 
   private static final LocalDate DAY = LocalDate.of(2026, 10, 29);
 
