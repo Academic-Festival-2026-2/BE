@@ -3,10 +3,8 @@ package com.pixel.domain.photo.entity;
 import com.pixel.domain.colorcell.enums.TimeBand;
 import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.photo.enums.AiVerdict;
-import com.pixel.domain.photo.exception.code.PhotoErrorCode;
 import com.pixel.domain.season.entity.Season;
 import com.pixel.domain.user.entity.User;
-import com.pixel.global.apiPayload.exception.GeneralException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -101,11 +99,11 @@ public class Photo {
   @Column(name = "created_at", insertable = false, updatable = false)
   private LocalDateTime createdAt;
 
-  // 풍경이 아니거나 얼굴·번호판이 크게 나온 사진, 검수하지 못한 사진은 공개로 바꿀 수 없다.
-  // 공개 가능 여부는 이 메서드에서만 검사한다.
+  // 사용자 요청은 서비스에서 canBePublic()으로 먼저 걸러 PHOTO403_2로 응답한다.
+  // 여기서는 검수를 통과하지 않은 사진이 어떤 경로로도 공개되지 않도록 막기만 한다.
   public void changePublic(boolean isPublic) {
     if (isPublic && !canBePublic()) {
-      throw new GeneralException(PhotoErrorCode.NOT_PUBLISHABLE);
+      throw new IllegalStateException("AI 검수를 통과하지 않은 사진은 공개할 수 없습니다.");
     }
     this.isPublic = isPublic;
   }

@@ -280,7 +280,7 @@ public class PhotoService {
           exifVerified,
           photo.isPublic(),
           aiVerdict,
-          moderation.reason(),
+          moderation.toAiReason(),
           contribution.cellPhotoCount(),
           contribution.firstInCell());
     });

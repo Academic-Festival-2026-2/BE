@@ -14,6 +14,7 @@ import com.pixel.domain.photo.controller.PhotoController;
 import com.pixel.domain.photo.dto.PhotoUploadRequest;
 import com.pixel.domain.photo.entity.Photo;
 import com.pixel.domain.photo.exception.PhotoExceptionHandler;
+import com.pixel.domain.photo.enums.AiReason;
 import com.pixel.domain.photo.enums.AiVerdict;
 import com.pixel.domain.photo.exception.code.PhotoErrorCode;
 import com.pixel.domain.photo.moderation.ImageModerator;
@@ -279,7 +280,7 @@ class PhotoUploadTest {
     verify(photos).saveAndFlush(argThat(photo ->
         photo.getAiVerdict() == verdict && !photo.isPublic()));
     verify(aggregation, never()).lockForUpload(any());
-    assertEquals(verdict == AiVerdict.UNCHECKED ? null : ModerationResult.Reason.NOT_SCENERY,
+    assertEquals(verdict == AiVerdict.UNCHECKED ? null : AiReason.NOT_SCENERY,
         result.aiReason());
   }
 

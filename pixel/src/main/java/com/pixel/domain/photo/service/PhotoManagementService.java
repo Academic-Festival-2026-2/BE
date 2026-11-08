@@ -65,7 +65,10 @@ public class PhotoManagementService {
     requireActiveUser(userId);
     Photo photo = lockedPhoto(photoId);
     requireOwner(photo, userId);
-    // 검수를 통과하지 않은 사진이면 PHOTO403_2를 던진다.
+    // 풍경이 아니거나 얼굴·번호판이 크게 나온 사진, 검수하지 못한 사진은 공개로 바꿀 수 없다.
+    if (isPublic && !photo.canBePublic()) {
+      throw new GeneralException(PhotoErrorCode.NOT_PUBLISHABLE);
+    }
     photo.changePublic(isPublic);
   }
 
