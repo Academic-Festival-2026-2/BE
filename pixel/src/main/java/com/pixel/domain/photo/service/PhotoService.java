@@ -7,7 +7,10 @@ import com.pixel.domain.dong.repository.DongRepository;
 import com.pixel.domain.photo.dto.PhotoUploadRequest;
 import com.pixel.domain.photo.dto.PhotoUploadResponse;
 import com.pixel.domain.photo.entity.Photo;
+import com.pixel.domain.photo.enums.AiVerdict;
 import com.pixel.domain.photo.exception.code.PhotoErrorCode;
+import com.pixel.domain.photo.moderation.ImageModerator;
+import com.pixel.domain.photo.moderation.ModerationResult;
 import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.photo.util.PhotoImageProcessor;
 import com.pixel.domain.photo.util.PhotoMetadataReader;
@@ -30,13 +33,15 @@ import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PhotoService {
@@ -53,8 +58,9 @@ public class PhotoService {
   private final PhotoImageProcessor imageProcessor;
   private final S3StorageService storageService;
   private final ColorCellService colorCellService;
+  private final ImageModerator imageModerator;
+  private final TransactionTemplate transactionTemplate;
 
-  @Transactional
   public PhotoUploadResponse upload(Long userId, MultipartFile file, PhotoUploadRequest request) {
     if (file == null || file.isEmpty()) {
       throw new GeneralException(PhotoErrorCode.FILE_REQUIRED);
@@ -162,101 +168,122 @@ public class PhotoService {
       throw new GeneralException(PhotoErrorCode.INVALID_IMAGE);
     }
 
-    String fileId = UUID.randomUUID().toString();
-    String originalKey = "photos/original/" + fileId + "." + imageType;
-    String thumbnailKey = "photos/thumbnail/" + fileId + ".jpg";
-
-    List<String> uploadedKeys = new ArrayList<>();
-
-    // 외부 저장소(S3) 업로드 중 실패하면 성공한 파일을 정리한다.
-    try {
-      storageService.upload(
-          originalKey, processed.originalBytes(), imageType.equals("png") ? "image/png" : "image/jpeg");
-      uploadedKeys.add(originalKey);
-
-      storageService.upload(thumbnailKey, processed.thumbnailBytes(), "image/jpeg");
-      uploadedKeys.add(thumbnailKey);
-    } catch (RuntimeException e) {
-      storageService.deleteAllQuietly(uploadedKeys);
-      throw e;
+    // S3 업로드·동 잠금 전에 썸네일로 AI 검수를 받는다.
+    // 거절된 사진은 저장하지 않고, 검수를 기다리는 동안 같은 동의 다른 업로드를 막지 않는다.
+    ModerationResult moderation = imageModerator.moderate(processed.thumbnailBytes());
+    if (moderation.decision() != ModerationResult.Decision.PUBLIC) {
+      // 오판 조사용. 사진 내용은 남기지 않고 판정과 사유만 기록한다.
+      log.info("사진 검수 결과 {} (사유: {}, userId: {}, dong: {})",
+          moderation.decision(), moderation.reason(), userId, dongCode);
     }
-
-    // S3와 DB는 하나의 트랜잭션이 아니므로
-    // DB 롤백 시 S3에 남은 파일을 제거한다.
-    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-      storageService.deleteAllQuietly(uploadedKeys);
-      throw new IllegalStateException("DB 트랜잭션이 활성화되지 않았습니다.");
+    if (moderation.isRejected()) {
+      throw new GeneralException(PhotoErrorCode.MODERATION_REJECTED);
     }
+    AiVerdict aiVerdict = moderation.toAiVerdict();
 
-    TransactionSynchronizationManager.registerSynchronization(
-        new TransactionSynchronization() {
-          @Override
-          public void afterCompletion(int status) {
-            if (status != STATUS_COMMITTED) {
-              storageService.deleteAllQuietly(uploadedKeys);
+    // 검수까지는 트랜잭션 밖에서 처리해 외부 API를 기다리는 동안 DB 커넥션을 쥐지 않는다.
+    // S3 업로드부터 저장·집계까지만 하나의 트랜잭션으로 묶는다.
+    return transactionTemplate.execute(status -> {
+      String fileId = UUID.randomUUID().toString();
+      String originalKey = "photos/original/" + fileId + "." + imageType;
+      String thumbnailKey = "photos/thumbnail/" + fileId + ".jpg";
+
+      List<String> uploadedKeys = new ArrayList<>();
+
+      // 외부 저장소(S3) 업로드 중 실패하면 성공한 파일을 정리한다.
+      try {
+        storageService.upload(
+            originalKey, processed.originalBytes(), imageType.equals("png") ? "image/png" : "image/jpeg");
+        uploadedKeys.add(originalKey);
+
+        storageService.upload(thumbnailKey, processed.thumbnailBytes(), "image/jpeg");
+        uploadedKeys.add(thumbnailKey);
+      } catch (RuntimeException e) {
+        storageService.deleteAllQuietly(uploadedKeys);
+        throw e;
+      }
+
+      // S3와 DB는 하나의 트랜잭션이 아니므로
+      // DB 롤백 시 S3에 남은 파일을 제거한다.
+      if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+        storageService.deleteAllQuietly(uploadedKeys);
+        throw new IllegalStateException("DB 트랜잭션이 활성화되지 않았습니다.");
+      }
+
+      TransactionSynchronizationManager.registerSynchronization(
+          new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+              if (status != STATUS_COMMITTED) {
+                storageService.deleteAllQuietly(uploadedKeys);
+              }
             }
+          });
+
+      // 모두의 지도에 집계될 사진만 동 잠금을 잡는다. aggregate·retract와 같은 기준을 쓴다.
+      if (Photo.countsForPublicMap(exifVerified, aiVerdict)) {
+        colorCellService.lockForUpload(dongCode);
+      }
+
+      // location은 JPA 매핑 대상에서 제외되어 있다.
+      // 따라서 우선 exif_verified=false로 저장한다.
+      Photo photo =
+          new Photo(
+              user,
+              dong,
+              season,
+              timeBand,
+              takenAt,
+              shotDate,
+              false,
+              aiVerdict,
+              request.palette(),
+              request.bins(),
+              originalKey,
+              thumbnailKey,
+              imageHash,
+              Boolean.TRUE.equals(request.isPublic()));
+
+      try {
+        photoRepository.saveAndFlush(photo);
+      } catch (DataIntegrityViolationException e) {
+        // 동시 요청의 image_hash UNIQUE 충돌만 중복 사진으로 처리한다.
+        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+          if (cause instanceof SQLException sql
+              && sql.getErrorCode() == 1062
+              && sql.getMessage() != null
+              && sql.getMessage().contains("image_hash")) {
+            throw new GeneralException(PhotoErrorCode.DUPLICATE_PHOTO);
           }
-        });
+        }
+        throw e;
+      }
 
-    if (exifVerified) {
-      colorCellService.lockForUpload(dongCode);
-    }
+      if (latitude != null) {
+        int updated =
+            photoRepository.updateLocationAndVerification(
+                photo.getPhotoId(), latitude, longitude, exifVerified);
 
-    // location은 JPA 매핑 대상에서 제외되어 있다.
-    // 따라서 우선 exif_verified=false로 저장한다.
-    Photo photo =
-        new Photo(
-            user,
-            dong,
-            season,
-            timeBand,
-            takenAt,
-            shotDate,
-            false,
-            request.palette(),
-            request.bins(),
-            originalKey,
-            thumbnailKey,
-            imageHash,
-            Boolean.TRUE.equals(request.isPublic()));
-
-    try {
-      photoRepository.saveAndFlush(photo);
-    } catch (DataIntegrityViolationException e) {
-      // 동시 요청의 image_hash UNIQUE 충돌만 중복 사진으로 처리한다.
-      for (Throwable cause = e; cause != null; cause = cause.getCause()) {
-        if (cause instanceof SQLException sql
-            && sql.getErrorCode() == 1062
-            && sql.getMessage() != null
-            && sql.getMessage().contains("image_hash")) {
-          throw new GeneralException(PhotoErrorCode.DUPLICATE_PHOTO);
+        if (updated != 1) {
+          throw new IllegalStateException("GPS 좌표 저장에 실패했습니다.");
         }
       }
-      throw e;
-    }
 
-    if (latitude != null) {
-      int updated =
-          photoRepository.updateLocationAndVerification(
-              photo.getPhotoId(), latitude, longitude, exifVerified);
+      var contribution = colorCellService.aggregate(photo);
 
-      if (updated != 1) {
-        throw new IllegalStateException("GPS 좌표 저장에 실패했습니다.");
-      }
-    }
-
-    var contribution = colorCellService.aggregate(photo);
-
-    return new PhotoUploadResponse(
-        photo.getPhotoId(),
-        dongCode,
-        dong.getName(),
-        season.getSeason(),
-        timeBand.name(),
-        exifVerified,
-        Boolean.TRUE.equals(request.isPublic()),
-        contribution.cellPhotoCount(),
-        contribution.firstInCell());
+      return new PhotoUploadResponse(
+          photo.getPhotoId(),
+          dongCode,
+          dong.getName(),
+          season.getSeason(),
+          timeBand.name(),
+          exifVerified,
+          photo.isPublic(),
+          aiVerdict,
+          moderation.reason(),
+          contribution.cellPhotoCount(),
+          contribution.firstInCell());
+    });
   }
 
   private void validateColors(PhotoUploadRequest request) {

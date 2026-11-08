@@ -32,7 +32,7 @@ public class ColorCellService {
   public Contribution aggregate(Photo photo) {
     // 네이티브 GPS UPDATE 이후 영속성 컨텍스트의 검증 상태를 DB와 동기화한다.
     entityManager.refresh(photo);
-    if (!photo.isExifVerified()) {
+    if (!photo.countsForPublicMap()) {
       return new Contribution(null, false);
     }
     ColorCell cell = cells.findForUpdate(photo.getDong(), photo.getSeason(), photo.getTimeBand())
@@ -48,7 +48,7 @@ public class ColorCellService {
 
   // 업로드와 동일하게 동 → 사진 → 셀 순서로 잠근 뒤 호출해야 한다.
   public void retract(Photo photo) {
-    if (!photo.isExifVerified()) {
+    if (!photo.countsForPublicMap()) {
       return;
     }
     ColorCell cell = cells.findForUpdate(photo.getDong(), photo.getSeason(), photo.getTimeBand())

@@ -56,7 +56,7 @@ public class PhotoManagementService {
         storage.readUrl(photo.getThumbnailKey()), photo.getDong().getDongCode(),
         photo.getDong().getName(), photo.getTimeBand(), photo.getTakenAt(),
         // 사진의 점 색은 palette[0], 지도 셀의 집계 색은 bins 기준이다.
-        photo.getPalette().get(0), photo.isPublic())).getContent();
+        photo.getPalette().get(0), photo.isPublic(), photo.getAiVerdict())).getContent();
     return new MyPhotosResponse(items, page, size, result.getTotalElements(), result.hasNext());
   }
 
@@ -65,6 +65,7 @@ public class PhotoManagementService {
     requireActiveUser(userId);
     Photo photo = lockedPhoto(photoId);
     requireOwner(photo, userId);
+    // 검수를 통과하지 않은 사진이면 PHOTO403_2를 던진다.
     photo.changePublic(isPublic);
   }
 

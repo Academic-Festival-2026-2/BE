@@ -25,6 +25,7 @@ import com.pixel.domain.colorcell.service.ColorCellService;
 import com.pixel.domain.colorcell.util.ColorBins;
 import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.photo.entity.Photo;
+import com.pixel.domain.photo.enums.AiVerdict;
 import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.photo.service.PhotoManagementService;
 import com.pixel.domain.season.entity.Season;
@@ -116,19 +117,27 @@ class PhotoManagementTest {
   }
 
   Photo photo(Long owner, LocalDate date, String dong, TimeBand band, boolean verified) {
+    return photo(owner, date, dong, band, verified, AiVerdict.PUBLIC);
+  }
+
+  Photo photo(Long owner, LocalDate date, String dong, TimeBand band, boolean verified,
+      AiVerdict verdict) {
     var bins = new ArrayList<>(Collections.nCopies(40, 0.0));
     bins.set(0, 1.0);
     return new Photo(em.getReference(User.class, owner), em.getReference(Dong.class, dong),
         em.getReference(Season.class, seasonId), band, date.atTime(13, 0), date, verified,
-        Collections.nCopies(5, "#123ABC"), bins, "original", "thumbnail",
+        verdict, Collections.nCopies(5, "#123ABC"), bins, "original", "thumbnail",
         UUID.randomUUID().toString(), false);
   }
 
-
   Long upload(Long owner, LocalDate day, boolean verified) {
+    return upload(owner, day, verified, AiVerdict.PUBLIC);
+  }
+
+  Long upload(Long owner, LocalDate day, boolean verified, AiVerdict verdict) {
     return tx.execute(status -> {
       service.lockForUpload(DONG);
-      var photo = photos.saveAndFlush(photo(owner, day, DONG, TimeBand.DAY, verified));
+      var photo = photos.saveAndFlush(photo(owner, day, DONG, TimeBand.DAY, verified, verdict));
       em.createNativeQuery("UPDATE photos SET created_at = :time WHERE photo_id = :id")
           .setParameter("time", DAY.atStartOfDay()).setParameter("id", photo.getPhotoId())
           .executeUpdate();
@@ -169,6 +178,7 @@ class PhotoManagementTest {
         .andExpect(jsonPath("$.result.photos[0].color").value("#123ABC"))
         .andExpect(jsonPath("$.result.photos[0].photoId").value(newest))
         .andExpect(jsonPath("$.result.photos[0].isPublic").value(false))
+        .andExpect(jsonPath("$.result.photos[0].aiVerdict").value("PUBLIC"))
         .andExpect(jsonPath("$.result.hasNext").value(true));
     mvc.perform(get("/api/users/me/photos?size=1&page=1").header("Authorization", token(userId)))
         .andExpect(status().isOk()).andExpect(jsonPath("$.result.hasNext").value(false));
@@ -197,6 +207,38 @@ class PhotoManagementTest {
       assertEquals(1, cell.getShotCount());
       assertEquals(1.0, cell.getBinsSum().get(0));
       assertEquals(id, cell.getFirstPhotoId());
+    });
+  }
+
+  @Test
+  void notPublicVerdictPhotoCannotBePublishedButCanStayPrivate() throws Exception {
+    for (AiVerdict verdict : List.of(AiVerdict.PERSONAL_ONLY, AiVerdict.UNCHECKED)) {
+      Long id = upload(userId, DAY, true, verdict);
+      mvc.perform(patch("/api/photos/" + id).header("Authorization", token(userId))
+          .contentType("application/json").content("{\"isPublic\":true}"))
+          .andExpect(status().isForbidden())
+          .andExpect(jsonPath("$.code").value("PHOTO403_2"));
+      mvc.perform(patch("/api/photos/" + id).header("Authorization", token(userId))
+          .contentType("application/json").content("{\"isPublic\":false}"))
+          .andExpect(status().isOk());
+      tx.executeWithoutResult(status -> assertFalse(photos.findById(id).orElseThrow().isPublic()));
+      // 비공개 사진이라 다른 사용자는 상세를 볼 수 없다.
+      mvc.perform(get("/api/photos/" + id).header("Authorization", token(otherUserId)))
+          .andExpect(status().isForbidden());
+    }
+  }
+
+  @Test
+  void deletingPersonalOnlyPhotoKeepsPublicCell() {
+    Long kept = upload(userId, DAY, true);
+    Long personal = upload(userId, DAY, true, AiVerdict.PERSONAL_ONLY);
+    management.delete(personal, userId);
+    tx.executeWithoutResult(status -> {
+      var cell = cells.findAll().get(0);
+      assertEquals(1, cell.getPhotoCount());
+      assertEquals(1, cell.getShotCount());
+      assertEquals(1.0, cell.getBinsSum().get(0));
+      assertEquals(kept, cell.getFirstPhotoId());
     });
   }
 

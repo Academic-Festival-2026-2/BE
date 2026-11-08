@@ -71,7 +71,8 @@ CREATE TABLE photos (
     taken_at        DATETIME(6)  NULL COMMENT 'EXIF 촬영 시각(KST)',
     shot_date       DATE         NOT NULL COMMENT '같은 사용자·같은 날 묶음 기준',
     location        POINT        SRID 4326 NULL COMMENT '촬영 좌표',
-    exif_verified   BOOLEAN      NOT NULL DEFAULT FALSE COMMENT '시각·좌표가 있고 좌표가 동 경계 안 → 모두의 지도 반영(없으면 개인 지도만)',
+    exif_verified   BOOLEAN      NOT NULL DEFAULT FALSE COMMENT '시각·좌표가 있고 좌표가 동 경계 안. ai_verdict가 PUBLIC일 때만 모두의 지도 반영',
+    ai_verdict      VARCHAR(13)  NOT NULL COMMENT 'AI 검수 결과. PUBLIC 모두의 지도 가능 / PERSONAL_ONLY 풍경 아님·얼굴·번호판 / UNCHECKED 판정 실패',
     palette         JSON         NOT NULL COMMENT '대표색 5개 ["#RRGGBB", ...], 첫 번째가 점 색',
     bins            JSON         NOT NULL COMMENT '색 분포 40칸 숫자 배열, 합 1.0',
     weight          FLOAT        NOT NULL DEFAULT 1.0 COMMENT '0-1, 이상치 사진은 낮춤',
@@ -91,6 +92,7 @@ CREATE TABLE photos (
     CONSTRAINT fk_photos_dong FOREIGN KEY (dong_code) REFERENCES dongs (dong_code),
     CONSTRAINT fk_photos_season FOREIGN KEY (season_id) REFERENCES seasons (season_id),
     CONSTRAINT ck_photos_time_band CHECK (time_band IN ('DAWN', 'DAY', 'SUNSET', 'NIGHT')),
+    CONSTRAINT ck_photos_ai_verdict CHECK (ai_verdict IN ('PUBLIC', 'PERSONAL_ONLY', 'UNCHECKED')),
     CONSTRAINT ck_photos_palette CHECK (JSON_SCHEMA_VALID(
         '{"type":"array","minItems":5,"maxItems":5,"items":{"type":"string","pattern":"^#[0-9A-F]{6}$"}}', palette)),
     CONSTRAINT ck_photos_bins CHECK (JSON_SCHEMA_VALID(
