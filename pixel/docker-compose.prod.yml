@@ -17,8 +17,8 @@ services:
       - JWT_SECRET=${JWT_SECRET:?.env에 JWT_SECRET이 없습니다}
       - AWS_REGION=ap-northeast-2
       - AWS_S3_BUCKET=pixel-cs24-prod
-      # 사진 AI 검수. 켜진 상태(기본)에서 ANTHROPIC_API_KEY가 없으면 서버가 시작되지 않음
-      - MODERATION_ENABLED=${MODERATION_ENABLED:-true}
+      # 사진 AI 검수. 기본 꺼짐. 켜려면 .env에 MODERATION_ENABLED=true와 ANTHROPIC_API_KEY 추가
+      - MODERATION_ENABLED=${MODERATION_ENABLED:-false}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - TZ=Asia/Seoul
     logging:
