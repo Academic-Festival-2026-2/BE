@@ -76,6 +76,7 @@ public final class ColorBins {
         .limit(limit)
         .map(i -> new ColorRatio(HEX.get(i),
             Math.round(bins.get(i) / total * 100) / 100.0))
+        .filter(color -> color.ratio() > 0)
         .toList();
   }
 }
