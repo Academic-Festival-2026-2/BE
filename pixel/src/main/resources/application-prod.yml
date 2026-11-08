@@ -26,6 +26,12 @@ jwt:
   # 기본값 없음: JWT_SECRET 환경 변수가 없으면 서버가 시작되지 않음
   secret: ${JWT_SECRET}
 
+moderation:
+  # 배포는 기본으로 검수를 켠다. 켜진 상태에서 ANTHROPIC_API_KEY가 없으면 서버가 시작되지 않음
+  # 시연 중 API 장애가 계속되면 MODERATION_ENABLED=false로 끄고 재시작
+  enabled: ${MODERATION_ENABLED:true}
+  api-key: ${ANTHROPIC_API_KEY}
+
 logging:
   level:
     root: INFO
