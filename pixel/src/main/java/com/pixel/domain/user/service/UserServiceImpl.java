@@ -1,6 +1,9 @@
 package com.pixel.domain.user.service;
 
+import com.pixel.domain.mymap.service.MyMapService;
+import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.refreshtoken.repository.RefreshTokenRepository;
+import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.domain.user.dto.ChangePasswordRequest;
 import com.pixel.domain.user.dto.MyInfoResponse;
 import com.pixel.domain.user.dto.UpdateMyInfoRequest;
@@ -23,11 +26,17 @@ public class UserServiceImpl implements UserService {
   private final UserRepository userRepository;
   private final RefreshTokenRepository refreshTokenRepository;
   private final PasswordEncoder passwordEncoder;
+  private final PhotoRepository photoRepository;
+  private final MyMapService myMapService;
 
   @Override
   @Transactional(readOnly = true)
   public MyInfoResponse getMyInfo(Long userId) {
-    return MyInfoResponse.from(getActiveUser(userId));
+    User user = getActiveUser(userId);
+    long photoCount = photoRepository.countByUserUserId(userId);
+    // 나의 지도와 같은 기준으로 세서 두 화면의 채운 칸 수가 항상 같게 한다.
+    int filledCellCount = myMapService.countFilledCells(userId, SeasonType.AUTUMN);
+    return MyInfoResponse.of(user, photoCount, filledCellCount);
   }
 
   @Override

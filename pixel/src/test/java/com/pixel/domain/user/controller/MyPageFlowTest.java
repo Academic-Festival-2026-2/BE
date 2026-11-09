@@ -29,6 +29,8 @@ class MyPageFlowTest {
   private static final String NICKNAME = "flowtester";
   private static final String INACTIVE_EMAIL = "inactive-flow@example.com";
   private static final String INACTIVE_NICKNAME = "inactiveuser";
+  private static final String NEW_EMAIL = "mypage-new@example.com";
+  private static final String NEW_NICKNAME = "newtester";
 
   @Autowired
   private MockMvc mockMvc;
@@ -38,6 +40,20 @@ class MyPageFlowTest {
 
   @Autowired
   private JdbcTemplate jdbcTemplate;
+
+  @Test
+  void 가입_직후_내_정보는_사진_수와_채운_칸_수가_0이다() throws Exception {
+    signUp(NEW_EMAIL, NEW_NICKNAME, "password123").andExpect(status().isCreated());
+    String accessToken = login(NEW_EMAIL, "password123").get("accessToken").asText();
+
+    mockMvc.perform(get("/api/users/me")
+            .header("Authorization", "Bearer " + accessToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("USER200_1"))
+        .andExpect(jsonPath("$.result.nickname").value(NEW_NICKNAME))
+        .andExpect(jsonPath("$.result.photoCount").value(0))
+        .andExpect(jsonPath("$.result.filledCellCount").value(0));
+  }
 
   @Test
   void 비밀번호_변경_후_탈퇴하면_같은_이메일과_닉네임으로_다시_가입할_수_있다() throws Exception {

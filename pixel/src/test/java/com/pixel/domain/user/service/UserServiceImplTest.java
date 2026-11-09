@@ -7,9 +7,13 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import com.pixel.domain.mymap.service.MyMapService;
+import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.refreshtoken.entity.RefreshToken;
 import com.pixel.domain.refreshtoken.repository.RefreshTokenRepository;
+import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.domain.user.dto.ChangePasswordRequest;
+import com.pixel.domain.user.dto.MyInfoResponse;
 import com.pixel.domain.user.dto.UpdateMyInfoRequest;
 import com.pixel.domain.user.dto.WithdrawRequest;
 import com.pixel.domain.user.entity.User;
@@ -46,12 +50,19 @@ class UserServiceImplTest {
   @Mock
   private RefreshTokenRepository refreshTokenRepository;
 
+  @Mock
+  private PhotoRepository photoRepository;
+
+  @Mock
+  private MyMapService myMapService;
+
   private UserServiceImpl userService;
   private User user;
 
   @BeforeEach
   void setUp() {
-    userService = new UserServiceImpl(userRepository, refreshTokenRepository, passwordEncoder);
+    userService = new UserServiceImpl(userRepository, refreshTokenRepository, passwordEncoder,
+        photoRepository, myMapService);
     user = User.builder()
         .email("tester@example.com")
         .passwordHash(passwordEncoder.encode(PASSWORD))
@@ -60,6 +71,18 @@ class UserServiceImplTest {
         .privacyAgreedAt(LocalDateTime.now())
         .build();
     ReflectionTestUtils.setField(user, "userId", USER_ID);
+  }
+
+  @Test
+  void 내_정보에_사진_수와_나의_지도_채운_칸_수가_포함된다() {
+    given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+    given(photoRepository.countByUserUserId(USER_ID)).willReturn(7L);
+    given(myMapService.countFilledCells(USER_ID, SeasonType.AUTUMN)).willReturn(3);
+
+    MyInfoResponse response = userService.getMyInfo(USER_ID);
+
+    assertThat(response.getPhotoCount()).isEqualTo(7L);
+    assertThat(response.getFilledCellCount()).isEqualTo(3);
   }
 
   @Test
