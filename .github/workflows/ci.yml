@@ -1,0 +1,48 @@
+name: BE CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+# 같은 PR에 새 커밋이 올라오면 이전 실행은 취소
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: BE test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: pixel
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+          cache-dependency-path: |
+            pixel/*.gradle*
+            pixel/gradle/wrapper/gradle-wrapper.properties
+
+      # 테스트는 H2 메모리 DB를 써서 DB·AWS 키·.env가 필요 없음
+      - name: Test
+        run: ./gradlew test --no-daemon
+
+      # 실패했을 때만 테스트 리포트를 내려받을 수 있게 올림
+      - name: Upload test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: be-test-report
+          path: pixel/build/reports/tests/test
+          retention-days: 7
