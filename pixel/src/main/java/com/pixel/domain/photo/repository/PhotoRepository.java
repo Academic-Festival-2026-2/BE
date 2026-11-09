@@ -101,6 +101,28 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
       @Param("seasonId") Short seasonId,
       @Param("timeBand") String timeBand);
 
+  @Query(
+      value =
+          """
+              SELECT p.photo_id AS photoId,
+                    ST_Latitude(p.location) AS lat,
+                    ST_Longitude(p.location) AS lng,
+                    JSON_UNQUOTE(JSON_EXTRACT(p.palette, '$[0]')) AS color,
+                    p.time_band AS timeBand
+              FROM photos p
+              WHERE p.user_id = :userId
+                AND p.dong_code = :dongCode
+                AND p.season_id = :seasonId
+                AND (:timeBand IS NULL OR p.time_band = :timeBand)
+              ORDER BY p.created_at DESC
+              """,
+      nativeQuery = true)
+  List<PhotoPointView> findMyPhotoPoints(
+      @Param("userId") Long userId,
+      @Param("dongCode") String dongCode,
+      @Param("seasonId") Short seasonId,
+      @Param("timeBand") String timeBand);
+
   @Query("""
         SELECT p FROM Photo p
         WHERE p.user.userId = :userId

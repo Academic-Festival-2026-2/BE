@@ -4,14 +4,18 @@ import com.pixel.domain.colorcell.entity.ColorCell;
 import com.pixel.domain.colorcell.enums.TimeBand;
 import com.pixel.domain.colorcell.repository.ColorCellRepository;
 import com.pixel.domain.colorcell.util.ColorBins;
+import com.pixel.domain.dong.dto.DongDetailResponse;
 import com.pixel.domain.dong.entity.Dong;
+import com.pixel.domain.dong.exception.code.DongErrorCode;
 import com.pixel.domain.dong.repository.DongRepository;
+import com.pixel.domain.mymap.dto.MyDongPhotosResponse;
 import com.pixel.domain.mymap.dto.MyMapResponse;
 import com.pixel.domain.photo.entity.Photo;
 import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.season.entity.Season;
 import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.domain.season.service.SeasonService;
+import com.pixel.global.apiPayload.exception.GeneralException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -82,7 +86,26 @@ public class MyMapServiceImpl implements MyMapService {
         .orElse(0);
   }
 
-  // 나의 지도 조회와 채운 칸 수 계산이 같은 기준을 쓰도록 한 곳에서만 사진을 고른다.
+  @Override
+  public MyDongPhotosResponse getMyDongPhotos(Long userId, String dongCode, TimeBand timeBand,
+      SeasonType seasonType) {
+    if (!dongRepository.existsById(dongCode)) {
+      throw new GeneralException(DongErrorCode._DONG_NOT_FOUND);
+    }
+    Season season = seasonService.getSeason(seasonType);
+    String band = timeBand == null ? null : timeBand.name();
+
+    List<DongDetailResponse.Point> points = photoRepository
+        .findMyPhotoPoints(userId, dongCode, season.getSeasonId(), band)
+        .stream()
+        .map(view -> new DongDetailResponse.Point(view.getPhotoId(), view.getLat(),
+            view.getLng(), view.getColor(), TimeBand.valueOf(view.getTimeBand())))
+        .toList();
+
+    return new MyDongPhotosResponse(dongCode, points);
+  }
+
+  /** 나의 지도의 filledCellCount와 같은 기준으로 채운 칸 수만 센다. 시즌이 없으면 0. */
   private Map<CellKey, List<Photo>> groupMyPhotosByCell(Long userId, Season season) {
     return photoRepository.findMyMapPhotos(userId, season)
         .stream()
