@@ -84,6 +84,7 @@ pixel/db/
 ├── 01_schema.sql   # 테이블 전체
 ├── 02_dongs.sql    # 부천 37개 동 경계 (SGIS, 기준일 20250630)
 ├── 03_seed.sql     # 2026 가을 판 + 148칸
+├── migration/      # 운영 DB에 적용할 변경 SQL (필요할 때 추가, 자동 실행 안 함)
 └── legacy/         # 옛 빈틈 테이블 정리용 (자동 실행 안 함)
 ```
 
@@ -117,9 +118,23 @@ mysql -u root -p --default-character-set=utf8mb4 pixel -e "source db/03_seed.sql
 - IntelliJ Ultimate·DataGrip을 쓰면 Database 창에서 MySQL을 연결한 뒤, 각 SQL 파일을 우클릭 → Run으로 `pixel`에 순서대로 실행해도 됩니다.
 - 확인: `SELECT (SELECT COUNT(*) FROM dongs), (SELECT COUNT(*) FROM color_cells);` → `37`, `148`
 
-**운영 DB(RDS)** 도 자동 실행되지 않으므로 처음 한 번 위와 같은 순서로 실행합니다.
+**운영 DB(RDS)** 도 자동 실행되지 않습니다. RDS는 인터넷에서 접속할 수 없어서(퍼블릭 액세스 없음) **EC2 서버 안에서 관리자 계정 `admin`으로** 실행합니다. 앱 계정 `pixel`은 데이터 읽기·쓰기 권한만 있어서 테이블을 만들거나 바꿀 수 없습니다.
 
-**스키마를 바꿀 때** — `01_schema.sql`과 엔티티를 같은 PR에서 고칩니다. 운영 DB를 띄운 뒤에는 `01`을 고쳐도 운영에 반영되지 않으니, 바뀐 부분만 담은 SQL 파일을 따로 추가합니다.
+```bash
+# EC2 서버 안, ~/BE/pixel 에서 실행. <RDS 엔드포인트>는 서버 .env의 DB_URL에 있고, 비밀번호는 입력 창에서 넣습니다.
+docker run --rm -it -v "$PWD/db:/db:ro" mysql:8.4 \
+  mysql -h <RDS 엔드포인트> -u admin -p --ssl-mode=REQUIRED --default-character-set=utf8mb4 pixel \
+  -e "source /db/01_schema.sql"
+```
+
+**스키마를 바꿀 때**
+
+1. `01_schema.sql`과 엔티티를 같은 PR에서 고칩니다.
+2. 같은 PR에 **운영에 적용할 바뀐 부분만** 담은 SQL을 `db/migration/`에 추가합니다. 파일 이름은 `날짜_내용.sql`로 합니다 (예: `db/migration/20261108_add_photo_memo.sql`). `01`을 고쳐도 이미 만들어진 운영 DB에는 반영되지 않기 때문입니다.
+3. 배포할 때 위 명령에서 파일 이름만 바꿔(`source /db/migration/파일.sql`) RDS에 실행합니다.
+    - 컬럼·테이블 **추가/변경**: 서버를 다시 빌드하기 **전에** 실행합니다. 순서가 바뀌면 `ddl-auto: validate`가 불일치로 서버 시작을 막습니다.
+    - 컬럼·테이블 **삭제**: 새 코드가 배포된 **후에** 실행합니다. 옛 코드가 아직 그 컬럼을 쓰고 있을 수 있습니다.
+4. `db/migration/`의 파일은 로컬 Docker에서도 자동 실행되지 않습니다(맨 위 폴더의 SQL만 실행). 로컬은 `01`이 이미 최신이라 따로 할 일이 없습니다.
 
 ### 3. 환경 변수
 

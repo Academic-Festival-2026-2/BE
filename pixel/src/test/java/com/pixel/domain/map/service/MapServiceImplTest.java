@@ -4,15 +4,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
+import com.pixel.domain.colorcell.dto.ColorRatio;
 import com.pixel.domain.colorcell.entity.ColorCell;
 import com.pixel.domain.colorcell.enums.TimeBand;
 import com.pixel.domain.colorcell.repository.ColorCellRepository;
+import com.pixel.domain.colorcell.util.ColorBins;
 import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.dong.repository.DongRepository;
 import com.pixel.domain.map.dto.MapDongsResponse;
 import com.pixel.domain.season.entity.Season;
 import com.pixel.domain.season.service.SeasonService;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -84,6 +89,29 @@ class MapServiceImplTest {
     assertThat(response.getTopDongs()).isEmpty();
   }
 
+  @Test
+  void includesColorRatioForEachDong() {
+    givenCells(cellWithBins("A", 5, bins(Map.of(0, 0.6, 12, 0.4))),
+        cellWithBins("B", 0, bins(Map.of())));
+
+    MapDongsResponse response = mapService.getDongs(TimeBand.DAY);
+
+    MapDongsResponse.DongColor dongA = response.getDongs().get(0);
+    assertThat(dongA.getColorRatio())
+        .extracting(ColorRatio::hex)
+        .containsExactly(ColorBins.HEX.get(0), ColorBins.HEX.get(12));
+
+    assertThat(dongA.getColorRatio())
+        .extracting(ColorRatio::ratio)
+        .containsExactly(0.6, 0.4);
+
+    assertThat(response.getDongs().get(1).getColorRatio()).isEmpty();
+
+    assertThat(response.getTopDongs().get(0).getColorRatio())
+        .extracting(ColorRatio::hex)
+        .containsExactly(ColorBins.HEX.get(0),ColorBins.HEX.get(12));
+  }
+
   private void givenCells(ColorCell... cells) {
     given(colorCellRepository.findForMap(season, TimeBand.DAY))
         .willReturn(List.of(cells));
@@ -97,5 +125,17 @@ class MapServiceImplTest {
     given(cell.getDong()).willReturn(dong);
     given(cell.getPhotoCount()).willReturn(photoCount);
     return cell;
+  }
+
+  private ColorCell cellWithBins(String dongCode, int photoCount, List<Double> binsSum) {
+    ColorCell cell = cell(dongCode, photoCount);
+    given(cell.getBinsSum()).willReturn(binsSum);
+    return cell;
+  }
+
+  private List<Double> bins(Map<Integer, Double> values) {
+    List<Double> bins = new ArrayList<>(Collections.nCopies(40, 0.0));
+    values.forEach(bins::set);
+    return bins;
   }
 }

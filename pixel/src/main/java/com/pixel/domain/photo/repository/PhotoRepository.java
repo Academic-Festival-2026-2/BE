@@ -53,6 +53,8 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
 
   boolean existsByImageHash(String imageHash);
 
+  long countByUserUserId(Long userId);
+
   List<Photo> findAllByUserUserIdOrderByCreatedAtDesc(Long userId);
 
   @Modifying
@@ -103,7 +105,6 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
         SELECT p FROM Photo p
         WHERE p.user.userId = :userId
           AND p.season = :season
-          AND p.exifVerified = true
       """)
   List<Photo> findMyMapPhotos(@Param("userId") Long userId, @Param("season") Season season);
 }

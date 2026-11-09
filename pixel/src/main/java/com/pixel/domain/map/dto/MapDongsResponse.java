@@ -26,6 +26,7 @@ public class MapDongsResponse {
     private final String dominantColor;
     private final int photoCount;
     private final CellStatus status;
+    private final List<ColorRatio> colorRatio;
   }
 
   @Getter
