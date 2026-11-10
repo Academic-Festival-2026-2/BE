@@ -147,11 +147,11 @@ docker run --rm -it -v "$PWD/db:/db:ro" mysql:8.4 \
 | `DB_USERNAME` | `root` | DB 사용자 |
 | `DB_PASSWORD` | `password` | DB 비밀번호 |
 | `SERVER_PORT` | `8080` | 서버 포트 |
-
 | `AWS_S3_BUCKET` | 없음 | 사진 저장 버킷. 로컬은 `pixel-cs24-dev`. 없으면 사진 업로드만 500 |
 | `AWS_REGION` | `ap-northeast-2` | S3 리전 (서울) |
 | `AWS_ACCESS_KEY_ID` | 없음 | 로컬 개발용 S3 키. 팀원별로 따로 발급 |
 | `AWS_SECRET_ACCESS_KEY` | 없음 | 위 키의 비밀값. **Git·단체방에 올리지 않기** |
+
 `.env`는 Spring이 직접 읽지 않습니다. IntelliJ 실행 구성(Edit Configurations) → 환경 변수 → 폴더 아이콘으로 `.env` 파일을 연결해야 적용됩니다. `./gradlew bootRun`으로 실행할 때는 `.env`가 적용되지 않습니다.
 
 로컬 개발용 키는 `pixel-cs24-dev` 버킷의 `photos/` 아래만 쓸 수 있습니다. 배포 서버는 키 없이 IAM 역할로 접근합니다.
@@ -172,6 +172,75 @@ cd pixel
 cd pixel
 ./gradlew test
 ```
+
+## 배포 (운영 서버)
+
+### 구조
+
+브라우저 → Vercel(FE, HTTPS) → `https://pixel-cs24.duckdns.org/api/*` → EC2 Nginx(HTTPS) → `127.0.0.1:8080` 백엔드 컨테이너 → RDS(MySQL) · S3
+
+- 운영 브랜치는 `main`입니다. dev → main 릴리스 PR(`[deploy] 배포용 dev, main 머지`)을 머지한 뒤 서버에 반영합니다.
+- 마이그레이션이 필요한 PR이 있으면 서버를 다시 빌드하기 **전에** RDS에 먼저 적용합니다 (위 "스키마를 바꿀 때").
+
+```bash
+# EC2 서버 안
+cd ~/BE && git pull
+cd pixel && docker compose -f docker-compose.prod.yml up -d --build
+curl -s https://pixel-cs24.duckdns.org/health   # OK
+```
+
+### 포트와 보안 그룹 (`pixel-ec2-sg`)
+
+| 포트 | 허용 범위 | 용도 |
+|---|---|---|
+| 22 | 관리자 IP만 | SSH |
+| 80 | 전체 | HTTP → HTTPS 이동, 인증서 자동 갱신 (**닫으면 갱신 실패**) |
+| 443 | 전체 | HTTPS (Nginx) |
+| 8080 | 열지 않음 | 백엔드는 `127.0.0.1:8080`에만 열려 있어 Nginx만 접근 |
+
+확인: `sudo ss -tlnp | grep 8080` → `127.0.0.1:8080`만 보여야 합니다.
+
+### Nginx
+
+- 설정 파일: `/etc/nginx/sites-available/pixel` (`/etc/nginx/sites-enabled/pixel`에 링크, 기본 사이트 `default`는 삭제)
+- 443으로 받은 요청을 `http://127.0.0.1:8080`으로 전달합니다. 업로드 크기 제한 `client_max_body_size 12m`는 백엔드 요청 최대 크기(12MB)와 맞춥니다.
+- 서버를 새로 만들 때 처음 넣는 설정입니다. 443 블록과 HTTPS 이동은 아래 certbot이 자동으로 추가합니다.
+
+```nginx
+server {
+    listen 80;
+    server_name pixel-cs24.duckdns.org;
+    client_max_body_size 12m;
+    server_tokens off;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+설정을 고친 뒤:
+
+```bash
+sudo nginx -t                 # 문법 확인
+sudo systemctl reload nginx   # 적용
+```
+
+### HTTPS 인증서 (Let's Encrypt)
+
+- certbot으로 발급합니다. 인증서는 90일마다 만료되고, 만료 전에 자동으로 갱신됩니다.
+- 처음 발급: `sudo certbot --nginx -d pixel-cs24.duckdns.org --redirect`
+- 자동 갱신 확인: `sudo certbot renew --dry-run`
+
+### 도메인 (DuckDNS)
+
+- `pixel-cs24.duckdns.org` → EC2 탄력적 IP `13.209.160.196`
+- 탄력적 IP라 EC2를 재시작해도 바뀌지 않아 따로 갱신할 필요가 없습니다. 탄력적 IP를 바꾸면 duckdns.org에서 IP를 수정합니다.
+- FE `vercel.json`의 `/api` 목적지가 이 도메인입니다.
 
 ## 프로젝트 구조
 
