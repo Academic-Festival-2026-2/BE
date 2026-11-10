@@ -13,7 +13,6 @@ public enum MyMapSuccessCode implements BaseCode {
   _MY_DONG_PHOTOS_FOUND(HttpStatus.OK, "MYMAP200_2", "동의 내 사진을 조회했습니다."),
   ;
 
-
   private final HttpStatus httpStatus;
   private final String code;
   private final String message;

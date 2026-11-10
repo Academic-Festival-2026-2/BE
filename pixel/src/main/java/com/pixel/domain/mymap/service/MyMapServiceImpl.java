@@ -105,7 +105,7 @@ public class MyMapServiceImpl implements MyMapService {
     return new MyDongPhotosResponse(dongCode, points);
   }
 
-  /** 나의 지도의 filledCellCount와 같은 기준으로 채운 칸 수만 센다. 시즌이 없으면 0. */
+  // 나의 지도 조회와 채운 칸 수 계산이 같은 기준을 쓰도록 한 곳에서만 사진을 고른다.
   private Map<CellKey, List<Photo>> groupMyPhotosByCell(Long userId, Season season) {
     return photoRepository.findMyMapPhotos(userId, season)
         .stream()

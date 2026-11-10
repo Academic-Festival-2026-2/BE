@@ -1,9 +1,9 @@
 package com.pixel.domain.mymap.service;
 
-import com.pixel.domain.mymap.dto.MyMapResponse;
-import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.domain.colorcell.enums.TimeBand;
 import com.pixel.domain.mymap.dto.MyDongPhotosResponse;
+import com.pixel.domain.mymap.dto.MyMapResponse;
+import com.pixel.domain.season.enums.SeasonType;
 
 public interface MyMapService {
 
