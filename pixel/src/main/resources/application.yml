@@ -32,6 +32,15 @@ jwt:
   access-token-expiration: 1800000      # 30분 (ms)
   refresh-token-expiration: 1209600000  # 14일 (ms)
 
+moderation:
+  # 업로드 사진 AI 검수. 끄면 외부 API를 부르지 않고 모두 PUBLIC으로 저장(로컬·테스트·시드 등록)
+  enabled: ${MODERATION_ENABLED:false}
+  api-key: ${ANTHROPIC_API_KEY:}
+  model: ${MODERATION_MODEL:claude-haiku-5-5}
+  # 실제 사진 테스트에서 최대 4.3초 응답이 있어 여유를 둔다(넘으면 UNCHECKED)
+  timeout-ms: ${MODERATION_TIMEOUT_MS:6000}
+  max-retries: ${MODERATION_MAX_RETRIES:0}
+
 logging:
   level:
     root: INFO

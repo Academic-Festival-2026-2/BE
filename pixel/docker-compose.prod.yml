@@ -17,6 +17,9 @@ services:
       - JWT_SECRET=${JWT_SECRET:?.env에 JWT_SECRET이 없습니다}
       - AWS_REGION=ap-northeast-2
       - AWS_S3_BUCKET=pixel-cs24-prod
+      # 사진 AI 검수. 기본 꺼짐. 켜려면 .env에 MODERATION_ENABLED=true와 ANTHROPIC_API_KEY 추가
+      - MODERATION_ENABLED=${MODERATION_ENABLED:-false}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - TZ=Asia/Seoul
     logging:
       driver: json-file

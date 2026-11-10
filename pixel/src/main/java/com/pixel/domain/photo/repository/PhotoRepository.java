@@ -25,7 +25,8 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
       SELECT p FROM Photo p
       WHERE p.user.userId = :userId AND p.shotDate = :shotDate
         AND p.dong.dongCode = :dongCode AND p.season.seasonId = :seasonId
-        AND p.timeBand = :timeBand AND p.exifVerified = true AND p.photoId <> :photoId
+        AND p.timeBand = :timeBand AND p.exifVerified = true
+        AND p.aiVerdict = com.pixel.domain.photo.enums.AiVerdict.PUBLIC AND p.photoId <> :photoId
       """)
   List<Photo> findPreviousShot(@Param("userId") Long userId,
       @Param("shotDate") LocalDate shotDate, @Param("dongCode") String dongCode,
@@ -46,7 +47,8 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("SELECT p FROM Photo p WHERE p.dong.dongCode = :dongCode"
       + " AND p.season.seasonId = :seasonId AND p.timeBand = :timeBand"
-      + " AND p.exifVerified = true AND p.photoId <> :photoId ORDER BY p.photoId")
+      + " AND p.exifVerified = true AND p.aiVerdict = com.pixel.domain.photo.enums.AiVerdict.PUBLIC"
+      + " AND p.photoId <> :photoId ORDER BY p.photoId")
   List<Photo> findRemainingInCell(@Param("dongCode") String dongCode,
       @Param("seasonId") Short seasonId, @Param("timeBand") TimeBand timeBand,
       @Param("photoId") Long photoId, Pageable pageable);
@@ -89,6 +91,7 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
               WHERE p.dong_code = :dongCode
                 AND p.season_id = :seasonId
                 AND p.exif_verified = TRUE
+                AND p.ai_verdict = 'PUBLIC'
                 AND p.is_public = TRUE
                 AND p.location IS NOT NULL
                 AND (:timeBand IS NULL OR p.time_band = :timeBand)
