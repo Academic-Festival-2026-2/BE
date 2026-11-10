@@ -180,12 +180,17 @@ cd pixel
 브라우저 → Vercel(FE, HTTPS) → `https://pixel-cs24.duckdns.org/api/*` → EC2 Nginx(HTTPS) → `127.0.0.1:8080` 백엔드 컨테이너 → RDS(MySQL) · S3
 
 - 운영 브랜치는 `main`입니다. dev → main 릴리스 PR(`[deploy] 배포용 dev, main 머지`)을 머지한 뒤 서버에 반영합니다.
-- 마이그레이션이 필요한 PR이 있으면 서버를 다시 빌드하기 **전에** RDS에 먼저 적용합니다 (위 "스키마를 바꿀 때").
+- 마이그레이션이 필요한 PR이 있으면 위 "스키마를 바꿀 때" 순서를 따릅니다. 컬럼·테이블 **추가/변경은 서버를 다시 빌드하기 전에**, **삭제는 새 코드를 배포한 후에** RDS에 적용합니다.
 
 ```bash
-# EC2 서버 안
-cd ~/BE && git pull
-cd pixel && docker compose -f docker-compose.prod.yml up -d --build
+# EC2 서버 안. 한 단계라도 실패하면 거기서 멈춥니다(&&).
+cd ~/BE \
+  && git switch main \
+  && git pull --ff-only \
+  && cd pixel \
+  && docker compose -f docker-compose.prod.yml up -d --build \
+  && git log -1 --oneline
+# 컨테이너가 뜰 때까지 10~20초 기다린 뒤 확인
 curl -s https://pixel-cs24.duckdns.org/health   # OK
 ```
 
