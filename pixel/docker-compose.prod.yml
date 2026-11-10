@@ -7,7 +7,7 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"   # Nginx만 접근. 외부에서 8080 직접 접속 불가
     environment:
       - SPRING_PROFILES_ACTIVE=prod
       # 예: jdbc:mysql://<RDS 엔드포인트>:3306/pixel?sslMode=REQUIRED&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
