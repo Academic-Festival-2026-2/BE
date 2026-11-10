@@ -182,17 +182,20 @@ cd pixel
 - 운영 브랜치는 `main`입니다. dev → main 릴리스 PR(`[deploy] 배포용 dev, main 머지`)을 머지한 뒤 서버에 반영합니다.
 - 마이그레이션이 필요한 PR이 있으면 위 "스키마를 바꿀 때" 순서를 따릅니다. 컬럼·테이블 **추가/변경은 서버를 다시 빌드하기 전에**, **삭제는 새 코드를 배포한 후에** RDS에 적용합니다.
 
+서버 반영은 `scripts/deploy.sh`로 합니다. 최신 main을 받아 다시 빌드하고 health까지 확인하며, 위험한 상황이면 서버를 바꾸지 않고 멈춥니다.
+
 ```bash
-# EC2 서버 안. 한 단계라도 실패하면 거기서 멈춥니다(&&).
-cd ~/BE \
-  && git switch main \
-  && git pull --ff-only \
-  && cd pixel \
-  && docker compose -f docker-compose.prod.yml up -d --build \
-  && git log -1 --oneline
-# 컨테이너가 뜰 때까지 10~20초 기다린 뒤 확인
-curl -s https://pixel-cs24.duckdns.org/health   # OK
+# EC2 서버 안
+~/BE/scripts/deploy.sh              # main에 새 커밋이 있으면 배포
+~/BE/scripts/deploy.sh --migrated   # 새 마이그레이션을 RDS에 적용한 뒤
+~/BE/scripts/deploy.sh --force      # 새 커밋이 없어도 다시 빌드
 ```
+
+- 새 마이그레이션 파일이 있으면 `--migrated` 없이는 멈춥니다. 이때 `cd ~/BE && git switch main && git pull --ff-only`로 파일을 받아 RDS에 적용한 뒤 `--migrated`로 다시 실행합니다.
+- 종료 코드: 0 성공·이미 최신 / 1 배포 실패(로그와 되돌리는 명령 출력) / 2 배포 전에 멈춤(서버 그대로)
+- 기록: `~/pixel-deploy.log`(배포 이력), `~/pixel-deployed-commit`(마지막 성공 배포 커밋)
+- 처음 한 번은 돌고 있는 커밋을 직접 기록합니다: `git -C ~/BE rev-parse HEAD > ~/pixel-deployed-commit`
+- 빌드할 때마다 쌓이는 옛 이미지는 스크립트가 정리합니다(`docker image prune -f`).
 
 ### 포트와 보안 그룹 (`pixel-ec2-sg`)
 
