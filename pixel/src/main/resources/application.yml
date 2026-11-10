@@ -37,7 +37,8 @@ moderation:
   enabled: ${MODERATION_ENABLED:false}
   api-key: ${ANTHROPIC_API_KEY:}
   model: ${MODERATION_MODEL:claude-haiku-5-5}
-  timeout-ms: ${MODERATION_TIMEOUT_MS:4000}
+  # 실제 사진 테스트에서 최대 4.3초 응답이 있어 여유를 둔다(넘으면 UNCHECKED)
+  timeout-ms: ${MODERATION_TIMEOUT_MS:6000}
   max-retries: ${MODERATION_MAX_RETRIES:0}
 
 logging:

@@ -72,7 +72,7 @@ public class ClaudeImageModerator implements ImageModerator {
   public ClaudeImageModerator(
       @Value("${moderation.api-key:}") String apiKey,
       @Value("${moderation.model:claude-haiku-5-5}") String model,
-      @Value("${moderation.timeout-ms:4000}") long timeoutMs,
+      @Value("${moderation.timeout-ms:6000}") long timeoutMs,
       @Value("${moderation.max-retries:0}") int maxRetries) {
     this(createClient(apiKey, timeoutMs, maxRetries), model);
   }
