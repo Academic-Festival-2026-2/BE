@@ -6,6 +6,9 @@
 #   ~/BE/scripts/deploy.sh --migrated   # 이번 배포의 DB 마이그레이션을 RDS에 이미 적용했을 때
 #   ~/BE/scripts/deploy.sh --force      # 새 커밋이 없어도 다시 빌드
 #
+# 처음 한 번은 지금 서버에서 돌고 있는 커밋을 직접 기록해야 한다(스크립트가 짐작하지 않음):
+#   git -C ~/BE rev-parse HEAD > ~/pixel-deployed-commit
+#
 # 묻는 단계가 없어서 나중에 GitHub Actions 자동 배포에서도 그대로 호출한다.
 # 종료 코드: 0 성공(또는 이미 최신), 1 배포 실패, 2 배포 전에 멈춤(아무것도 바꾸지 않음)
 
@@ -61,13 +64,24 @@ fail_deploy() {
 }
 
 # 예상하지 못한 명령 실패도 기록하고 끝냄
-trap 'fail_deploy "${LINENO}번째 줄 명령이 실패했어요"' ERR
+# 빌드 전(git 단계 등)에 실패하면 서버는 그대로라 "멈춤"(2), 빌드부터는 "실패"(1)
+DEPLOY_STARTED=false
+on_error() {
+  # $(...) 안에서 난 실패는 바깥 줄에서 한 번만 처리
+  (( BASH_SUBSHELL > 0 )) && return 0
+  if [[ "$DEPLOY_STARTED" == true ]]; then
+    fail_deploy "$1번째 줄 명령이 실패했어요"
+  else
+    stop_before_deploy "$1번째 줄 명령이 실패했어요"
+  fi
+}
+trap 'on_error "$LINENO"' ERR
 
 for arg in "$@"; do
   case "$arg" in
     --migrated) MIGRATED=true ;;
     --force) FORCE=true ;;
-    -h|--help) sed -n '2,10p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,13p' "$0"; exit 0 ;;
     *) echo "알 수 없는 옵션: $arg (--migrated, --force만 가능)"; exit 2 ;;
   esac
 done
@@ -93,12 +107,13 @@ git fetch --quiet origin "$BRANCH"
 HEAD_NOW=$(git rev-parse HEAD)
 TARGET=$(git rev-parse "origin/$BRANCH")
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-# 기준은 "마지막 성공 배포". 기록이 없으면(첫 실행) 지금 코드가 배포돼 있다고 보고 바로 기록
+# 기준은 "마지막 성공 배포". 기록이 없으면 지금 코드가 실제로 돌고 있는지 알 수 없어서 멈춤
 if [[ ! -s "$DEPLOYED_FILE" ]]; then
-  echo "$HEAD_NOW" > "$DEPLOYED_FILE"
-  say "처음 실행: 지금 코드(${HEAD_NOW:0:7})를 마지막 배포로 기록했어요."
+  stop_before_deploy "배포 기록이 없어요. 지금 돌고 있는 커밋을 먼저 기록하세요: git -C $REPO_DIR rev-parse HEAD > $DEPLOYED_FILE"
 fi
-PREV=$(cat "$DEPLOYED_FILE")
+PREV=$(tr -d '[:space:]' < "$DEPLOYED_FILE")
+git cat-file -e "${PREV}^{commit}" 2>/dev/null \
+  || stop_before_deploy "배포 기록의 커밋(${PREV:0:7})을 찾을 수 없어요 ($DEPLOYED_FILE 확인)"
 
 if [[ "$PREV" == "$TARGET" && "$HEAD_NOW" == "$TARGET" && "$CURRENT_BRANCH" == "$BRANCH" \
       && "$FORCE" == false ]]; then
@@ -110,7 +125,8 @@ say "마지막 배포 ${PREV:0:7} → 이번 배포 ${TARGET:0:7} ($BRANCH, 서�
 git --no-pager log --oneline "$PREV..$TARGET" 2>/dev/null | sed 's/^/[deploy]   /' || true
 
 # 4. 새 마이그레이션이 있으면 RDS 적용 여부 확인 (빌드 전에 적용해야 서버가 뜸)
-NEW_MIGRATIONS=$(git diff --name-only --diff-filter=A "$PREV" "$TARGET" -- pixel/db/migration/)
+# 이미 나간 마이그레이션 파일이 수정된 경우(M)도 사람이 확인하도록 멈춤
+NEW_MIGRATIONS=$(git diff --name-only --diff-filter=AM "$PREV" "$TARGET" -- pixel/db/migration/)
 if [[ -n "$NEW_MIGRATIONS" ]]; then
   say "이번 배포에 새 마이그레이션이 있어요:"
   echo "$NEW_MIGRATIONS" | sed 's/^/[deploy]   /'
@@ -120,12 +136,14 @@ if [[ -n "$NEW_MIGRATIONS" ]]; then
   say "--migrated 확인: RDS에 적용했다고 보고 계속해요."
 fi
 
-# 5. 코드 반영 (main으로 전환, 빨리 감기만 허용)
-git switch --quiet "$BRANCH"
-git merge --quiet --ff-only "origin/$BRANCH" \
+# 5. 코드 반영 (main으로 전환, 빨리 감기만 허용). 갈라졌으면 전환하기 전에 멈춤
+git merge-base --is-ancestor "refs/heads/$BRANCH" "origin/$BRANCH" \
   || stop_before_deploy "서버의 main이 GitHub main과 갈라졌어요 (git log로 확인)"
+git switch --quiet "$BRANCH"
+git merge --quiet --ff-only "origin/$BRANCH"
 
-# 6. 새 이미지 빌드 후 컨테이너 교체
+# 6. 새 이미지 빌드 후 컨테이너 교체 (여기부터 실패하면 "배포 실패")
+DEPLOY_STARTED=true
 say "빌드 시작 (몇 분 걸려요)"
 cd "$APP_DIR"
 docker compose -f "$COMPOSE_FILE" up -d --build \
