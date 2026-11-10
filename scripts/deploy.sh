@@ -22,6 +22,8 @@ SERVICE="backend"
 HEALTH_URL="http://127.0.0.1:8080/health"
 PUBLIC_HEALTH_URL="https://pixel-cs24.duckdns.org/health"
 HEALTH_TIMEOUT_SEC="${HEALTH_TIMEOUT_SEC:-180}"
+# health OK 뒤 이 시간 동안 컨테이너가 멈추거나 재시작되지 않는지 지켜봄
+STABLE_WAIT_SEC="${STABLE_WAIT_SEC:-15}"
 LOG_FILE="$HOME/pixel-deploy.log"
 # 마지막으로 "성공한" 배포 커밋. 실패하면 갱신하지 않아서 다음 실행이 다시 배포함
 DEPLOYED_FILE="$HOME/pixel-deployed-commit"
@@ -94,8 +96,12 @@ cd "$REPO_DIR"
 
 # 2. 배포 전 점검
 [[ -f "$APP_DIR/.env" ]] || stop_before_deploy "pixel/.env가 없어요"
-git diff --quiet && git diff --cached --quiet \
-  || stop_before_deploy "서버에서 수정된 파일이 있어요 (git status로 확인)"
+# 수정·스테이징된 파일과 Git이 모르는 새 파일까지 확인 (.env처럼 .gitignore에 있는 파일은 제외)
+DIRTY=$(git status --porcelain)
+if [[ -n "$DIRTY" ]]; then
+  echo "$DIRTY" | head -10 | sed 's/^/[deploy]   /'
+  stop_before_deploy "서버에 수정된 파일이나 Git이 모르는 파일이 있어요 (git status로 확인)"
+fi
 
 DISK_USED=$(df --output=pcent / | tail -1 | tr -dc '0-9')
 if (( DISK_USED >= 90 )); then
@@ -146,7 +152,10 @@ git merge --quiet --ff-only "origin/$BRANCH"
 DEPLOY_STARTED=true
 say "빌드 시작 (몇 분 걸려요)"
 cd "$APP_DIR"
-docker compose -f "$COMPOSE_FILE" up -d --build \
+# --force일 때는 이미지가 같아도 컨테이너를 새로 만듦 (그냥 up은 바뀐 게 없으면 그대로 둠)
+UP_ARGS=(-d --build)
+[[ "$FORCE" == true ]] && UP_ARGS+=(--force-recreate)
+docker compose -f "$COMPOSE_FILE" up "${UP_ARGS[@]}" \
   || fail_deploy "빌드 또는 컨테이너 실행 실패 (빌드 단계에서 멈췄다면 기존 서버는 그대로 동작 중)"
 
 # 7. 서버 안에서 health 확인 (Spring이 뜰 때까지 기다림)
@@ -160,6 +169,22 @@ until [[ "$(curl -fsS --max-time 3 "$HEALTH_URL" 2>/dev/null || true)" == "OK" ]
   waited=$((waited + 5))
 done
 say "서버 안 health OK (${waited}초)"
+
+# 7-1. 컨테이너가 계속 떠 있는지 확인 (health 직후 죽거나 재시작을 반복하는 경우 잡기)
+container_state() {
+  # 결과 예: "running 0" (상태, 재시작 횟수). 컨테이너가 없으면 "missing -"
+  local cid
+  cid=$(docker compose -f "$COMPOSE_FILE" ps -q "$SERVICE" 2>/dev/null || true)
+  [[ -n "$cid" ]] || { echo "missing -"; return 0; }
+  docker inspect -f '{{.State.Status}} {{.RestartCount}}' "$cid" 2>/dev/null || echo "missing -"
+}
+STATE_BEFORE=$(container_state)
+sleep "$STABLE_WAIT_SEC"
+STATE_AFTER=$(container_state)
+if [[ "${STATE_BEFORE%% *}" != running || "$STATE_AFTER" != "$STATE_BEFORE" ]]; then
+  fail_deploy "health 뒤 컨테이너가 멈췄거나 재시작됐어요 (상태·재시작 횟수: $STATE_BEFORE → $STATE_AFTER)"
+fi
+say "컨테이너 안정 확인 (${STABLE_WAIT_SEC}초 동안 running, 재시작 없음)"
 
 # 8. 바깥(Nginx·HTTPS 경유) 확인: 실패해도 배포는 끝난 상태라 경고만
 if [[ "$(curl -fsS --max-time 5 "$PUBLIC_HEALTH_URL" 2>/dev/null || true)" == "OK" ]]; then
