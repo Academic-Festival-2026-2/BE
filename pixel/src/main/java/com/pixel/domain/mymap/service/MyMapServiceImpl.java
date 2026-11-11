@@ -10,11 +10,18 @@ import com.pixel.domain.dong.exception.code.DongErrorCode;
 import com.pixel.domain.dong.repository.DongRepository;
 import com.pixel.domain.mymap.dto.MyDongPhotosResponse;
 import com.pixel.domain.mymap.dto.MyMapResponse;
+import com.pixel.domain.mymap.dto.MyMapShareResponse;
+import com.pixel.domain.mymap.dto.SharedMapResponse;
+import com.pixel.domain.mymap.exception.code.MyMapErrorCode;
 import com.pixel.domain.photo.entity.Photo;
 import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.season.entity.Season;
 import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.domain.season.service.SeasonService;
+import com.pixel.domain.user.entity.User;
+import com.pixel.domain.user.enums.UserStatus;
+import com.pixel.domain.user.exception.code.UserErrorCode;
+import com.pixel.domain.user.repository.UserRepository;
 import com.pixel.global.apiPayload.exception.GeneralException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,14 +45,20 @@ public class MyMapServiceImpl implements MyMapService {
   private final DongRepository dongRepository;
   private final PhotoRepository photoRepository;
   private final ColorCellRepository colorCellRepository;
+  private final UserRepository userRepository;
 
   @Override
   public MyMapResponse getMyMap(Long userId, SeasonType seasonType) {
+    return buildMap(userId, seasonType, false);
+  }
+
+  // 공유 지도는 publicOnly = true로 비공개 사진을 뺀다.
+  private MyMapResponse buildMap(Long userId, SeasonType seasonType, boolean publicOnly) {
     Season season = seasonService.getSeason(seasonType);
 
     List<Dong> dongs = dongRepository.findAll(Sort.by("dongCode"));
 
-    Map<CellKey, List<Photo>> myPhotos = groupMyPhotosByCell(userId, season);
+    Map<CellKey, List<Photo>> myPhotos = groupMyPhotosByCell(userId, season, publicOnly);
 
     Map<CellKey, String> previewColors = colorCellRepository.findBySeason(season)
         .stream()
@@ -70,6 +83,39 @@ public class MyMapServiceImpl implements MyMapService {
     return new MyMapResponse(season.getSeason(), cells.size(), filledCellCount, cells);
   }
 
+  @Override
+  @Transactional
+  public MyMapShareResponse shareMyMap(Long userId) {
+    User user = findUser(userId);
+    user.shareMyMap();
+    return new MyMapShareResponse(user.getShareKey());
+  }
+
+  @Override
+  public MyMapShareResponse getMyShare(Long userId) {
+    return new MyMapShareResponse(findUser(userId).getShareKey());
+  }
+
+  @Override
+  @Transactional
+  public void stopSharingMyMap(Long userId) {
+    findUser(userId).stopSharingMyMap();
+  }
+
+  private User findUser(Long userId) {
+    return userRepository.findById(userId)
+        .orElseThrow(() -> new GeneralException(UserErrorCode._NOT_FOUND));
+  }
+
+  @Override
+  public SharedMapResponse getSharedMap(String shareKey, SeasonType seasonType) {
+    User user = userRepository.findByShareKeyAndStatus(shareKey, UserStatus.ACTIVE)
+        .orElseThrow(() -> new GeneralException(MyMapErrorCode._SHARED_MAP_NOT_FOUND));
+
+    return new SharedMapResponse(user.getNickname(), user.getProfileImage(),
+        buildMap(user.getUserId(), seasonType, true));
+  }
+
   private MyMapResponse.Cell toCell(Dong dong, TimeBand timeBand, List<Photo> photos,
       String previewColor) {
     boolean filled = !photos.isEmpty();
@@ -82,7 +128,7 @@ public class MyMapServiceImpl implements MyMapService {
   @Override
   public int countFilledCells(Long userId, SeasonType seasonType) {
     return seasonService.findSeason(seasonType)
-        .map(season -> groupMyPhotosByCell(userId, season).size())
+        .map(season -> groupMyPhotosByCell(userId, season, false).size())
         .orElse(0);
   }
 
@@ -106,9 +152,11 @@ public class MyMapServiceImpl implements MyMapService {
   }
 
   // 나의 지도 조회와 채운 칸 수 계산이 같은 기준을 쓰도록 한 곳에서만 사진을 고른다.
-  private Map<CellKey, List<Photo>> groupMyPhotosByCell(Long userId, Season season) {
+  private Map<CellKey, List<Photo>> groupMyPhotosByCell(Long userId, Season season,
+      boolean publicOnly) {
     return photoRepository.findMyMapPhotos(userId, season)
         .stream()
+        .filter(photo -> !publicOnly || photo.isPublic())
         .collect(Collectors.groupingBy(
             photo -> new CellKey(photo.getDong().getDongCode(), photo.getTimeBand())));
   }
