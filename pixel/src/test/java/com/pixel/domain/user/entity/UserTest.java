@@ -48,6 +48,7 @@ class UserTest {
     assertThat(user.getStatus()).isEqualTo(UserStatus.DELETED);
     assertThat(user.getEmail()).isEqualTo("deleted:1");
     assertThat(user.getNickname()).isEqualTo("탈퇴회원1");
+    assertThat(user.getPasswordHash()).startsWith("deleted:");
     assertThat(user.getDeletedAt()).isNotNull();
   }
 
