@@ -1,5 +1,6 @@
 package com.pixel.domain.user.entity;
 
+import com.pixel.domain.user.enums.ProfileImage;
 import com.pixel.domain.user.enums.UserStatus;
 import com.pixel.global.common.BaseEntity;
 import jakarta.persistence.Column;
@@ -41,6 +42,11 @@ public class User extends BaseEntity {
 
   @Enumerated(EnumType.STRING)
   @JdbcTypeCode(SqlTypes.VARCHAR)
+  @Column(name = "profile_image", length = 30, nullable = false)
+  private ProfileImage profileImage;
+
+  @Enumerated(EnumType.STRING)
+  @JdbcTypeCode(SqlTypes.VARCHAR)
   @Column(name = "status", length = 10, nullable = false)
   private UserStatus status = UserStatus.ACTIVE;
 
@@ -57,11 +63,13 @@ public class User extends BaseEntity {
   private String shareKey;
 
   @Builder
-  private User(String email, String passwordHash, String nickname, LocalDateTime termsAgreedAt,
-      LocalDateTime privacyAgreedAt, LocalDateTime locationAgreedAt) {
+  private User(String email, String passwordHash, String nickname, ProfileImage profileImage,
+      LocalDateTime termsAgreedAt, LocalDateTime privacyAgreedAt, LocalDateTime locationAgreedAt) {
     this.email = email;
     this.passwordHash = passwordHash;
     this.nickname = nickname;
+    // 지정하지 않으면(회원가입) 캐릭터 중 랜덤으로 배정한다
+    this.profileImage = profileImage != null ? profileImage : ProfileImage.random();
     this.termsAgreedAt = termsAgreedAt;
     this.privacyAgreedAt = privacyAgreedAt;
     this.locationAgreedAt = locationAgreedAt;
@@ -69,6 +77,10 @@ public class User extends BaseEntity {
 
   public void changeNickname(String nickname) {
     this.nickname = nickname;
+  }
+
+  public void changeProfileImage(ProfileImage profileImage) {
+    this.profileImage = profileImage;
   }
 
   // 이미 동의한 상태면 처음 동의한 시각을 유지한다

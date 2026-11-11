@@ -10,6 +10,7 @@ CREATE TABLE users (
     email               VARCHAR(255) NOT NULL,
     password_hash       VARCHAR(100) NOT NULL COMMENT 'BCrypt 해시',
     nickname            VARCHAR(16)  NOT NULL,
+    profile_image       VARCHAR(30)  NOT NULL DEFAULT 'COLOR_ORANGE' COMMENT '프로필 이미지 키. COLOR_* 단색 / 그 외 캐릭터. 가입 시 캐릭터 중 랜덤',
     status              VARCHAR(10)  NOT NULL DEFAULT 'ACTIVE',
     terms_agreed_at     DATETIME(6)  NOT NULL,
     privacy_agreed_at   DATETIME(6)  NOT NULL,
@@ -23,7 +24,13 @@ CREATE TABLE users (
     UNIQUE KEY uk_users_nickname (nickname),
     UNIQUE KEY uk_users_share_key (share_key),
     CONSTRAINT ck_users_nickname_len CHECK (CHAR_LENGTH(nickname) BETWEEN 2 AND 16),
-    CONSTRAINT ck_users_status CHECK (status IN ('ACTIVE', 'INACTIVE', 'DELETED'))
+    CONSTRAINT ck_users_status CHECK (status IN ('ACTIVE', 'INACTIVE', 'DELETED')),
+    CONSTRAINT ck_users_profile_image CHECK (profile_image IN (
+        'COLOR_ORANGE', 'COLOR_SKY', 'COLOR_NAVY', 'COLOR_GRAY',
+        'BUNNY_GRAY', 'BUNNY_MOCHA', 'BUNNY_STRAWBERRY', 'BUNNY_WHITE',
+        'CAT_BLUEGRAY', 'CAT_CHEESE', 'CAT_CHOCO', 'CAT_WHITE',
+        'DINO_LAVENDER', 'DINO_MINT', 'DINO_PINK', 'DINO_SKY',
+        'DOG_CREAM', 'DOG_GRAY', 'DOG_SHIBA', 'DOG_WHITE'))
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
 
 -- 사용자당 Refresh Token 1개 (로그인하면 덮어쓰고, 재발급할 때 새 토큰으로 바꾼다)

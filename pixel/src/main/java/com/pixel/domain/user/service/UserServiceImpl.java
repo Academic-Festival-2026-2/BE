@@ -53,6 +53,9 @@ public class UserServiceImpl implements UserService {
     if (request.getLocationAgreed() != null) {
       user.changeLocationAgreement(request.getLocationAgreed());
     }
+    if (request.getProfileImage() != null) {
+      user.changeProfileImage(request.getProfileImage());
+    }
   }
 
   @Override

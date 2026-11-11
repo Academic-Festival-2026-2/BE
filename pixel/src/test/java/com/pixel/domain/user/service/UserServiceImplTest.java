@@ -17,6 +17,7 @@ import com.pixel.domain.user.dto.MyInfoResponse;
 import com.pixel.domain.user.dto.UpdateMyInfoRequest;
 import com.pixel.domain.user.dto.WithdrawRequest;
 import com.pixel.domain.user.entity.User;
+import com.pixel.domain.user.enums.ProfileImage;
 import com.pixel.domain.user.enums.UserStatus;
 import com.pixel.domain.user.exception.code.UserErrorCode;
 import com.pixel.domain.user.repository.UserRepository;
@@ -109,6 +110,19 @@ class UserServiceImplTest {
     userService.updateMyInfo(USER_ID, updateRequest("tester"));
 
     verify(userRepository, never()).existsByNickname(any());
+  }
+
+  @Test
+  void 프로필_이미지를_보내면_바뀌고_보내지_않으면_그대로다() {
+    given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+    UpdateMyInfoRequest request = new UpdateMyInfoRequest();
+    request.setProfileImage(ProfileImage.CAT_CHEESE);
+
+    userService.updateMyInfo(USER_ID, request);
+    assertThat(user.getProfileImage()).isEqualTo(ProfileImage.CAT_CHEESE);
+
+    userService.updateMyInfo(USER_ID, updateRequest("tester"));
+    assertThat(user.getProfileImage()).isEqualTo(ProfileImage.CAT_CHEESE);
   }
 
   @Test
