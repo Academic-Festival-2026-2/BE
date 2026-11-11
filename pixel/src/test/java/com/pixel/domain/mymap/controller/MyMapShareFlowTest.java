@@ -1,6 +1,7 @@
 package com.pixel.domain.mymap.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -77,6 +78,30 @@ class MyMapShareFlowTest {
     mockMvc.perform(get("/api/shared-maps/" + key))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("MYMAP404_1"));
+  }
+
+  @Test
+  void myShareShowsKeyOnlyWhileSharing() throws Exception {
+    String token = signUpAndLogin("share-status@example.com", "sharestatus");
+
+    myShare(token).andExpect(jsonPath("$.result.shareKey").value(nullValue()));
+
+    String key = share(token);
+
+    myShare(token).andExpect(jsonPath("$.result.shareKey").value(key));
+
+    mockMvc.perform(delete("/api/users/me/map/share")
+            .header("Authorization", "Bearer " + token))
+        .andExpect(status().isOk());
+
+    myShare(token).andExpect(jsonPath("$.result.shareKey").value(nullValue()));
+  }
+
+  private ResultActions myShare(String token) throws Exception {
+    return mockMvc.perform(get("/api/users/me/map/share")
+            .header("Authorization", "Bearer " + token))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("MYMAP200_6"));
   }
 
   private String signUpAndLogin(String email, String nickname) throws Exception {

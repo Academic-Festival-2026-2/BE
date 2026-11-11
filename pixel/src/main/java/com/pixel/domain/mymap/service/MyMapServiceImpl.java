@@ -92,6 +92,11 @@ public class MyMapServiceImpl implements MyMapService {
   }
 
   @Override
+  public MyMapShareResponse getMyShare(Long userId) {
+    return new MyMapShareResponse(findUser(userId).getShareKey());
+  }
+
+  @Override
   @Transactional
   public void stopSharingMyMap(Long userId) {
     findUser(userId).stopSharingMyMap();

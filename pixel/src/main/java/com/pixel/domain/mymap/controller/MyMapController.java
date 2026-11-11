@@ -43,6 +43,13 @@ public class MyMapController {
         myMapService.getMyDongPhotos(userId, dongCode, timeBand, season)));
   }
 
+  @GetMapping("/share")
+  public ResponseEntity<ApiResponse<MyMapShareResponse>> getMyShare(
+      @AuthenticationPrincipal Long userId) {
+    return ResponseEntity.ok(ApiResponse.of(MyMapSuccessCode._MY_MAP_SHARE_FOUND,
+        myMapService.getMyShare(userId)));
+  }
+
   @PostMapping("/share")
   public ResponseEntity<ApiResponse<MyMapShareResponse>> shareMyMap(
       @AuthenticationPrincipal Long userId) {
