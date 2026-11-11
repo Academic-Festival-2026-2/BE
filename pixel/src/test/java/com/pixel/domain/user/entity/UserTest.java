@@ -2,6 +2,7 @@ package com.pixel.domain.user.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.pixel.domain.user.enums.ProfileImage;
 import com.pixel.domain.user.enums.UserStatus;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
@@ -47,7 +48,24 @@ class UserTest {
     assertThat(user.getStatus()).isEqualTo(UserStatus.DELETED);
     assertThat(user.getEmail()).isEqualTo("deleted:1");
     assertThat(user.getNickname()).isEqualTo("탈퇴회원1");
+    assertThat(user.getPasswordHash()).startsWith("deleted:");
     assertThat(user.getDeletedAt()).isNotNull();
+  }
+
+  @Test
+  void 프로필_이미지를_지정하지_않으면_캐릭터_중_하나로_배정된다() {
+    for (int i = 0; i < 50; i++) {
+      assertThat(user(null).getProfileImage().name()).doesNotStartWith("COLOR_");
+    }
+  }
+
+  @Test
+  void 프로필_이미지를_단색으로_바꿀_수_있다() {
+    User user = user(null);
+
+    user.changeProfileImage(ProfileImage.COLOR_SKY);
+
+    assertThat(user.getProfileImage()).isEqualTo(ProfileImage.COLOR_SKY);
   }
 
   private User user(LocalDateTime locationAgreedAt) {

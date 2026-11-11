@@ -1,5 +1,6 @@
 package com.pixel.domain.user.entity;
 
+import com.pixel.domain.user.enums.ProfileImage;
 import com.pixel.domain.user.enums.UserStatus;
 import com.pixel.global.common.BaseEntity;
 import jakarta.persistence.Column;
@@ -11,6 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -40,6 +42,11 @@ public class User extends BaseEntity {
 
   @Enumerated(EnumType.STRING)
   @JdbcTypeCode(SqlTypes.VARCHAR)
+  @Column(name = "profile_image", length = 30, nullable = false)
+  private ProfileImage profileImage;
+
+  @Enumerated(EnumType.STRING)
+  @JdbcTypeCode(SqlTypes.VARCHAR)
   @Column(name = "status", length = 10, nullable = false)
   private UserStatus status = UserStatus.ACTIVE;
 
@@ -52,12 +59,17 @@ public class User extends BaseEntity {
   @Column(name = "location_agreed_at")
   private LocalDateTime locationAgreedAt;
 
+  @Column(name = "share_key", length = 32, unique = true)
+  private String shareKey;
+
   @Builder
-  private User(String email, String passwordHash, String nickname, LocalDateTime termsAgreedAt,
-      LocalDateTime privacyAgreedAt, LocalDateTime locationAgreedAt) {
+  private User(String email, String passwordHash, String nickname, ProfileImage profileImage,
+      LocalDateTime termsAgreedAt, LocalDateTime privacyAgreedAt, LocalDateTime locationAgreedAt) {
     this.email = email;
     this.passwordHash = passwordHash;
     this.nickname = nickname;
+    // 지정하지 않으면(회원가입) 캐릭터 중 랜덤으로 배정한다
+    this.profileImage = profileImage != null ? profileImage : ProfileImage.random();
     this.termsAgreedAt = termsAgreedAt;
     this.privacyAgreedAt = privacyAgreedAt;
     this.locationAgreedAt = locationAgreedAt;
@@ -65,6 +77,10 @@ public class User extends BaseEntity {
 
   public void changeNickname(String nickname) {
     this.nickname = nickname;
+  }
+
+  public void changeProfileImage(ProfileImage profileImage) {
+    this.profileImage = profileImage;
   }
 
   // 이미 동의한 상태면 처음 동의한 시각을 유지한다
@@ -76,16 +92,29 @@ public class User extends BaseEntity {
     }
   }
 
+  // 이미 공유 중일 땐 기존 키 유지
+  public void shareMyMap() {
+    if (this.shareKey == null) {
+      this.shareKey = UUID.randomUUID().toString().replace("-", "");
+    }
+  }
+
+  public void stopSharingMyMap() {
+    this.shareKey = null;
+  }
+
   public void changePassword(String passwordHash) {
     this.passwordHash = passwordHash;
   }
 
-  // 같은 이메일로 재가입할 수 있게 이메일·닉네임을 익명 값으로 바꾼다
+  // 같은 이메일로 재가입할 수 있게 이메일·닉네임을 익명 값으로 바꾸고, 비밀번호 해시도 지운다
   // 이메일은 @Email 검증을 통과하지 못하는 형식, 닉네임 "탈퇴회원"은 가입·수정에서 막아 선점을 방지
   public void withdraw() {
     this.status = UserStatus.DELETED;
     this.email = "deleted:" + userId;
     this.nickname = "탈퇴회원" + userId;
+    this.passwordHash = "deleted:" + UUID.randomUUID(); // NOT NULL이라 로그인에 못 쓰는 무작위 값으로 덮음
+    stopSharingMyMap();
     markDeleted();
   }
 }

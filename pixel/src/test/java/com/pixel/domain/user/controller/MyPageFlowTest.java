@@ -1,5 +1,7 @@
 package com.pixel.domain.user.controller;
 
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -31,6 +33,8 @@ class MyPageFlowTest {
   private static final String INACTIVE_NICKNAME = "inactiveuser";
   private static final String NEW_EMAIL = "mypage-new@example.com";
   private static final String NEW_NICKNAME = "newtester";
+  private static final String PROFILE_EMAIL = "mypage-profile@example.com";
+  private static final String PROFILE_NICKNAME = "profiletester";
 
   @Autowired
   private MockMvc mockMvc;
@@ -53,6 +57,40 @@ class MyPageFlowTest {
         .andExpect(jsonPath("$.result.nickname").value(NEW_NICKNAME))
         .andExpect(jsonPath("$.result.photoCount").value(0))
         .andExpect(jsonPath("$.result.filledCellCount").value(0));
+  }
+
+  @Test
+  void 가입하면_캐릭터가_배정되고_프로필_이미지를_바꿀_수_있다() throws Exception {
+    signUp(PROFILE_EMAIL, PROFILE_NICKNAME, "password123").andExpect(status().isCreated());
+    String accessToken = login(PROFILE_EMAIL, "password123").get("accessToken").asText();
+
+    mockMvc.perform(get("/api/users/me")
+            .header("Authorization", "Bearer " + accessToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.result.profileImage").value(not(startsWith("COLOR_"))));
+
+    mockMvc.perform(patch("/api/users/me")
+            .header("Authorization", "Bearer " + accessToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"profileImage\": \"COLOR_SKY\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("USER200_7"));
+
+    mockMvc.perform(get("/api/users/me")
+            .header("Authorization", "Bearer " + accessToken))
+        .andExpect(jsonPath("$.result.profileImage").value("COLOR_SKY"));
+
+    // 목록에 없는 값은 400, 기존 값은 그대로
+    mockMvc.perform(patch("/api/users/me")
+            .header("Authorization", "Bearer " + accessToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"profileImage\": \"UNICORN\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON400"));
+
+    mockMvc.perform(get("/api/users/me")
+            .header("Authorization", "Bearer " + accessToken))
+        .andExpect(jsonPath("$.result.profileImage").value("COLOR_SKY"));
   }
 
   @Test
