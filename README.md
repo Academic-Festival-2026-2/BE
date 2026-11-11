@@ -187,11 +187,14 @@ cd pixel
 ```bash
 # EC2 서버 안
 ~/BE/scripts/deploy.sh              # main에 새 커밋이 있으면 배포
-~/BE/scripts/deploy.sh --migrated   # 새 마이그레이션을 RDS에 적용한 뒤
+~/BE/scripts/deploy.sh --migrated   # 마이그레이션 확인 끝 (추가·변경은 RDS 적용 후, 삭제는 배포 후 적용)
 ~/BE/scripts/deploy.sh --force      # 새 커밋이 없어도 다시 빌드
 ```
 
-- 새 마이그레이션 파일이 있으면 `--migrated` 없이는 멈춥니다. 이때 `cd ~/BE && git switch main && git pull --ff-only`로 파일을 받아 RDS에 적용한 뒤 `--migrated`로 다시 실행합니다.
+- 새 마이그레이션 파일이 있으면 `--migrated` 없이는 멈춥니다. 이때 `cd ~/BE && git switch main && git pull --ff-only`로 파일을 받은 뒤, 위 "스키마를 바꿀 때" 규칙대로 진행합니다.
+  - 추가·변경: RDS에 먼저 적용하고 `--migrated`로 다시 실행합니다.
+  - 삭제만 있으면: 적용하지 않고 `--migrated`로 먼저 배포한 뒤, 배포가 끝나면 적용합니다. 스크립트가 `DROP`이 든 파일을 따로 알려 줍니다.
+  - 둘 다 있으면: 추가·변경만 적용 → `--migrated`로 배포 → 삭제 적용. 그래서 추가와 삭제는 마이그레이션 파일을 나눠 만듭니다.
 - 종료 코드: 0 성공·이미 최신 / 1 배포 실패(로그와 되돌리는 명령 출력) / 2 배포 전에 멈춤(서버 그대로)
 - 기록: `~/pixel-deploy.log`(배포 이력), `~/pixel-deployed-commit`(마지막 성공 배포 커밋)
 - 처음 한 번은 돌고 있는 커밋을 직접 기록합니다: `git -C ~/BE rev-parse HEAD > ~/pixel-deployed-commit`
