@@ -16,6 +16,7 @@ import com.pixel.domain.season.entity.Season;
 import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.domain.season.service.SeasonService;
 import com.pixel.domain.user.entity.User;
+import com.pixel.domain.user.enums.ProfileImage;
 import com.pixel.domain.user.enums.UserStatus;
 import com.pixel.domain.user.repository.UserRepository;
 import java.util.Collections;
@@ -57,6 +58,7 @@ class SharedMapTest {
     User owner = mock(User.class);
     given(owner.getUserId()).willReturn(OWNER_ID);
     given(owner.getNickname()).willReturn("노을러");
+    given(owner.getProfileImage()).willReturn(ProfileImage.CAT_CHEESE);
     given(userRepository.findByShareKeyAndStatus(SHARE_KEY, UserStatus.ACTIVE))
         .willReturn(Optional.of(owner));
 
@@ -71,6 +73,7 @@ class SharedMapTest {
     SharedMapResponse response = myMapService.getSharedMap(SHARE_KEY, SeasonType.AUTUMN);
 
     assertThat(response.nickname()).isEqualTo("노을러");
+    assertThat(response.profileImage()).isEqualTo(ProfileImage.CAT_CHEESE);
     MyMapResponse.Cell sunset = response.map().getCells()
         .stream()
         .filter(cell -> cell.getTimeBand() == TimeBand.SUNSET)

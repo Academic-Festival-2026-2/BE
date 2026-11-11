@@ -112,7 +112,8 @@ public class MyMapServiceImpl implements MyMapService {
     User user = userRepository.findByShareKeyAndStatus(shareKey, UserStatus.ACTIVE)
         .orElseThrow(() -> new GeneralException(MyMapErrorCode._SHARED_MAP_NOT_FOUND));
 
-    return new SharedMapResponse(user.getNickname(), buildMap(user.getUserId(), seasonType, true));
+    return new SharedMapResponse(user.getNickname(), user.getProfileImage(),
+        buildMap(user.getUserId(), seasonType, true));
   }
 
   private MyMapResponse.Cell toCell(Dong dong, TimeBand timeBand, List<Photo> photos,

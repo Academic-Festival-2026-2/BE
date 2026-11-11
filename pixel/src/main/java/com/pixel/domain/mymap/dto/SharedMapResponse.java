@@ -1,3 +1,5 @@
 package com.pixel.domain.mymap.dto;
 
-public record SharedMapResponse(String nickname, MyMapResponse map) {}
+import com.pixel.domain.user.enums.ProfileImage;
+
+public record SharedMapResponse(String nickname, ProfileImage profileImage, MyMapResponse map) {}
