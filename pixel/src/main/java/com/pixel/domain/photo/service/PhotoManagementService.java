@@ -42,7 +42,7 @@ public class PhotoManagementService {
     }
     return new PhotoDetailResponse(photo.getPhotoId(), storage.readUrl(photo.getImageKey()),
         photo.getUser().getNickname(), photo.getDong().getName(), photo.getTakenAt(),
-        photo.getTimeBand(), photo.getPalette());
+        photo.getTimeBand(), photo.getPalette(), photo.getBins());
   }
 
   public MyPhotosResponse myPhotos(Long userId, int page, int size) {

@@ -5,4 +5,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public record PhotoDetailResponse(Long photoId, String imageUrl, String nickname, String name,
-    LocalDateTime takenAt, TimeBand timeBand, List<String> palette) {}
+                                  LocalDateTime takenAt, TimeBand timeBand, List<String> palette,
+                                  List<Double> bins) {
+
+}
