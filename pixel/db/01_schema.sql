@@ -14,12 +14,14 @@ CREATE TABLE users (
     terms_agreed_at     DATETIME(6)  NOT NULL,
     privacy_agreed_at   DATETIME(6)  NOT NULL,
     location_agreed_at  DATETIME(6)  NULL,
+    share_key           VARCHAR(32)  NULL COMMENT '나의 지도 공유 링크 키, 공유 안 하면 NULL',
     created_at          DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at          DATETIME(6)  NULL,
     deleted_at          DATETIME(6)  NULL,
     PRIMARY KEY (user_id),
     UNIQUE KEY uk_users_email (email),
     UNIQUE KEY uk_users_nickname (nickname),
+    UNIQUE KEY uk_users_share_key (share_key),
     CONSTRAINT ck_users_nickname_len CHECK (CHAR_LENGTH(nickname) BETWEEN 2 AND 16),
     CONSTRAINT ck_users_status CHECK (status IN ('ACTIVE', 'INACTIVE', 'DELETED'))
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;

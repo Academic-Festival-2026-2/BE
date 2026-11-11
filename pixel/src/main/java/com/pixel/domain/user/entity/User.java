@@ -11,6 +11,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -52,6 +53,9 @@ public class User extends BaseEntity {
   @Column(name = "location_agreed_at")
   private LocalDateTime locationAgreedAt;
 
+  @Column(name = "share_key", length = 32, unique = true)
+  private String shareKey;
+
   @Builder
   private User(String email, String passwordHash, String nickname, LocalDateTime termsAgreedAt,
       LocalDateTime privacyAgreedAt, LocalDateTime locationAgreedAt) {
@@ -76,6 +80,17 @@ public class User extends BaseEntity {
     }
   }
 
+  // 이미 공유 중일 땐 기존 키 유지
+  public void shareMyMap() {
+    if (this.shareKey == null) {
+      this.shareKey = UUID.randomUUID().toString().replace("-", "");
+    }
+  }
+
+  public void stopSharingMyMap() {
+    this.shareKey = null;
+  }
+
   public void changePassword(String passwordHash) {
     this.passwordHash = passwordHash;
   }
@@ -86,6 +101,7 @@ public class User extends BaseEntity {
     this.status = UserStatus.DELETED;
     this.email = "deleted:" + userId;
     this.nickname = "탈퇴회원" + userId;
+    stopSharingMyMap();
     markDeleted();
   }
 }

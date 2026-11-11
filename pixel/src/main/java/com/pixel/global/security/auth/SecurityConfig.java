@@ -41,7 +41,8 @@ public class SecurityConfig {
             .requestMatchers("/health", "/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**",
                 "/error").permitAll()
             .requestMatchers(HttpMethod.GET,
-                "/api/map/boundaries", "/api/map/dongs", "/api/dongs/*", "/api/photos/*").permitAll()
+                "/api/map/boundaries", "/api/map/dongs", "/api/dongs/*", "/api/photos/*",
+                "/api/shared-maps/*").permitAll()
             .anyRequest().authenticated()
         )
         .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, userRepository),
