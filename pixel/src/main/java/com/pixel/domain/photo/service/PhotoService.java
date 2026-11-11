@@ -1,5 +1,6 @@
 package com.pixel.domain.photo.service;
 
+import com.pixel.domain.badge.service.BadgeService;
 import com.pixel.domain.colorcell.enums.TimeBand;
 import com.pixel.domain.colorcell.service.ColorCellService;
 import com.pixel.domain.dong.entity.Dong;
@@ -60,6 +61,7 @@ public class PhotoService {
   private final ColorCellService colorCellService;
   private final ImageModerator imageModerator;
   private final TransactionTemplate transactionTemplate;
+  private final BadgeService badgeService;
 
   public PhotoUploadResponse upload(Long userId, MultipartFile file, PhotoUploadRequest request) {
     if (file == null || file.isEmpty()) {
@@ -278,6 +280,9 @@ public class PhotoService {
       }
 
       var contribution = colorCellService.aggregate(photo);
+      // 집계와 같은 트랜잭션에서 준다. 동 잠금을 잡은 뒤라 "동의 몇 번째 사진"이 겹치지 않는다.
+      var newBadges =
+          badgeService.awardForUpload(photo, Photo.countsForPublicMap(exifVerified, aiVerdict));
 
       return new PhotoUploadResponse(
           photo.getPhotoId(),
@@ -290,7 +295,8 @@ public class PhotoService {
           aiVerdict,
           moderation.toAiReason(),
           contribution.cellPhotoCount(),
-          contribution.firstInCell());
+          contribution.firstInCell(),
+          newBadges);
     });
   }
 

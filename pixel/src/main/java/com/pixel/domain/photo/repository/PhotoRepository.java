@@ -57,6 +57,24 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
 
   long countByUserUserId(Long userId);
 
+  // 배지 조건용. 나의 지도 기준이라 공개 여부·검수 결과와 상관없이 회원의 모든 사진을 센다.
+  @Query("SELECT COUNT(DISTINCT p.dong.dongCode) FROM Photo p WHERE p.user.userId = :userId")
+  long countDistinctDongsByUserId(@Param("userId") Long userId);
+
+  @Query("SELECT COUNT(DISTINCT p.timeBand) FROM Photo p WHERE p.user.userId = :userId")
+  long countDistinctTimeBandsByUserId(@Param("userId") Long userId);
+
+  // 같은 동·계절의 모두의 지도에 이 사진보다 먼저 들어간 사진 수 (0이면 첫 사진).
+  // Photo.countsForPublicMap과 같은 기준. 업로드의 동 잠금(lockForUpload) 뒤에 불러야 순서가 겹치지 않는다.
+  @Query("""
+      SELECT COUNT(p) FROM Photo p
+      WHERE p.dong.dongCode = :dongCode AND p.season.seasonId = :seasonId
+        AND p.exifVerified = true AND p.aiVerdict = com.pixel.domain.photo.enums.AiVerdict.PUBLIC
+        AND p.photoId < :photoId
+      """)
+  long countEarlierOnPublicMap(@Param("dongCode") String dongCode,
+      @Param("seasonId") Short seasonId, @Param("photoId") Long photoId);
+
   List<Photo> findAllByUserUserIdOrderByCreatedAtDesc(Long userId);
 
   @Modifying
