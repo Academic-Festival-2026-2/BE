@@ -1,5 +1,6 @@
 package com.pixel.domain.user.dto;
 
+import com.pixel.domain.user.enums.ProfileImage;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -19,6 +20,9 @@ public class UpdateMyInfoRequest {
   private String nickname;
 
   private Boolean locationAgreed;
+
+  // 목록에 없는 값이면 JSON 변환 단계에서 400
+  private ProfileImage profileImage;
 
   public void setNickname(String nickname) {
     this.nickname = nickname == null ? null : EDGE_SPACES.matcher(nickname).replaceAll("");
