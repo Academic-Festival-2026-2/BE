@@ -114,9 +114,15 @@ public class PhotoService {
       throw new GeneralException(PhotoErrorCode.GPS_PAIR_REQUIRED);
     }
 
-    Double latitude = request.latitude() != null ? request.latitude() : exif.latitude();
+    // 위치정보 이용에 동의하지 않은 회원은 요청 좌표와 사진 속 GPS를 모두 쓰지 않는다.
+    // 좌표 없이 고른 동으로만 저장되므로 exif_verified=false가 되어 나의 지도에만 반영된다.
+    boolean locationAgreed = user.getLocationAgreedAt() != null;
 
-    Double longitude = request.longitude() != null ? request.longitude() : exif.longitude();
+    Double latitude = !locationAgreed ? null
+        : (request.latitude() != null ? request.latitude() : exif.latitude());
+
+    Double longitude = !locationAgreed ? null
+        : (request.longitude() != null ? request.longitude() : exif.longitude());
 
     if ((latitude == null) != (longitude == null)) {
       throw new GeneralException(PhotoErrorCode.GPS_PAIR_REQUIRED);
@@ -152,8 +158,10 @@ public class PhotoService {
 
     TimeBand timeBand = resolveTimeBand(takenAt.toLocalTime());
 
+    // latitude가 null이면 nearlyEqual(double, double) 언박싱에서 NPE가 나므로 좌표 유무를 먼저 본다.
     boolean exifVerified =
-        exif.takenAt() != null
+        latitude != null
+            && exif.takenAt() != null
             && exif.latitude() != null
             && exif.longitude() != null
             && exif.takenAt().equals(takenAt)
