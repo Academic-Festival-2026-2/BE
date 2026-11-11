@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.pixel.domain.badge.enums.BadgeType;
 import com.pixel.domain.badge.service.BadgeService;
 import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.colorcell.service.ColorCellService;
@@ -336,11 +337,9 @@ class PhotoUploadTest {
 
   @Test
   void newBadgesAreAwardedAfterAggregationAndReturned() {
-    when(badges.awardForUpload(any(), anyBoolean()))
-        .thenReturn(List.of(com.pixel.domain.badge.enums.BadgeType.FIRST_PHOTO));
+    when(badges.awardForUpload(any(), anyBoolean())).thenReturn(List.of(BadgeType.FIRST_PHOTO));
     var response = service.upload(1L, file, request("13:00", null, null));
-    assertEquals(List.of(com.pixel.domain.badge.enums.BadgeType.FIRST_PHOTO),
-        response.newBadges());
+    assertEquals(List.of(BadgeType.FIRST_PHOTO), response.newBadges());
     // 좌표가 없어 모두의 지도에는 들어가지 않음
     var order = inOrder(aggregation, badges);
     order.verify(aggregation).aggregate(any());
