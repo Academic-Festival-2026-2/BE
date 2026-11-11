@@ -3,7 +3,7 @@
 #
 # 사용법 (EC2 서버 안):
 #   ~/BE/scripts/deploy.sh              # main에 새 커밋이 있으면 배포
-#   ~/BE/scripts/deploy.sh --migrated   # 이번 배포의 DB 마이그레이션을 RDS에 이미 적용했을 때
+#   ~/BE/scripts/deploy.sh --migrated   # 마이그레이션 확인 끝 (추가·변경은 RDS 적용 후, 삭제는 배포 후 적용)
 #   ~/BE/scripts/deploy.sh --force      # 새 커밋이 없어도 다시 빌드
 #
 # 처음 한 번은 지금 서버에서 돌고 있는 커밋을 직접 기록해야 한다(스크립트가 짐작하지 않음):
@@ -105,7 +105,8 @@ fi
 
 DISK_USED=$(df --output=pcent / | tail -1 | tr -dc '0-9')
 if (( DISK_USED >= 90 )); then
-  stop_before_deploy "디스크 사용량 ${DISK_USED}% (docker system df로 확인 후 정리)"
+  # image prune은 이름 없는 이미지만 지워서, 빌드 캐시는 계속 쌓임
+  stop_before_deploy "디스크 사용량 ${DISK_USED}% (docker system df로 확인 후 docker builder prune -f 등으로 정리)"
 fi
 
 # 3. GitHub의 최신 main 확인
@@ -130,16 +131,30 @@ fi
 say "마지막 배포 ${PREV:0:7} → 이번 배포 ${TARGET:0:7} ($BRANCH, 서버 코드는 지금 ${HEAD_NOW:0:7} $CURRENT_BRANCH)"
 git --no-pager log --oneline "$PREV..$TARGET" 2>/dev/null | sed 's/^/[deploy]   /' || true
 
-# 4. 새 마이그레이션이 있으면 RDS 적용 여부 확인 (빌드 전에 적용해야 서버가 뜸)
+# 4. 새 마이그레이션이 있으면 사람이 확인할 때까지 멈춤
+#    추가·변경(ADD·MODIFY)은 빌드 전에 적용해야 새 서버가 뜨고,
+#    삭제(DROP)는 옛 서버가 아직 그 컬럼을 쓰므로 새 서버 배포 후에 적용 (README "스키마를 바꿀 때")
 # 이미 나간 마이그레이션 파일이 수정된 경우(M)도 사람이 확인하도록 멈춤
 NEW_MIGRATIONS=$(git diff --name-only --diff-filter=AM "$PREV" "$TARGET" -- pixel/db/migration/)
+DROP_MIGRATIONS=""
 if [[ -n "$NEW_MIGRATIONS" ]]; then
   say "이번 배포에 새 마이그레이션이 있어요:"
   echo "$NEW_MIGRATIONS" | sed 's/^/[deploy]   /'
-  if [[ "$MIGRATED" == false ]]; then
-    stop_before_deploy "마이그레이션을 RDS에 먼저 적용한 뒤 --migrated를 붙여 다시 실행하세요"
+  while IFS= read -r file; do
+    # SQL 주석(--) 줄은 빼고 검사. 파이프 대신 변수에 담아 pipefail 오판을 피함
+    sql=$(git show "$TARGET:$file" | grep -v '^[[:space:]]*--' || true)
+    if grep -qiE '\bDROP\b' <<< "$sql"; then
+      DROP_MIGRATIONS+="$file"$'\n'
+    fi
+  done <<< "$NEW_MIGRATIONS"
+  if [[ -n "$DROP_MIGRATIONS" ]]; then
+    say "주의: 아래 파일에 DROP(삭제)이 있어요. 삭제는 배포가 끝난 뒤에 적용하세요."
+    printf '%s' "$DROP_MIGRATIONS" | sed 's/^/[deploy]   /'
   fi
-  say "--migrated 확인: RDS에 적용했다고 보고 계속해요."
+  if [[ "$MIGRATED" == false ]]; then
+    stop_before_deploy "추가·변경 마이그레이션은 RDS에 먼저 적용하고(삭제는 배포 후), --migrated를 붙여 다시 실행하세요"
+  fi
+  say "--migrated 확인: 추가·변경은 RDS에 적용했다고 보고 계속해요."
 fi
 
 # 5. 코드 반영 (main으로 전환, 빨리 감기만 허용). 갈라졌으면 전환하기 전에 멈춤
@@ -199,3 +214,7 @@ docker image prune -f > /dev/null || true
 echo "$TARGET" > "$DEPLOYED_FILE"
 record "SUCCESS"
 say "배포 완료: ${TARGET:0:7} ($(( $(date +%s) - START_TIME ))초)"
+if [[ -n "$DROP_MIGRATIONS" ]]; then
+  say "남은 일: 삭제 마이그레이션을 이제 RDS에 적용하세요."
+  printf '%s' "$DROP_MIGRATIONS" | sed 's/^/[deploy]   /'
+fi
