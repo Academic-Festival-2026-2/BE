@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.pixel.domain.colorcell.enums.TimeBand;
 import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.photo.entity.Photo;
+import com.pixel.domain.photo.enums.AiVerdict;
 import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.season.entity.Season;
 import com.pixel.domain.season.enums.SeasonType;
@@ -90,7 +91,7 @@ public class MyMapPhotoQueryTest {
     List<Double> bins = new ArrayList<>(Collections.nCopies(40, 0.0));
     bins.set(0, 1.0);
     return new Photo(owner, dong, season, TimeBand.DAY, DAY.atTime(13, 0), DAY, exifVerified,
-        Collections.nCopies(5, "#123ABC"), bins, "original", "thumbnail",
+        AiVerdict.PUBLIC, Collections.nCopies(5, "#123ABC"), bins, "original", "thumbnail",
         UUID.randomUUID().toString(), false);
   }
 }

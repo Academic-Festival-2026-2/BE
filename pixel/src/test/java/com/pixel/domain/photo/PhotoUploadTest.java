@@ -14,7 +14,11 @@ import com.pixel.domain.photo.controller.PhotoController;
 import com.pixel.domain.photo.dto.PhotoUploadRequest;
 import com.pixel.domain.photo.entity.Photo;
 import com.pixel.domain.photo.exception.PhotoExceptionHandler;
+import com.pixel.domain.photo.enums.AiReason;
+import com.pixel.domain.photo.enums.AiVerdict;
 import com.pixel.domain.photo.exception.code.PhotoErrorCode;
+import com.pixel.domain.photo.moderation.ImageModerator;
+import com.pixel.domain.photo.moderation.ModerationResult;
 import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.photo.service.PhotoService;
 import com.pixel.domain.photo.util.PhotoImageProcessor;
@@ -42,8 +46,10 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 class PhotoUploadTest {
   private final PhotoRepository photos = mock(PhotoRepository.class);
@@ -54,8 +60,13 @@ class PhotoUploadTest {
   private final PhotoImageProcessor images = mock(PhotoImageProcessor.class);
   private final S3StorageService storage = mock(S3StorageService.class);
   private final ColorCellService aggregation = mock(ColorCellService.class);
+  private final ImageModerator moderator = mock(ImageModerator.class);
+  // 트랜잭션 동기화는 각 테스트가 직접 초기화하고 complete()로 완료 상태를 흉내 낸다.
+  private final TransactionTemplate tx =
+      new TransactionTemplate(mock(PlatformTransactionManager.class));
   private final PhotoService service =
-      new PhotoService(photos, users, dongs, seasons, metadata, images, storage, aggregation);
+      new PhotoService(
+          photos, users, dongs, seasons, metadata, images, storage, aggregation, moderator, tx);
   private final MockMultipartFile file =
       new MockMultipartFile(
           "image", "test.jpg", "image/jpeg", new byte[] {(byte) 255, (byte) 216, (byte) 255, 1});
@@ -63,6 +74,7 @@ class PhotoUploadTest {
   @BeforeEach
   void setup() {
     when(aggregation.aggregate(any())).thenReturn(new ColorCellService.Contribution(null, false));
+    when(moderator.moderate(any())).thenReturn(ModerationResult.approved());
     when(users.findById(1L)).thenReturn(Optional.of(mock(User.class)));
     Dong dong = org.springframework.beans.BeanUtils.instantiateClass(Dong.class);
     ReflectionTestUtils.setField(dong, "dongCode", "31050110");
@@ -227,6 +239,82 @@ class PhotoUploadTest {
   }
 
   @Test
+  void rejectedPhotoIsNotStoredOrSaved() {
+    when(moderator.moderate(any())).thenReturn(ModerationResult.rejected());
+    var ex = assertThrows(GeneralException.class,
+        () -> service.upload(1L, file, request("13:00", null, null)));
+    assertEquals(PhotoErrorCode.MODERATION_REJECTED, ex.getCode());
+    assertEquals(HttpStatus.UNPROCESSABLE_ENTITY,
+        ex.getCode().getReasonHttpStatus().getHttpStatus());
+    verifyNoInteractions(storage);
+    verify(photos, never()).saveAndFlush(any());
+    verify(aggregation, never()).lockForUpload(any());
+  }
+
+  @Test
+  void moderationReceivesThumbnailBeforeS3Upload() {
+    service.upload(1L, file, request("13:00", null, null));
+    var order = inOrder(moderator, storage);
+    order.verify(moderator).moderate(argThat(bytes -> bytes.length == 1 && bytes[0] == 1));
+    order.verify(storage, times(2)).upload(anyString(), any(), anyString());
+  }
+
+  @ParameterizedTest
+  @org.junit.jupiter.params.provider.EnumSource(
+      value = AiVerdict.class, names = {"PERSONAL_ONLY", "UNCHECKED"})
+  void notPublicVerdictIsSavedPrivateWithoutLock(AiVerdict verdict) {
+    when(moderator.moderate(any())).thenReturn(verdict == AiVerdict.UNCHECKED
+        ? ModerationResult.unchecked()
+        : ModerationResult.personalOnly(ModerationResult.Reason.NOT_SCENERY));
+    when(metadata.read(any())).thenReturn(new PhotoMetadataReader.PhotoMetadata(
+        LocalDateTime.parse("2026-10-29T13:00"), 37.5, 126.7));
+    when(dongs.findDongCodeByCoordinates(37.5, 126.7)).thenReturn(Optional.of("31050110"));
+    when(photos.updateLocationAndVerification(7L, 37.5, 126.7, true)).thenReturn(1);
+
+    var result = service.upload(1L, file, request("13:00", null, null));
+
+    assertTrue(result.exifVerified());
+    assertEquals(verdict, result.aiVerdict());
+    // 요청은 공개(true)였지만 검수를 통과하지 않아 비공개로 저장된다.
+    assertFalse(result.isPublic());
+    verify(photos).saveAndFlush(argThat(photo ->
+        photo.getAiVerdict() == verdict && !photo.isPublic()));
+    verify(aggregation, never()).lockForUpload(any());
+    assertEquals(verdict == AiVerdict.UNCHECKED ? null : AiReason.NOT_SCENERY,
+        result.aiReason());
+  }
+
+  @Test
+  void moderationRunsBeforeTransactionStarts() {
+    PlatformTransactionManager manager = mock(PlatformTransactionManager.class);
+    var uploadService = new PhotoService(photos, users, dongs, seasons, metadata, images, storage,
+        aggregation, moderator, new TransactionTemplate(manager));
+    uploadService.upload(1L, file, request("13:00", null, null));
+    var order = inOrder(moderator, manager, storage);
+    order.verify(moderator).moderate(any());
+    order.verify(manager).getTransaction(any());
+    order.verify(storage, times(2)).upload(anyString(), any(), anyString());
+  }
+
+  @Test
+  void rejectedPhotoNeverStartsTransaction() {
+    PlatformTransactionManager manager = mock(PlatformTransactionManager.class);
+    var uploadService = new PhotoService(photos, users, dongs, seasons, metadata, images, storage,
+        aggregation, moderator, new TransactionTemplate(manager));
+    when(moderator.moderate(any())).thenReturn(ModerationResult.rejected());
+    assertThrows(GeneralException.class,
+        () -> uploadService.upload(1L, file, request("13:00", null, null)));
+    verifyNoInteractions(manager);
+  }
+
+  @Test
+  void publicVerdictKeepsRequestedVisibility() {
+    var result = service.upload(1L, file, request("13:00", null, null));
+    assertEquals(AiVerdict.PUBLIC, result.aiVerdict());
+    assertTrue(result.isPublic());
+  }
+
+  @Test
   void unverifiedResponseHasNoCellCountAndDoesNotLock() {
     var result = service.upload(1L, file, request("13:00", null, null));
     assertNull(result.cellPhotoCount());
@@ -291,6 +379,27 @@ class PhotoUploadTest {
   private void complete(int status) {
     TransactionSynchronizationManager.getSynchronizations()
         .forEach(sync -> sync.afterCompletion(status));
+  }
+
+  @Test
+  void moderationRejectionReturns422WithPhotoCode() throws Exception {
+    PhotoService rejecting = mock(PhotoService.class);
+    when(rejecting.upload(anyLong(), any(), any()))
+        .thenThrow(new GeneralException(PhotoErrorCode.MODERATION_REJECTED));
+    var mvc =
+        MockMvcBuilders.standaloneSetup(new PhotoController(rejecting))
+            .setControllerAdvice(
+                new PhotoExceptionHandler(new GlobalExceptionHandler()),
+                new GlobalExceptionHandler())
+            .build();
+    mvc.perform(
+            multipart("/api/photos")
+                .file(file)
+                .file(new MockMultipartFile("data", "", "application/json", "{}".getBytes()))
+                .principal(new UsernamePasswordAuthenticationToken(1L, null, List.of())))
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(jsonPath("$.isSuccess").value(false))
+        .andExpect(jsonPath("$.code").value("PHOTO422_1"));
   }
 
   @ParameterizedTest
@@ -450,7 +559,7 @@ class PhotoUploadTest {
     when(dongs.findDongCodeByCoordinates(37.5, 126.7)).thenReturn(Optional.of("31050110"));
     when(photos.updateLocationAndVerification(7L, 37.5, 126.7, false)).thenReturn(1);
     var uploadService = new PhotoService(photos, users, dongs, seasons, new PhotoMetadataReader(),
-        realProcessor, storage, aggregation);
+        realProcessor, storage, aggregation, moderator, tx);
     uploadService.upload(1L,
         new MockMultipartFile("image", "gps.jpg", "image/jpeg", original),
         request("13:00", null, null));

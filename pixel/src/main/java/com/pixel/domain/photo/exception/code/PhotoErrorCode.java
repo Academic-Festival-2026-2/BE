@@ -11,6 +11,8 @@ import org.springframework.http.HttpStatus;
 public enum PhotoErrorCode implements BaseErrorCode {
   NOT_FOUND(HttpStatus.NOT_FOUND, "PHOTO404_1", "존재하지 않는 사진입니다."),
   FORBIDDEN(HttpStatus.FORBIDDEN, "PHOTO403_1", "사진에 접근할 권한이 없습니다."),
+  NOT_PUBLISHABLE(HttpStatus.FORBIDDEN, "PHOTO403_2", "공개할 수 없는 사진입니다."),
+  MODERATION_REJECTED(HttpStatus.UNPROCESSABLE_ENTITY, "PHOTO422_1", "지도에 올릴 수 없는 사진입니다."),
   FILE_REQUIRED(HttpStatus.BAD_REQUEST, "PHOTO400_1", "사진 파일이 필요합니다."),
   METADATA_REQUIRED(HttpStatus.BAD_REQUEST, "PHOTO400_3", "사진 메타데이터가 필요합니다."),
   FILE_UNREADABLE(HttpStatus.BAD_REQUEST, "PHOTO400_4", "사진을 읽지 못했습니다."),

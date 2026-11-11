@@ -13,6 +13,7 @@ import com.pixel.domain.colorcell.service.ColorCellService;
 import com.pixel.domain.colorcell.util.ColorBins;
 import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.photo.entity.Photo;
+import com.pixel.domain.photo.enums.AiVerdict;
 import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.season.entity.Season;
 import com.pixel.domain.season.enums.SeasonType;
@@ -101,11 +102,16 @@ class ColorCellAggregationTest {
   }
 
   Photo photo(Long owner, LocalDate date, String dong, TimeBand band, boolean verified) {
+    return photo(owner, date, dong, band, verified, AiVerdict.PUBLIC);
+  }
+
+  Photo photo(Long owner, LocalDate date, String dong, TimeBand band, boolean verified,
+      AiVerdict verdict) {
     var bins = new ArrayList<>(Collections.nCopies(40, 0.0));
     bins.set(0, 1.0);
     return new Photo(em.getReference(User.class, owner), em.getReference(Dong.class, dong),
         em.getReference(Season.class, seasonId), band, date.atTime(13, 0), date, verified,
-        Collections.nCopies(5, "#123ABC"), bins, "original", "thumbnail",
+        verdict, Collections.nCopies(5, "#123ABC"), bins, "original", "thumbnail",
         UUID.randomUUID().toString(), false);
   }
 
@@ -169,6 +175,38 @@ class ColorCellAggregationTest {
       assertEquals(new ColorCellService.Contribution(null, false), service.aggregate(photo));
       assertEquals(0, cells.count());
     });
+  }
+
+  @Test
+  void notPublicVerdictPhotoIsNeitherAggregatedNorRetracted() {
+    upload(userId, DAY, DONG, TimeBand.DAY);
+    for (AiVerdict verdict : List.of(AiVerdict.PERSONAL_ONLY, AiVerdict.UNCHECKED)) {
+      tx.executeWithoutResult(status -> {
+        service.lockForUpload(DONG);
+        var photo = photos.saveAndFlush(photo(userId, DAY, DONG, TimeBand.DAY, true, verdict));
+        assertEquals(new ColorCellService.Contribution(null, false), service.aggregate(photo));
+        // 집계하지 않은 사진을 지워도 칸에서 빼지 않아야 한다.
+        service.retract(photo);
+      });
+    }
+    tx.executeWithoutResult(status -> {
+      var cell = cells.findAll().get(0);
+      assertEquals(1, cell.getPhotoCount());
+      assertEquals(1, cell.getShotCount());
+      assertEquals(1.0, cell.getBinsSum().get(0), 1e-9);
+    });
+  }
+
+  @Test
+  void personalOnlyPhotoDoesNotCountAsPreviousShot() {
+    tx.executeWithoutResult(status -> {
+      service.lockForUpload(DONG);
+      var photo = photos.saveAndFlush(
+          photo(userId, DAY, DONG, TimeBand.DAY, true, AiVerdict.PERSONAL_ONLY));
+      service.aggregate(photo);
+    });
+    upload(userId, DAY, DONG, TimeBand.DAY);
+    tx.executeWithoutResult(status -> assertEquals(1, cells.findAll().get(0).getShotCount()));
   }
 
   @Test
