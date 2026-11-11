@@ -7,6 +7,7 @@ import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.photo.entity.Photo;
 import com.pixel.domain.photo.enums.AiVerdict;
 import com.pixel.domain.photo.repository.PhotoRepository;
+import com.pixel.domain.region.entity.Region;
 import com.pixel.domain.season.entity.Season;
 import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.domain.user.entity.User;
@@ -60,11 +61,18 @@ public class MyMapPhotoQueryTest {
   }
 
   private Dong dong(String dongCode) {
+    Region region = BeanUtils.instantiateClass(Region.class);
+    ReflectionTestUtils.setField(region, "regionCode", "3105");
+    ReflectionTestUtils.setField(region, "sidoName", "경기도");
+    ReflectionTestUtils.setField(region, "name", "부천시");
+    em.persist(region);
+
     Dong dong = BeanUtils.instantiateClass(Dong.class);
     ReflectionTestUtils.setField(dong, "dongCode", dongCode);
     ReflectionTestUtils.setField(dong, "name", "테스트동");
     ReflectionTestUtils.setField(dong, "guName", "원미구");
     ReflectionTestUtils.setField(dong, "boundaryVersion", "20260101");
+    ReflectionTestUtils.setField(dong, "region", region);
     em.persist(dong);
     return dong;
   }
