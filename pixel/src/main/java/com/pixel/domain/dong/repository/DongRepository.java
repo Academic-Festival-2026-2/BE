@@ -32,6 +32,7 @@ public interface DongRepository extends JpaRepository<Dong, String> {
 
   // 정렬(ORDER BY)은 경계가 큰 동(안산 대부동 369KB)에서 정렬 메모리를 넘겨 MIN으로 대신한다.
   // SRID 4326 판정은 일부 동에서 틀려서, 인덱스로 후보만 고르고(MBRContains) 판정은 평면(SRID 0)으로 한다.
+  // 경계는 GeoJSON [경도, 위도]로 넣어서 평면(SRID 0)에서도 x=경도, y=위도다. 점도 POINT(경도 위도)로 만든다.
   @Query(
       value =
           """
@@ -39,7 +40,10 @@ public interface DongRepository extends JpaRepository<Dong, String> {
           FROM dongs
           WHERE MBRContains(
                   boundary,
-                  ST_GeomFromText(CONCAT('POINT(', :longitude, ' ', :latitude, ')'), 4326, 'axis-order=long-lat')
+                  ST_GeomFromText(
+                    CONCAT('POINT(', :longitude, ' ', :latitude, ')'),
+                    4326,
+                    'axis-order=long-lat')
                 )
             AND ST_Contains(
                   ST_SRID(boundary, 0),
