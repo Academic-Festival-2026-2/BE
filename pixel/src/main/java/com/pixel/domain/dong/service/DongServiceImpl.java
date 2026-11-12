@@ -59,8 +59,8 @@ public class DongServiceImpl implements DongService {
         .toList();
 
     return new DongDetailResponse(
-        dong.getDongCode(), dong.getName(), dong.getGuName(),
-        season.getSeason(), timeBands, points);
+        dong.getDongCode(), dong.getName(), dong.getGuName(), dong.getRegion().getRegionCode(),
+        dong.getRegion().getName(), season.getSeason(), timeBands, points);
   }
 
   private DongDetailResponse.TimeBandSummary toSummary(TimeBand band, ColorCell cell) {

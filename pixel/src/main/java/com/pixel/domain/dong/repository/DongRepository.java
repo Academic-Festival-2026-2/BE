@@ -23,12 +23,13 @@ public interface DongRepository extends JpaRepository<Dong, String> {
               + "       gu_name               AS guName, "
               + "       ST_AsGeoJSON(boundary, 5) AS geometry "
               + "FROM dongs "
+              + "WHERE region_code = :regionCode "
               + "ORDER BY dong_code ",
       nativeQuery = true)
-  List<DongBoundaryView> findAllBoundaries();
+  List<DongBoundaryView> findAllBoundaries(@Param("regionCode") String regionCode);
 
-  @Query("SELECT MAX(d.boundaryVersion) FROM Dong d")
-  String findBoundaryVersion();
+  @Query("SELECT MAX(d.boundaryVersion) FROM Dong d WHERE d.region.regionCode = :regionCode")
+  String findBoundaryVersion(@Param("regionCode") String regionCode);
 
   // 정렬(ORDER BY)은 경계가 큰 동(안산 대부동 369KB)에서 정렬 메모리를 넘겨 MIN으로 대신한다.
   // SRID 4326 판정은 일부 동에서 틀려서, 인덱스로 후보만 고르고(MBRContains) 판정은 평면(SRID 0)으로 한다.
@@ -53,4 +54,6 @@ public interface DongRepository extends JpaRepository<Dong, String> {
       nativeQuery = true)
   Optional<String> findDongCodeByCoordinates(
       @Param("latitude") double latitude, @Param("longitude") double longitude);
+
+  List<Dong> findByRegionRegionCodeOrderByDongCode(String regionCode);
 }

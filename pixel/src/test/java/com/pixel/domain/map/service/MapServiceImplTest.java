@@ -12,6 +12,8 @@ import com.pixel.domain.colorcell.util.ColorBins;
 import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.dong.repository.DongRepository;
 import com.pixel.domain.map.dto.MapDongsResponse;
+import com.pixel.domain.region.entity.Region;
+import com.pixel.domain.region.service.RegionService;
 import com.pixel.domain.season.entity.Season;
 import com.pixel.domain.season.service.SeasonService;
 import java.util.ArrayList;
@@ -37,21 +39,30 @@ class MapServiceImplTest {
   @Mock
   private ColorCellRepository colorCellRepository;
 
+  @Mock
+  private RegionService regionService;
+
   @InjectMocks
   private MapServiceImpl mapService;
 
   private final Season season = mock(Season.class);
 
+  private final Region region = mock(Region.class);
+
   @BeforeEach
   void setUp() {
+
     given(seasonService.getCurrentSeason()).willReturn(season);
+
+    given(regionService.getRegion("3105")).willReturn(region);
+    given(region.getRegionCode()).willReturn("3105");
   }
 
   @Test
   void excludesDongWithoutPhoto() {
     givenCells(cell("A", 5), cell("B", 0), cell("C", 3));
 
-    MapDongsResponse response = mapService.getDongs(TimeBand.DAY);
+    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105");
 
     assertThat(response.getTopDongs())
         .extracting(MapDongsResponse.TopDong::getDongCode)
@@ -62,7 +73,7 @@ class MapServiceImplTest {
   void returnsTop3ByPhotoCountDesc() {
     givenCells(cell("A", 1), cell("B", 4), cell("C", 2), cell("D", 3));
 
-    MapDongsResponse response = mapService.getDongs(TimeBand.DAY);
+    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105");
 
     assertThat(response.getTopDongs())
         .extracting(MapDongsResponse.TopDong::getDongCode)
@@ -73,7 +84,7 @@ class MapServiceImplTest {
   void sortsTiesByDongCode() {
     givenCells(cell("B", 2), cell("A", 2), cell("C", 9));
 
-    MapDongsResponse response = mapService.getDongs(TimeBand.DAY);
+    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105");
 
     assertThat(response.getTopDongs())
         .extracting(MapDongsResponse.TopDong::getDongCode)
@@ -84,7 +95,7 @@ class MapServiceImplTest {
   void emptyWhenNoPhoto() {
     givenCells(cell("A", 0), cell("B", 0));
 
-    MapDongsResponse response = mapService.getDongs(TimeBand.DAY);
+    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105");
 
     assertThat(response.getTopDongs()).isEmpty();
   }
@@ -94,7 +105,7 @@ class MapServiceImplTest {
     givenCells(cellWithBins("A", 5, bins(Map.of(0, 0.6, 12, 0.4))),
         cellWithBins("B", 0, bins(Map.of())));
 
-    MapDongsResponse response = mapService.getDongs(TimeBand.DAY);
+    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105");
 
     MapDongsResponse.DongColor dongA = response.getDongs().get(0);
     assertThat(dongA.getColorRatio())
@@ -113,7 +124,7 @@ class MapServiceImplTest {
   }
 
   private void givenCells(ColorCell... cells) {
-    given(colorCellRepository.findForMap(season, TimeBand.DAY))
+    given(colorCellRepository.findForMap(season, TimeBand.DAY, "3105"))
         .willReturn(List.of(cells));
   }
 

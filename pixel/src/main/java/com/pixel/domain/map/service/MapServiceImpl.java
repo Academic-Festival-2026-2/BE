@@ -7,6 +7,8 @@ import com.pixel.domain.colorcell.util.ColorBins;
 import com.pixel.domain.dong.repository.DongRepository;
 import com.pixel.domain.map.dto.BoundaryResponse;
 import com.pixel.domain.map.dto.MapDongsResponse;
+import com.pixel.domain.region.entity.Region;
+import com.pixel.domain.region.service.RegionService;
 import com.pixel.domain.season.entity.Season;
 import com.pixel.domain.season.service.SeasonService;
 import java.util.Comparator;
@@ -26,22 +28,31 @@ public class MapServiceImpl implements MapService {
   private final DongRepository dongRepository;
   private final ColorCellRepository colorCellRepository;
   private final SeasonService seasonService;
+  private final RegionService regionService;
 
   @Override
-  public BoundaryResponse getBoundaries() {
-    List<BoundaryResponse.Feature> features =
-        dongRepository.findAllBoundaries().stream().map(view -> new BoundaryResponse.Feature(
-            new BoundaryResponse.Properties(view.getDongCode(), view.getName(), view.getGuName()),
-            view.getGeometry())).toList();
+  public BoundaryResponse getBoundaries(String regionCode) {
+    Region region = regionService.getRegion(regionCode);
 
-    return new BoundaryResponse(dongRepository.findBoundaryVersion(), features);
+    List<BoundaryResponse.Feature> features =
+        dongRepository.findAllBoundaries(region.getRegionCode())
+            .stream()
+            .map(view -> new BoundaryResponse.Feature(
+                new BoundaryResponse.Properties(view.getDongCode(), view.getName(), view.getGuName()),
+                view.getGeometry()))
+            .toList();
+
+    return new BoundaryResponse(dongRepository.findBoundaryVersion(region.getRegionCode()),
+        region.getRegionCode(), region.getName(), features);
   }
 
   @Override
-  public MapDongsResponse getDongs(TimeBand timeBand) {
+  public MapDongsResponse getDongs(TimeBand timeBand, String regionCode) {
     Season season = seasonService.getCurrentSeason();
+    Region region = regionService.getRegion(regionCode);
 
-    List<ColorCell> cells = colorCellRepository.findForMap(season, timeBand);
+    List<ColorCell> cells =
+        colorCellRepository.findForMap(season, timeBand, region.getRegionCode());
 
     List<MapDongsResponse.DongColor> dongs = cells
         .stream()

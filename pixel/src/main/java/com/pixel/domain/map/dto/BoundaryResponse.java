@@ -10,6 +10,8 @@ import lombok.Getter;
 public class BoundaryResponse {
 
   private final String version;
+  private final String regionCode;
+  private final String regionName;
   private final String type = "FeatureCollection";
   private final List<Feature> features;
 
