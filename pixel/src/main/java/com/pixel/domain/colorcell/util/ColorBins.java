@@ -8,20 +8,16 @@ import java.util.stream.IntStream;
 public final class ColorBins {
 
   public static final List<String> HEX = List.of(
-      "#861318", "#E31C24", "#F17E83",
-      "#863213", "#E3511C", "#F19D7E",
-      "#864A13", "#E37B1C", "#F1B57E",
-      "#866413", "#E3A91C", "#F1CF7E",
-      "#868113", "#E3DB1C", "#F1EC7E",
-      "#608613", "#A1E31C", "#CBF17E",
-      "#13861D", "#1CE32D", "#7EF188",
-      "#13867C", "#1CE3D2", "#7EF1E7",
-      "#135186", "#1C88E3", "#7EBCF1",
-      "#131886", "#1C24E3", "#7E83F1",
-      "#561386", "#901CE3", "#C17EF1",
-      "#861360", "#E31CA1", "#F17ECB",
-      "#1C1C1C", "#555555", "#9E9E9E", "#E6E6E6"
+      "#D4E6F5", "#9CC8EC", "#5A8FD0", "#A9B6CC", "#B2A6D6", "#F2AEB8", "#F39A52",
+      "#F7BD6E", "#5B5592", "#1E2850", "#3C8FB5", "#4FA7A3", "#2A5E78", "#5C9A55", "#36603D",
+      "#A9CF72", "#C2AE72", "#EDD23A", "#E2783A", "#C9432F", "#F6C6D3", "#E27BA6", "#9B7BC8",
+      "#EAE2D2", "#D9C7A6", "#A9573F", "#8A6245", "#A8DCCF", "#F8DD98", "#DA5A95", "#4F63D6",
+      "#43BFC4", "#E8384F", "#7A3FA0", "#23262D", "#3E434E", "#6C7078", "#A2A5AA", "#C9CDD3",
+      "#F0F2F4"
   );
+
+  /** 0 ~ CHROMATIC_COUNT-1은 유채색, 그 뒤 6개(먹색 → 구름)는 무채색이다. */
+  public static final int CHROMATIC_COUNT = 34;
 
   private ColorBins() {
   }
@@ -39,7 +35,7 @@ public final class ColorBins {
   }
 
   /**
-   * 유채색 비율이 15% 이상이면 0~35, 미만이면 무채색 36~39 중 최댓값을 선택한다.
+   * 유채색 비율이 15% 이상이면 0~CHROMATIC_COUNT-1, 미만이면 무채색 CHROMATIC_COUNT~39 중 최댓값을 선택한다.
    * 동점이면 작은 인덱스를 선택하며, 전체 합계가 0이면 null을 반환한다.
    */
   public static String dominantColor(List<Double> bins) {
@@ -48,13 +44,14 @@ public final class ColorBins {
     if (total == 0) {
       return null;
     }
-    double chromatic = bins.subList(0, 36).stream().mapToDouble(Double::doubleValue).sum();
+    double chromatic = bins.subList(0, CHROMATIC_COUNT)
+        .stream().mapToDouble(Double::doubleValue).sum();
     double ratio = chromatic / total;
     double threshold = 0.15;
     // 비율 크기에 비례하는 극소 오차만 허용해 반복 누적 시 15% 경계가 뒤집히지 않게 한다.
     double tolerance = Math.max(Math.abs(ratio), threshold) * 1e-12;
-    int start = ratio >= threshold || threshold - ratio <= tolerance ? 0 : 36;
-    int end = start == 0 ? 36 : 40;
+    int start = ratio >= threshold || threshold - ratio <= tolerance ? 0 : CHROMATIC_COUNT;
+    int end = start == 0 ? CHROMATIC_COUNT : HEX.size();
     int best = start;
     for (int i = start + 1; i < end; i++) {
       if (bins.get(i) > bins.get(best)) {
