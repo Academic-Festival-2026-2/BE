@@ -8,5 +8,5 @@ public interface MapService {
 
   BoundaryResponse getBoundaries(String regionCode);
 
-  MapDongsResponse getDongs(TimeBand timeBand);
+  MapDongsResponse getDongs(TimeBand timeBand, String regionCode);
 }

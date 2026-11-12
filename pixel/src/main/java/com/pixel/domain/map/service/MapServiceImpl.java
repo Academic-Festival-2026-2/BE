@@ -46,10 +46,12 @@ public class MapServiceImpl implements MapService {
   }
 
   @Override
-  public MapDongsResponse getDongs(TimeBand timeBand) {
+  public MapDongsResponse getDongs(TimeBand timeBand, String regionCode) {
     Season season = seasonService.getCurrentSeason();
+    Region region = regionService.getRegion(regionCode);
 
-    List<ColorCell> cells = colorCellRepository.findForMap(season, timeBand);
+    List<ColorCell> cells =
+        colorCellRepository.findForMap(season, timeBand, region.getRegionCode());
 
     List<MapDongsResponse.DongColor> dongs = cells
         .stream()

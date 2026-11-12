@@ -140,7 +140,7 @@ class ColorCellAggregationTest {
     upload(userId, DAY, DONG, TimeBand.NIGHT);
     upload(userId, DAY, OTHER_DONG, TimeBand.DAY);
     tx.executeWithoutResult(status -> {
-      var result = cells.findForMap(em.find(Season.class, seasonId), TimeBand.DAY);
+      var result = cells.findForMap(em.find(Season.class, seasonId), TimeBand.DAY, "3105");
       assertEquals(2, result.size());
       var cell = result.get(0);
       assertEquals(4, cell.getPhotoCount());

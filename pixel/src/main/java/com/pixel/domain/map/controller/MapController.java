@@ -29,8 +29,9 @@ public class MapController {
   }
 
   @GetMapping("/dongs")
-  public ResponseEntity<ApiResponse<MapDongsResponse>> getDongs(@RequestParam TimeBand timeBand) {
+  public ResponseEntity<ApiResponse<MapDongsResponse>> getDongs(@RequestParam TimeBand timeBand,
+      @RequestParam(defaultValue = Region.DEFAULT_CODE) String regionCode) {
     return ResponseEntity.ok(
-        ApiResponse.of(MapSuccessCode._MAP_FOUND, mapService.getDongs(timeBand)));
+        ApiResponse.of(MapSuccessCode._MAP_FOUND, mapService.getDongs(timeBand, regionCode)));
   }
 }
