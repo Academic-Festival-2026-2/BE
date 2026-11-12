@@ -19,7 +19,7 @@ public enum PhotoErrorCode implements BaseErrorCode {
   TAKEN_AT_REQUIRED(HttpStatus.BAD_REQUEST, "PHOTO400_5", "촬영 날짜와 시간을 입력해야 합니다."),
   SHOT_DATE_MISMATCH(HttpStatus.BAD_REQUEST, "PHOTO400_6", "촬영 날짜가 촬영 일시와 다릅니다."),
   GPS_PAIR_REQUIRED(HttpStatus.BAD_REQUEST, "PHOTO400_7", "위도와 경도는 함께 입력해야 합니다."),
-  GPS_OUTSIDE_AREA(HttpStatus.BAD_REQUEST, "PHOTO400_8", "부천시 범위 밖의 GPS입니다."),
+  GPS_OUTSIDE_AREA(HttpStatus.BAD_REQUEST, "PHOTO400_8", "서비스 범위 밖의 GPS입니다."),
   DONG_GPS_MISMATCH(HttpStatus.BAD_REQUEST, "PHOTO400_9", "선택한 행정동과 GPS 위치가 다릅니다."),
   DONG_REQUIRED(HttpStatus.BAD_REQUEST, "PHOTO400_10", "행정동을 선택해야 합니다."),
   DONG_NOT_FOUND(HttpStatus.BAD_REQUEST, "PHOTO400_11", "존재하지 않는 행정동입니다."),

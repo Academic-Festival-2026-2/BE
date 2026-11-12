@@ -15,9 +15,12 @@ public class DongDetailResponse {
   private final String dongCode;
   private final String name;
   private final String guName;
+  private final String regionCode;
+  private final String regionName;
   private final SeasonType season;
   private final List<TimeBandSummary> timeBands;
   private final List<Point> points;
+
 
   @Getter
   @AllArgsConstructor
