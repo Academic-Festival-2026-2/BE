@@ -1,5 +1,6 @@
 package com.pixel.domain.photo.service;
 
+import com.pixel.domain.badge.service.BadgeService;
 import com.pixel.domain.colorcell.enums.TimeBand;
 import com.pixel.domain.colorcell.service.ColorCellService;
 import com.pixel.domain.dong.entity.Dong;
@@ -60,6 +61,7 @@ public class PhotoService {
   private final ColorCellService colorCellService;
   private final ImageModerator imageModerator;
   private final TransactionTemplate transactionTemplate;
+  private final BadgeService badgeService;
 
   public PhotoUploadResponse upload(Long userId, MultipartFile file, PhotoUploadRequest request) {
     if (file == null || file.isEmpty()) {
@@ -114,9 +116,15 @@ public class PhotoService {
       throw new GeneralException(PhotoErrorCode.GPS_PAIR_REQUIRED);
     }
 
-    Double latitude = request.latitude() != null ? request.latitude() : exif.latitude();
+    // 위치정보 이용에 동의하지 않은 회원은 요청 좌표와 사진 속 GPS를 모두 쓰지 않는다.
+    // 좌표 없이 고른 동으로만 저장되므로 exif_verified=false가 되어 나의 지도에만 반영된다.
+    boolean locationAgreed = user.getLocationAgreedAt() != null;
 
-    Double longitude = request.longitude() != null ? request.longitude() : exif.longitude();
+    Double latitude = !locationAgreed ? null
+        : (request.latitude() != null ? request.latitude() : exif.latitude());
+
+    Double longitude = !locationAgreed ? null
+        : (request.longitude() != null ? request.longitude() : exif.longitude());
 
     if ((latitude == null) != (longitude == null)) {
       throw new GeneralException(PhotoErrorCode.GPS_PAIR_REQUIRED);
@@ -152,8 +160,10 @@ public class PhotoService {
 
     TimeBand timeBand = resolveTimeBand(takenAt.toLocalTime());
 
+    // latitude가 null이면 nearlyEqual(double, double) 언박싱에서 NPE가 나므로 좌표 유무를 먼저 본다.
     boolean exifVerified =
-        exif.takenAt() != null
+        latitude != null
+            && exif.takenAt() != null
             && exif.latitude() != null
             && exif.longitude() != null
             && exif.takenAt().equals(takenAt)
@@ -270,6 +280,9 @@ public class PhotoService {
       }
 
       var contribution = colorCellService.aggregate(photo);
+      // 집계와 같은 트랜잭션에서 준다. 동 잠금을 잡은 뒤라 "동의 몇 번째 사진"이 겹치지 않는다.
+      var newBadges =
+          badgeService.awardForUpload(photo, Photo.countsForPublicMap(exifVerified, aiVerdict));
 
       return new PhotoUploadResponse(
           photo.getPhotoId(),
@@ -282,7 +295,8 @@ public class PhotoService {
           aiVerdict,
           moderation.toAiReason(),
           contribution.cellPhotoCount(),
-          contribution.firstInCell());
+          contribution.firstInCell(),
+          newBadges);
     });
   }
 

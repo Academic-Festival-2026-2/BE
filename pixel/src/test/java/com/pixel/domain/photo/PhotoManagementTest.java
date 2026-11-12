@@ -168,7 +168,10 @@ class PhotoManagementTest {
         .andExpect(status().isForbidden());
     mvc.perform(get("/api/photos/" + id).header("Authorization", token(userId)))
         .andExpect(status().isOk()).andExpect(jsonPath("$.code").value("PHOTO200_1"))
-        .andExpect(jsonPath("$.result.name").value("테스트동"));
+        .andExpect(jsonPath("$.result.name").value("테스트동"))
+        .andExpect(jsonPath("$.result.bins.length()").value(40))
+        .andExpect(jsonPath("$.result.bins[0]").value(1.0))
+        .andExpect(jsonPath("$.result.bins[1]").value(0.0));
     management.changeVisibility(id, userId, true);
     mvc.perform(get("/api/photos/" + id)).andExpect(status().isOk());
     mvc.perform(get("/api/photos/999999")).andExpect(status().isNotFound());
