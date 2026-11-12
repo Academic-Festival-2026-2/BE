@@ -15,6 +15,8 @@ import com.pixel.domain.mymap.dto.SharedMapResponse;
 import com.pixel.domain.mymap.exception.code.MyMapErrorCode;
 import com.pixel.domain.photo.entity.Photo;
 import com.pixel.domain.photo.repository.PhotoRepository;
+import com.pixel.domain.region.entity.Region;
+import com.pixel.domain.region.service.RegionService;
 import com.pixel.domain.season.entity.Season;
 import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.domain.season.service.SeasonService;
@@ -30,7 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,17 +47,20 @@ public class MyMapServiceImpl implements MyMapService {
   private final PhotoRepository photoRepository;
   private final ColorCellRepository colorCellRepository;
   private final UserRepository userRepository;
+  private final RegionService regionService;
 
   @Override
-  public MyMapResponse getMyMap(Long userId, SeasonType seasonType) {
-    return buildMap(userId, seasonType, false);
+  public MyMapResponse getMyMap(Long userId, SeasonType seasonType, String regionCode) {
+    return buildMap(userId, seasonType, false, regionCode);
   }
 
   // 공유 지도는 publicOnly = true로 비공개 사진을 뺀다.
-  private MyMapResponse buildMap(Long userId, SeasonType seasonType, boolean publicOnly) {
+  private MyMapResponse buildMap(Long userId, SeasonType seasonType, boolean publicOnly,
+      String regionCode) {
     Season season = seasonService.getSeason(seasonType);
+    Region region = regionService.getRegion(regionCode);
 
-    List<Dong> dongs = dongRepository.findAll(Sort.by("dongCode"));
+    List<Dong> dongs = dongRepository.findByRegionRegionCodeOrderByDongCode(region.getRegionCode());
 
     Map<CellKey, List<Photo>> myPhotos = groupMyPhotosByCell(userId, season, publicOnly);
 
@@ -108,12 +112,12 @@ public class MyMapServiceImpl implements MyMapService {
   }
 
   @Override
-  public SharedMapResponse getSharedMap(String shareKey, SeasonType seasonType) {
+  public SharedMapResponse getSharedMap(String shareKey, SeasonType seasonType, String regionCode) {
     User user = userRepository.findByShareKeyAndStatus(shareKey, UserStatus.ACTIVE)
         .orElseThrow(() -> new GeneralException(MyMapErrorCode._SHARED_MAP_NOT_FOUND));
 
     return new SharedMapResponse(user.getNickname(), user.getProfileImage(),
-        buildMap(user.getUserId(), seasonType, true));
+        buildMap(user.getUserId(), seasonType, true, regionCode));
   }
 
   private MyMapResponse.Cell toCell(Dong dong, TimeBand timeBand, List<Photo> photos,

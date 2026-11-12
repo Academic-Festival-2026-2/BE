@@ -6,6 +6,7 @@ import com.pixel.domain.mymap.dto.MyMapResponse;
 import com.pixel.domain.mymap.dto.MyMapShareResponse;
 import com.pixel.domain.mymap.exception.code.MyMapSuccessCode;
 import com.pixel.domain.mymap.service.MyMapService;
+import com.pixel.domain.region.entity.Region;
 import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.global.apiPayload.ApiResponse;
 import lombok.RequiredArgsConstructor;
@@ -28,9 +29,11 @@ public class MyMapController {
 
   @GetMapping
   public ResponseEntity<ApiResponse<MyMapResponse>> getMyMap(@AuthenticationPrincipal Long userId,
-      @RequestParam(defaultValue = "AUTUMN") SeasonType season) {
+      @RequestParam(defaultValue = "AUTUMN") SeasonType season,
+      @RequestParam(defaultValue = Region.DEFAULT_CODE) String regionCode) {
     return ResponseEntity.ok(
-        ApiResponse.of(MyMapSuccessCode._MY_MAP_FOUND, myMapService.getMyMap(userId, season)));
+        ApiResponse.of(MyMapSuccessCode._MY_MAP_FOUND,
+            myMapService.getMyMap(userId, season, regionCode)));
   }
 
   @GetMapping("/dongs/{dongCode}")

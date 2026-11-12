@@ -13,6 +13,8 @@ import com.pixel.domain.dong.repository.DongRepository;
 import com.pixel.domain.mymap.dto.MyMapResponse;
 import com.pixel.domain.photo.entity.Photo;
 import com.pixel.domain.photo.repository.PhotoRepository;
+import com.pixel.domain.region.entity.Region;
+import com.pixel.domain.region.service.RegionService;
 import com.pixel.domain.season.entity.Season;
 import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.domain.season.service.SeasonService;
@@ -26,7 +28,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Sort;
 
 @ExtendWith(MockitoExtension.class)
 class MyMapServiceImplTest {
@@ -45,10 +46,14 @@ class MyMapServiceImplTest {
   @Mock
   private ColorCellRepository colorCellRepository;
 
+  @Mock
+  private RegionService regionService;
+
   @InjectMocks
   private MyMapServiceImpl myMapService;
 
   private final Season season = mock(Season.class);
+  private final Region region = mock(Region.class);
   private Dong dongA;
   private Dong dongB;
 
@@ -58,10 +63,14 @@ class MyMapServiceImplTest {
 
     given(season.getSeason()).willReturn(SeasonType.AUTUMN);
 
+    given(regionService.getRegion("3105")).willReturn(region);
+    given(region.getRegionCode()).willReturn("3105");
+
     dongA = dong("A");
     dongB = dong("B");
 
-    given(dongRepository.findAll(Sort.by("dongCode"))).willReturn(List.of(dongA, dongB));
+    given(dongRepository.findByRegionRegionCodeOrderByDongCode("3105"))
+        .willReturn(List.of(dongA, dongB));
   }
 
   @Test
@@ -69,7 +78,7 @@ class MyMapServiceImplTest {
     givenPhotos();
     givenColorCells();
 
-    MyMapResponse response = myMapService.getMyMap(USER_ID, SeasonType.AUTUMN);
+    MyMapResponse response = myMapService.getMyMap(USER_ID, SeasonType.AUTUMN, "3105");
 
     assertThat(response.getSeason()).isEqualTo(SeasonType.AUTUMN);
     assertThat(response.getTotalCellCount()).isEqualTo(8);
@@ -85,7 +94,7 @@ class MyMapServiceImplTest {
     givenPhotos(photo(dongA, TimeBand.DAY, bins(Map.of(12, 1.0))));
     givenColorCells();
 
-    MyMapResponse response = myMapService.getMyMap(USER_ID, SeasonType.AUTUMN);
+    MyMapResponse response = myMapService.getMyMap(USER_ID, SeasonType.AUTUMN, "3105");
 
     MyMapResponse.Cell filled = cellOf(response, "A", TimeBand.DAY);
     assertThat(filled.isFilled()).isTrue();
@@ -103,7 +112,7 @@ class MyMapServiceImplTest {
 
     givenColorCells();
 
-    MyMapResponse response = myMapService.getMyMap(USER_ID, SeasonType.AUTUMN);
+    MyMapResponse response = myMapService.getMyMap(USER_ID, SeasonType.AUTUMN, "3105");
 
     MyMapResponse.Cell cell = cellOf(response, "A", TimeBand.DAY);
 
@@ -116,7 +125,7 @@ class MyMapServiceImplTest {
     givenPhotos();
     givenColorCells(colorCell(dongB, TimeBand.NIGHT, "#861318"));
 
-    MyMapResponse response = myMapService.getMyMap(USER_ID, SeasonType.AUTUMN);
+    MyMapResponse response = myMapService.getMyMap(USER_ID, SeasonType.AUTUMN, "3105");
 
     MyMapResponse.Cell cell = cellOf(response, "B", TimeBand.NIGHT);
 

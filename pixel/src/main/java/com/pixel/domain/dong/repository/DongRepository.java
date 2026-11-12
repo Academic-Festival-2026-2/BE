@@ -50,4 +50,6 @@ public interface DongRepository extends JpaRepository<Dong, String> {
       nativeQuery = true)
   Optional<String> findDongCodeByCoordinates(
       @Param("latitude") double latitude, @Param("longitude") double longitude);
+
+  List<Dong> findByRegionRegionCodeOrderByDongCode(String regionCode);
 }
