@@ -654,6 +654,9 @@ class PhotoUploadTest {
     String lookup = DongRepository.class.getMethod("findDongCodeByCoordinates",
         double.class, double.class)
         .getAnnotation(org.springframework.data.jpa.repository.Query.class).value();
-    assertTrue(lookup.replaceAll("\\s+", " ").contains("ORDER BY dong_code LIMIT 1"));
+    String normalized = lookup.replaceAll("\\s+", " ");
+    assertTrue(normalized.contains("MIN(dong_code)"));
+    assertTrue(normalized.contains("MBRContains("));
+    assertTrue(normalized.contains("ST_SRID(boundary, 0)"));
   }
 }
