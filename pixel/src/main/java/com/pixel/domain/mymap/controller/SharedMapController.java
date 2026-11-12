@@ -21,7 +21,6 @@ public class SharedMapController {
 
   private final MyMapService myMapService;
 
-
   @GetMapping("/{shareKey}")
   public ResponseEntity<ApiResponse<SharedMapResponse>> getSharedMap(
       @PathVariable String shareKey,

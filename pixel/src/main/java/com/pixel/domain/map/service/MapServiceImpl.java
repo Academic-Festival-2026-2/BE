@@ -38,8 +38,9 @@ public class MapServiceImpl implements MapService {
         dongRepository.findAllBoundaries(region.getRegionCode())
             .stream()
             .map(view -> new BoundaryResponse.Feature(
-            new BoundaryResponse.Properties(view.getDongCode(), view.getName(), view.getGuName()),
-            view.getGeometry())).toList();
+                new BoundaryResponse.Properties(view.getDongCode(), view.getName(), view.getGuName()),
+                view.getGeometry()))
+            .toList();
 
     return new BoundaryResponse(dongRepository.findBoundaryVersion(region.getRegionCode()),
         region.getRegionCode(), region.getName(), features);

@@ -21,7 +21,6 @@ public class DongDetailResponse {
   private final List<TimeBandSummary> timeBands;
   private final List<Point> points;
 
-
   @Getter
   @AllArgsConstructor
   public static class TimeBandSummary {
