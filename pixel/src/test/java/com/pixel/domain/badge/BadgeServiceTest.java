@@ -118,6 +118,18 @@ class BadgeServiceTest {
   }
 
   @Test
+  void duplicateInsertKeepsFirstRowWithoutError() {
+    // 동시 업로드로 같은 배지를 두 번 넣어도 실패하지 않고 처음 행이 남는다.
+    LocalDateTime first = LocalDateTime.of(2026, 11, 1, 9, 0);
+    tx.executeWithoutResult(status -> {
+      badges.insertIfAbsent(userId, BadgeType.FIRST_PHOTO.name(), null, null, first);
+      badges.insertIfAbsent(userId, BadgeType.FIRST_PHOTO.name(), null, null, first.plusDays(1));
+    });
+    assertEquals(1, badges.count());
+    assertEquals(first, badges.findAll().get(0).getCreatedAt());
+  }
+
+  @Test
   void firstPhotoOnPublicMapGivesPioneerAndTopTen() {
     assertEquals(List.of(BadgeType.FIRST_PHOTO, BadgeType.DONG_FIRST, BadgeType.DONG_TOP10),
         upload(userId, DONG, TimeBand.DAY, true));

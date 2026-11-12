@@ -18,7 +18,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 // 회원이 받은 배지. 한 번 받으면 사진을 지워도 남는다.
-// 저장은 UserBadgeRepository.insertIfAbsent(INSERT IGNORE)로만 하고, 엔티티는 조회에만 쓴다.
+// 저장은 UserBadgeRepository.insertIfAbsent(중복이면 그대로 둠)로만 하고, 엔티티는 조회에만 쓴다.
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity

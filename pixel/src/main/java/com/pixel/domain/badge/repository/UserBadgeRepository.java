@@ -22,15 +22,18 @@ public interface UserBadgeRepository extends JpaRepository<UserBadge, Long> {
       """)
   List<EarnedBadge> findEarnedByUserId(@Param("userId") Long userId);
 
-  // 이미 받은 배지면 아무것도 하지 않고 0을 돌려준다.
+  // 이미 받은 배지면 기존 행을 그대로 둔다.
   // 같은 회원의 업로드가 동시에 들어와도 UNIQUE(user_id, badge_type) 충돌로 업로드가 실패하지 않게 한다.
+  // INSERT IGNORE와 달리 중복만 넘어가고, CHECK·FK·NOT NULL 위반은 오류로 드러난다.
+  // 반환값으로는 새로 들어갔는지 알 수 없다(드라이버가 중복에도 1을 돌려줄 수 있음). 판단은 BadgeService가 한다.
   // 받은 시각은 앱(한국 시간)에서 넘긴다. DB의 CURRENT_TIMESTAMP는 RDS 기본 시간대(UTC)라 날짜가 어긋난다.
   @Modifying
   @Query(value = """
-      INSERT IGNORE INTO user_badges (user_id, badge_type, photo_id, dong_code, created_at)
+      INSERT INTO user_badges (user_id, badge_type, photo_id, dong_code, created_at)
       VALUES (:userId, :badgeType, :photoId, :dongCode, :earnedAt)
+      ON DUPLICATE KEY UPDATE user_id = user_id
       """, nativeQuery = true)
-  int insertIfAbsent(@Param("userId") Long userId, @Param("badgeType") String badgeType,
+  void insertIfAbsent(@Param("userId") Long userId, @Param("badgeType") String badgeType,
       @Param("photoId") Long photoId, @Param("dongCode") String dongCode,
       @Param("earnedAt") LocalDateTime earnedAt);
 }

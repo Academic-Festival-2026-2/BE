@@ -94,11 +94,10 @@ public class BadgeService {
 
   private void award(List<BadgeType> awarded, Long userId, BadgeType type, Photo photo,
       String dongCode) {
-    // 동시에 올린 다른 업로드가 먼저 받았다면 0이 돌아와 이번 응답에는 넣지 않는다.
+    // 호출 전에 보유 배지(owned)를 확인했으므로 여기서 넣는 배지는 새 배지다.
+    // 같은 회원이 동시에 올려 둘 다 처음 받는 경우만 DB에는 한 번 들어가고 두 응답에 모두 표시된다.
     // 다른 엔티티의 created_at(BaseEntity)과 같이 JVM 시간(운영 TZ=Asia/Seoul)으로 남긴다.
-    if (badges.insertIfAbsent(userId, type.name(), photo.getPhotoId(), dongCode,
-        LocalDateTime.now()) == 1) {
-      awarded.add(type);
-    }
+    badges.insertIfAbsent(userId, type.name(), photo.getPhotoId(), dongCode, LocalDateTime.now());
+    awarded.add(type);
   }
 }
