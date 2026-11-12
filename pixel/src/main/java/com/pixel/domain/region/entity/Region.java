@@ -14,6 +14,9 @@ import lombok.NoArgsConstructor;
 @Table(name = "regions")
 public class Region {
 
+  // 지역 코드를 안보내면 부천, FE에서 지역 고를 수 있게 되면 삭제하겠음.
+  public static final String DEFAULT_CODE = "3105";
+
   @Id
   @Column(name = "region_code", columnDefinition = "CHAR(4)")
   private String regionCode;

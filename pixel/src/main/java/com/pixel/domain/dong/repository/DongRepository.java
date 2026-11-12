@@ -23,12 +23,13 @@ public interface DongRepository extends JpaRepository<Dong, String> {
               + "       gu_name               AS guName, "
               + "       ST_AsGeoJSON(boundary, 5) AS geometry "
               + "FROM dongs "
+              + "WHERE region_code = :regionCode "
               + "ORDER BY dong_code ",
       nativeQuery = true)
-  List<DongBoundaryView> findAllBoundaries();
+  List<DongBoundaryView> findAllBoundaries(@Param("regionCode") String regionCode);
 
-  @Query("SELECT MAX(d.boundaryVersion) FROM Dong d")
-  String findBoundaryVersion();
+  @Query("SELECT MAX(d.boundaryVersion) FROM Dong d WHERE d.region.regionCode = :regionCode")
+  String findBoundaryVersion(@Param("regionCode") String regionCode);
 
   @Query(
       value =

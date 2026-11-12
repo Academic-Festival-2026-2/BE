@@ -5,6 +5,7 @@ import com.pixel.domain.map.dto.BoundaryResponse;
 import com.pixel.domain.map.dto.MapDongsResponse;
 import com.pixel.domain.map.exception.code.MapSuccessCode;
 import com.pixel.domain.map.service.MapService;
+import com.pixel.domain.region.entity.Region;
 import com.pixel.global.apiPayload.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,9 +22,10 @@ public class MapController {
   private final MapService mapService;
 
   @GetMapping("/boundaries")
-  public ResponseEntity<ApiResponse<BoundaryResponse>> getBoundaries() {
+  public ResponseEntity<ApiResponse<BoundaryResponse>> getBoundaries(
+      @RequestParam(defaultValue = Region.DEFAULT_CODE) String regionCode) {
     return ResponseEntity.ok(
-        ApiResponse.of(MapSuccessCode._BOUNDARIES_FOUND, mapService.getBoundaries()));
+        ApiResponse.of(MapSuccessCode._BOUNDARIES_FOUND, mapService.getBoundaries(regionCode)));
   }
 
   @GetMapping("/dongs")
