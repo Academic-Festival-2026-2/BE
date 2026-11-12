@@ -14,6 +14,7 @@ import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.photo.entity.Photo;
 import com.pixel.domain.photo.enums.AiVerdict;
 import com.pixel.domain.photo.repository.PhotoRepository;
+import com.pixel.domain.region.entity.Region;
 import com.pixel.domain.season.entity.Season;
 import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.domain.user.entity.User;
@@ -69,12 +70,19 @@ class BadgeServiceTest {
       em.createQuery("DELETE FROM User").executeUpdate();
       em.createQuery("DELETE FROM Season").executeUpdate();
       em.createQuery("DELETE FROM Dong").executeUpdate();
+      em.createQuery("DELETE FROM Region").executeUpdate();
+      var region = BeanUtils.instantiateClass(Region.class);
+      ReflectionTestUtils.setField(region, "regionCode", "3105");
+      ReflectionTestUtils.setField(region, "sidoName", "경기도");
+      ReflectionTestUtils.setField(region, "name", "부천시");
+      em.persist(region);
       for (int i = 0; i < DONGS.size(); i++) {
         var dong = BeanUtils.instantiateClass(Dong.class);
         ReflectionTestUtils.setField(dong, "dongCode", DONGS.get(i));
         ReflectionTestUtils.setField(dong, "name", "테스트" + (i + 1) + "동");
         ReflectionTestUtils.setField(dong, "guName", "원미구");
         ReflectionTestUtils.setField(dong, "boundaryVersion", "20260101");
+        ReflectionTestUtils.setField(dong, "region", region);
         em.persist(dong);
       }
       var season = BeanUtils.instantiateClass(Season.class);

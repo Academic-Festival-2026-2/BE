@@ -47,16 +47,25 @@ CREATE TABLE refresh_token (
     CONSTRAINT fk_refresh_token_user FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
 
+CREATE TABLE regions (
+    region_code  CHAR(4)      NOT NULL COMMENT '동 코드 앞 4자리 (부천 3105)',
+    sido_name    VARCHAR(10)  NOT NULL,
+    name         VARCHAR(10)  NOT NULL COMMENT '시/군 이름 (부천시)',
+    PRIMARY KEY (region_code),
+    CONSTRAINT ck_regions_code CHECK (REGEXP_LIKE(region_code, '^[0-9]{4}$'))
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
+
 CREATE TABLE dongs (
     dong_code         CHAR(10)     NOT NULL COMMENT '통계청(SGIS) 행정동 코드 8자리',
+    region_code       CHAR(4)      NOT NULL COMMENT '지역 코드 (동 코드 앞 4자리)',
     name              VARCHAR(20)  NOT NULL,
-    gu_name           VARCHAR(10)  NOT NULL,
+    gu_name           VARCHAR(10)  NULL,
     boundary          MULTIPOLYGON NOT NULL SRID 4326 COMMENT 'WGS84 위경도',
     boundary_version  VARCHAR(8)   NOT NULL COMMENT '경계 데이터 기준일 YYYYMMDD',
     PRIMARY KEY (dong_code),
     SPATIAL INDEX idx_dongs_boundary (boundary),
     CONSTRAINT ck_dongs_code CHECK (REGEXP_LIKE(dong_code, '^[0-9]{8}$')),
-    CONSTRAINT ck_dongs_gu CHECK (gu_name IN ('원미구', '소사구', '오정구'))
+    CONSTRAINT fk_dongs_region FOREIGN KEY (region_code) REFERENCES regions (region_code)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
 
 CREATE TABLE seasons (
