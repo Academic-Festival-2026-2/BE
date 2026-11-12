@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.pixel.domain.badge.enums.BadgeType;
+import com.pixel.domain.badge.service.BadgeService;
 import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.colorcell.service.ColorCellService;
 import com.pixel.domain.dong.repository.DongRepository;
@@ -61,12 +63,14 @@ class PhotoUploadTest {
   private final S3StorageService storage = mock(S3StorageService.class);
   private final ColorCellService aggregation = mock(ColorCellService.class);
   private final ImageModerator moderator = mock(ImageModerator.class);
+  private final BadgeService badges = mock(BadgeService.class);
   // 트랜잭션 동기화는 각 테스트가 직접 초기화하고 complete()로 완료 상태를 흉내 낸다.
   private final TransactionTemplate tx =
       new TransactionTemplate(mock(PlatformTransactionManager.class));
   private final PhotoService service =
       new PhotoService(
-          photos, users, dongs, seasons, metadata, images, storage, aggregation, moderator, tx);
+          photos, users, dongs, seasons, metadata, images, storage, aggregation, moderator, tx,
+          badges);
   private final MockMultipartFile file =
       new MockMultipartFile(
           "image", "test.jpg", "image/jpeg", new byte[] {(byte) 255, (byte) 216, (byte) 255, 1});
@@ -75,7 +79,10 @@ class PhotoUploadTest {
   void setup() {
     when(aggregation.aggregate(any())).thenReturn(new ColorCellService.Contribution(null, false));
     when(moderator.moderate(any())).thenReturn(ModerationResult.approved());
-    when(users.findById(1L)).thenReturn(Optional.of(mock(User.class)));
+    // 기본 회원은 위치정보 이용에 동의한 상태. 미동의 회원은 notAgreedUser()로 바꾼다.
+    User agreed = mock(User.class);
+    when(agreed.getLocationAgreedAt()).thenReturn(LocalDateTime.parse("2026-10-01T00:00"));
+    when(users.findById(1L)).thenReturn(Optional.of(agreed));
     Dong dong = org.springframework.beans.BeanUtils.instantiateClass(Dong.class);
     ReflectionTestUtils.setField(dong, "dongCode", "31050110");
     ReflectionTestUtils.setField(dong, "name", "심곡동");
@@ -193,6 +200,50 @@ class PhotoUploadTest {
     verifyNoInteractions(untouched);
   }
 
+  private void notAgreedUser() {
+    when(users.findById(1L)).thenReturn(Optional.of(mock(User.class)));
+  }
+
+  @Test
+  void locationNotAgreedIgnoresExifGpsAndKeepsPhotoPersonal() {
+    notAgreedUser();
+    when(metadata.read(any())).thenReturn(new PhotoMetadataReader.PhotoMetadata(
+        LocalDateTime.parse("2026-10-29T13:00"), 37.5, 126.7));
+
+    var result = service.upload(1L, file, request("13:00", null, null));
+
+    assertFalse(result.exifVerified());
+    assertEquals("31050110", result.dongCode());
+    verify(dongs, never()).findDongCodeByCoordinates(anyDouble(), anyDouble());
+    verify(photos, never()).updateLocationAndVerification(any(), any(), any(), anyBoolean());
+    verify(aggregation, never()).lockForUpload(any());
+  }
+
+  @Test
+  void locationNotAgreedIgnoresRequestCoordinates() {
+    notAgreedUser();
+
+    var result = service.upload(1L, file, request("13:00", 37.5, 126.7));
+
+    assertFalse(result.exifVerified());
+    verify(dongs, never()).findDongCodeByCoordinates(anyDouble(), anyDouble());
+    verify(photos, never()).updateLocationAndVerification(any(), any(), any(), anyBoolean());
+  }
+
+  @Test
+  void locationNotAgreedRequiresDong() {
+    notAgreedUser();
+    when(metadata.read(any())).thenReturn(new PhotoMetadataReader.PhotoMetadata(
+        LocalDateTime.parse("2026-10-29T13:00"), 37.5, 126.7));
+    var noDong = new PhotoUploadRequest(null, null, null, LocalDateTime.parse("2026-10-29T13:00"),
+        null, true, Collections.nCopies(5, "#123ABC"), Collections.nCopies(40, 0.025));
+
+    var ex = assertThrows(GeneralException.class, () -> service.upload(1L, file, noDong));
+
+    assertEquals(PhotoErrorCode.DONG_REQUIRED, ex.getCode());
+    verifyNoInteractions(storage);
+  }
+
   @Test
   void partialManualGpsCannotMixWithExif() {
     when(metadata.read(any()))
@@ -285,10 +336,21 @@ class PhotoUploadTest {
   }
 
   @Test
+  void newBadgesAreAwardedAfterAggregationAndReturned() {
+    when(badges.awardForUpload(any(), anyBoolean())).thenReturn(List.of(BadgeType.FIRST_PHOTO));
+    var response = service.upload(1L, file, request("13:00", null, null));
+    assertEquals(List.of(BadgeType.FIRST_PHOTO), response.newBadges());
+    // 좌표가 없어 모두의 지도에는 들어가지 않음
+    var order = inOrder(aggregation, badges);
+    order.verify(aggregation).aggregate(any());
+    order.verify(badges).awardForUpload(any(), eq(false));
+  }
+
+  @Test
   void moderationRunsBeforeTransactionStarts() {
     PlatformTransactionManager manager = mock(PlatformTransactionManager.class);
     var uploadService = new PhotoService(photos, users, dongs, seasons, metadata, images, storage,
-        aggregation, moderator, new TransactionTemplate(manager));
+        aggregation, moderator, new TransactionTemplate(manager), badges);
     uploadService.upload(1L, file, request("13:00", null, null));
     var order = inOrder(moderator, manager, storage);
     order.verify(moderator).moderate(any());
@@ -300,7 +362,7 @@ class PhotoUploadTest {
   void rejectedPhotoNeverStartsTransaction() {
     PlatformTransactionManager manager = mock(PlatformTransactionManager.class);
     var uploadService = new PhotoService(photos, users, dongs, seasons, metadata, images, storage,
-        aggregation, moderator, new TransactionTemplate(manager));
+        aggregation, moderator, new TransactionTemplate(manager), badges);
     when(moderator.moderate(any())).thenReturn(ModerationResult.rejected());
     assertThrows(GeneralException.class,
         () -> uploadService.upload(1L, file, request("13:00", null, null)));
@@ -559,7 +621,7 @@ class PhotoUploadTest {
     when(dongs.findDongCodeByCoordinates(37.5, 126.7)).thenReturn(Optional.of("31050110"));
     when(photos.updateLocationAndVerification(7L, 37.5, 126.7, false)).thenReturn(1);
     var uploadService = new PhotoService(photos, users, dongs, seasons, new PhotoMetadataReader(),
-        realProcessor, storage, aggregation, moderator, tx);
+        realProcessor, storage, aggregation, moderator, tx, badges);
     uploadService.upload(1L,
         new MockMultipartFile("image", "gps.jpg", "image/jpeg", original),
         request("13:00", null, null));

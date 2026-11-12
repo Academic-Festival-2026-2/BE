@@ -143,3 +143,20 @@ CREATE TABLE color_cells (
     CONSTRAINT ck_color_cells_color CHECK (dominant_color IS NULL OR REGEXP_LIKE(dominant_color, '^#[0-9A-F]{6}$', 'c')),
     CONSTRAINT ck_color_cells_empty CHECK ((photo_count = 0) = (dominant_color IS NULL))
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
+
+-- 회원이 받은 활동 배지 (BadgeType). 한 번 받으면 사진을 지워도 남는다.
+CREATE TABLE user_badges (
+    user_badge_id   BIGINT       NOT NULL AUTO_INCREMENT,
+    user_id         BIGINT       NOT NULL,
+    badge_type      VARCHAR(20)  NOT NULL,
+    photo_id        BIGINT       NULL COMMENT '배지를 받게 한 사진, 사진을 지우면 NULL',
+    dong_code       CHAR(10)     NULL COMMENT 'DONG_FIRST·DONG_TOP10만, 화면의 동 이름 표시용',
+    created_at      DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (user_badge_id),
+    UNIQUE KEY uk_user_badges_user_type (user_id, badge_type),
+    CONSTRAINT fk_user_badges_user FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE,
+    CONSTRAINT fk_user_badges_photo FOREIGN KEY (photo_id) REFERENCES photos (photo_id) ON DELETE SET NULL,
+    CONSTRAINT fk_user_badges_dong FOREIGN KEY (dong_code) REFERENCES dongs (dong_code),
+    CONSTRAINT ck_user_badges_type CHECK (badge_type IN (
+        'FIRST_PHOTO', 'DONG_FIRST', 'DONG_TOP10', 'DONG_FIVE', 'ALL_TIME_BANDS', 'PHOTO_TEN'))
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
