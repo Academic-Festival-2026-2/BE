@@ -290,4 +290,33 @@ class ColorCellAggregationTest {
     }
     tx.executeWithoutResult(status -> assertEquals(CellStatus.OK, cells.findAll().get(0).getStatus()));
   }
+
+  @Test
+  void findForMapReturnsOnlyCellsOfRequestedRegion() {
+    String otherRegionDong = "31060110";
+    tx.executeWithoutResult(status -> {
+      var region = BeanUtils.instantiateClass(Region.class);
+      ReflectionTestUtils.setField(region, "regionCode", "3106");
+      ReflectionTestUtils.setField(region, "sidoName", "경기도");
+      ReflectionTestUtils.setField(region, "name", "광명시");
+      em.persist(region);
+
+      var dong = BeanUtils.instantiateClass(Dong.class);
+      ReflectionTestUtils.setField(dong, "dongCode", otherRegionDong);
+      ReflectionTestUtils.setField(dong, "name", "테스트동");
+      // 구가 없는 지역 의도적 확인
+      ReflectionTestUtils.setField(dong, "boundaryVersion", "20260101");
+      ReflectionTestUtils.setField(dong, "region", region);
+      em.persist(dong);
+    });
+
+    upload(userId, DAY, DONG, TimeBand.DAY);              // 부천 동
+    upload(userId, DAY, otherRegionDong, TimeBand.DAY);   // 광명 동
+
+    tx.executeWithoutResult(status -> {
+      var result = cells.findForMap(em.find(Season.class, seasonId), TimeBand.DAY, "3105");
+      assertEquals(1, result.size());
+      assertEquals(DONG, result.get(0).getDong().getDongCode());
+    });
+  }
 }
