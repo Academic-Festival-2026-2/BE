@@ -21,7 +21,7 @@ mysql -u root -p --default-character-set=utf8mb4 pixel -e "source db/dongs/3106.
 cat db/dongs/*.sql | mysql -u root -p --default-character-set=utf8mb4 pixel
 ```
 
-확인: `SELECT COUNT(*) FROM regions;` → 31, `SELECT COUNT(*) FROM dongs;` → 638
+확인: `SELECT COUNT(*) FROM regions;` → 31, `SELECT COUNT(*) FROM dongs;` → 601 (부천 37 + 30개 시·군 564)
 
 ## 만든 방법
 
