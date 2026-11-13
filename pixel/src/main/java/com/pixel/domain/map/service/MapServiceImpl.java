@@ -85,9 +85,9 @@ public class MapServiceImpl implements MapService {
     return new MapDongsResponse(season.getSeason(), timeBand, dongs, topDongs);
   }
 
-  // 지역 목록과 bbox는 동 경계를 새로 넣을 때만 바뀐다. 처음 계산하면 서버 메모리에 보관,
-  // 경계를 넣은 뒤에는 서버를 재시작해야 반영된다.
-  @Cacheable("regions")
+  // 지역 목록과 bbox는 동 경계를 새로 넣을 때만 바뀐다. 처음 계산하면 서버 메모리에 보관하고,
+  // 경계를 넣은 뒤에는 서버를 재시작해야 반영된다. 빈 목록(경계를 아직 안 넣음)은 캐시하지 않는다
+  @Cacheable(value = "regions", unless = "#result.regions().isEmpty()")
   @Override
   public RegionListResponse getRegions() {
     List<RegionListResponse.Item> regions = regionRepository.findAllWithBounds()
