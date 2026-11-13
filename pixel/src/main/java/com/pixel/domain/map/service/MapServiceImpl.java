@@ -16,6 +16,7 @@ import com.pixel.domain.season.service.SeasonService;
 import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -84,6 +85,9 @@ public class MapServiceImpl implements MapService {
     return new MapDongsResponse(season.getSeason(), timeBand, dongs, topDongs);
   }
 
+  // 지역 목록과 bbox는 동 경계를 새로 넣을 때만 바뀐다. 처음 계산하면 서버 메모리에 보관,
+  // 경계를 넣은 뒤에는 서버를 재시작해야 반영된다.
+  @Cacheable("regions")
   @Override
   public RegionListResponse getRegions() {
     List<RegionListResponse.Item> regions = regionRepository.findAllWithBounds()
