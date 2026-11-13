@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.pixel.domain.badge.enums.BadgeType;
 import com.pixel.domain.badge.service.BadgeService;
+import com.pixel.domain.colorcell.util.ColorBins;
 import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.colorcell.service.ColorCellService;
 import com.pixel.domain.dong.repository.DongRepository;
@@ -115,7 +116,7 @@ class PhotoUploadTest {
         LocalDateTime.parse("2026-10-29T" + time),
         null,
         true,
-        Collections.nCopies(5, "#123ABC"),
+        Collections.nCopies(5, ColorBins.HEX.get(0)),
         Collections.nCopies(40, 0.025));
   }
 
@@ -236,7 +237,7 @@ class PhotoUploadTest {
     when(metadata.read(any())).thenReturn(new PhotoMetadataReader.PhotoMetadata(
         LocalDateTime.parse("2026-10-29T13:00"), 37.5, 126.7));
     var noDong = new PhotoUploadRequest(null, null, null, LocalDateTime.parse("2026-10-29T13:00"),
-        null, true, Collections.nCopies(5, "#123ABC"), Collections.nCopies(40, 0.025));
+        null, true, Collections.nCopies(5, ColorBins.HEX.get(0)), Collections.nCopies(40, 0.025));
 
     var ex = assertThrows(GeneralException.class, () -> service.upload(1L, file, noDong));
 
@@ -658,5 +659,17 @@ class PhotoUploadTest {
     assertTrue(normalized.contains("MIN(dong_code)"));
     assertTrue(normalized.contains("MBRContains("));
     assertTrue(normalized.contains("ST_SRID(boundary, 0)"));
+  }
+
+  @Test
+  void oldPaletteColorIsRejected() {
+    // 옛 팔레트의 첫 색. 새로고침 안 한 옛 화면에서 올린 경우
+    var oldPalette = new PhotoUploadRequest("31050110", null, null,
+        LocalDateTime.parse("2026-10-29T13:00"), null, true,
+        Collections.nCopies(5, "#861318"), Collections.nCopies(40, 0.025));
+
+    var ex = assertThrows(GeneralException.class, () -> service.upload(1L, file, oldPalette));
+
+    assertEquals(PhotoErrorCode.INVALID_PALETTE_COLOR, ex.getCode());
   }
 }
