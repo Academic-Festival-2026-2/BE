@@ -7,7 +7,9 @@ import com.pixel.domain.colorcell.util.ColorBins;
 import com.pixel.domain.dong.repository.DongRepository;
 import com.pixel.domain.map.dto.BoundaryResponse;
 import com.pixel.domain.map.dto.MapDongsResponse;
+import com.pixel.domain.map.dto.RegionListResponse;
 import com.pixel.domain.region.entity.Region;
+import com.pixel.domain.region.repository.RegionRepository;
 import com.pixel.domain.region.service.RegionService;
 import com.pixel.domain.season.entity.Season;
 import com.pixel.domain.season.service.SeasonService;
@@ -29,6 +31,7 @@ public class MapServiceImpl implements MapService {
   private final ColorCellRepository colorCellRepository;
   private final SeasonService seasonService;
   private final RegionService regionService;
+  private final RegionRepository regionRepository;
 
   @Override
   public BoundaryResponse getBoundaries(String regionCode) {
@@ -79,5 +82,19 @@ public class MapServiceImpl implements MapService {
         .toList();
 
     return new MapDongsResponse(season.getSeason(), timeBand, dongs, topDongs);
+  }
+
+  @Override
+  public RegionListResponse getRegions() {
+    List<RegionListResponse.Item> regions = regionRepository.findAllWithBounds()
+        .stream()
+        .map(view -> new RegionListResponse.Item(
+            view.getRegionCode(),
+            view.getName(),
+            view.getDongCount(),
+            List.of(view.getMinLng(), view.getMinLat(), view.getMaxLng(), view.getMaxLat())))
+        .toList();
+
+    return new RegionListResponse(Region.DEFAULT_CODE, regions);
   }
 }

@@ -3,6 +3,7 @@ package com.pixel.domain.map.controller;
 import com.pixel.domain.colorcell.enums.TimeBand;
 import com.pixel.domain.map.dto.BoundaryResponse;
 import com.pixel.domain.map.dto.MapDongsResponse;
+import com.pixel.domain.map.dto.RegionListResponse;
 import com.pixel.domain.map.exception.code.MapSuccessCode;
 import com.pixel.domain.map.service.MapService;
 import com.pixel.domain.region.entity.Region;
@@ -33,5 +34,11 @@ public class MapController {
       @RequestParam(defaultValue = Region.DEFAULT_CODE) String regionCode) {
     return ResponseEntity.ok(
         ApiResponse.of(MapSuccessCode._MAP_FOUND, mapService.getDongs(timeBand, regionCode)));
+  }
+
+  @GetMapping("/regions")
+  public ResponseEntity<ApiResponse<RegionListResponse>> getRegions() {
+    return ResponseEntity.ok(
+        ApiResponse.of(MapSuccessCode._REGIONS_FOUND, mapService.getRegions()));
   }
 }
