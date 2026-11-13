@@ -12,6 +12,8 @@
 
 `01` → `02` 다음에 실행한다. 순서는 상관없고, 이미 넣은 지역을 다시 넣으면 PK 중복으로 실패한다.
 
+- 넣은 뒤에 서버를 재시작해야 지역 목록에 반영된다.
+
 ```bash
 # pixel 폴더에서. 지역 하나
 mysql -u root -p --default-character-set=utf8mb4 pixel -e "source db/dongs/3106.sql"
