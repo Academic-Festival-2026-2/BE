@@ -4,6 +4,7 @@
 
 - 파일 하나 = 지역 하나: `regions` 1행 + 그 지역 `dongs` INSERT
 - 출처: 국가데이터처 SGIS 행정구역 경계, 기준일 20250630 (`02_dongs.sql`과 같은 자료)
+  - 그 뒤 개편된 동은 반영되지 않았다. 예외로 화성시(3124)의 `gu_name`만 2026-02-01 구 신설(만세·효행·병점·동탄구) 발표대로 채웠다 (경계·동 코드는 20250630 그대로)
 - 지역 코드 = 행정동 코드 앞 4자리 (수원 3101, 광명 3106, 화성 3124 …)
 - Docker 첫 실행 때 자동으로 들어가지 않는다 (`db/` 바로 아래 파일만 실행). 필요할 때 직접 넣는다.
 
@@ -22,6 +23,13 @@ cat db/dongs/*.sql | mysql -u root -p --default-character-set=utf8mb4 pixel
 ```
 
 확인: `SELECT COUNT(*) FROM regions;` → 31, `SELECT COUNT(*) FROM dongs;` → 601 (부천 37 + 30개 시·군 564)
+
+파일에 트랜잭션이 없어서 중간에 실패하면 `regions` 행만 남아 다시 넣을 때 PK 중복이 난다. 그 지역을 지우고 다시 넣는다 (동이 먼저):
+
+```sql
+DELETE FROM dongs WHERE region_code = '3106';
+DELETE FROM regions WHERE region_code = '3106';
+```
 
 ## 만든 방법
 
