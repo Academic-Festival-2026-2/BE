@@ -47,16 +47,25 @@ CREATE TABLE refresh_token (
     CONSTRAINT fk_refresh_token_user FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
 
+CREATE TABLE regions (
+    region_code  CHAR(4)      NOT NULL COMMENT '동 코드 앞 4자리 (부천 3105)',
+    sido_name    VARCHAR(10)  NOT NULL,
+    name         VARCHAR(10)  NOT NULL COMMENT '시/군 이름 (부천시)',
+    PRIMARY KEY (region_code),
+    CONSTRAINT ck_regions_code CHECK (REGEXP_LIKE(region_code, '^[0-9]{4}$'))
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
+
 CREATE TABLE dongs (
     dong_code         CHAR(10)     NOT NULL COMMENT '통계청(SGIS) 행정동 코드 8자리',
+    region_code       CHAR(4)      NOT NULL COMMENT '지역 코드 (동 코드 앞 4자리)',
     name              VARCHAR(20)  NOT NULL,
-    gu_name           VARCHAR(10)  NOT NULL,
+    gu_name           VARCHAR(10)  NULL,
     boundary          MULTIPOLYGON NOT NULL SRID 4326 COMMENT 'WGS84 위경도',
     boundary_version  VARCHAR(8)   NOT NULL COMMENT '경계 데이터 기준일 YYYYMMDD',
     PRIMARY KEY (dong_code),
     SPATIAL INDEX idx_dongs_boundary (boundary),
     CONSTRAINT ck_dongs_code CHECK (REGEXP_LIKE(dong_code, '^[0-9]{8}$')),
-    CONSTRAINT ck_dongs_gu CHECK (gu_name IN ('원미구', '소사구', '오정구'))
+    CONSTRAINT fk_dongs_region FOREIGN KEY (region_code) REFERENCES regions (region_code)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
 
 CREATE TABLE seasons (
@@ -133,4 +142,21 @@ CREATE TABLE color_cells (
         '{"type":"array","minItems":40,"maxItems":40,"items":{"type":"number","minimum":0}}', bins_sum)),
     CONSTRAINT ck_color_cells_color CHECK (dominant_color IS NULL OR REGEXP_LIKE(dominant_color, '^#[0-9A-F]{6}$', 'c')),
     CONSTRAINT ck_color_cells_empty CHECK ((photo_count = 0) = (dominant_color IS NULL))
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
+
+-- 회원이 받은 활동 배지 (BadgeType). 한 번 받으면 사진을 지워도 남는다.
+CREATE TABLE user_badges (
+    user_badge_id   BIGINT       NOT NULL AUTO_INCREMENT,
+    user_id         BIGINT       NOT NULL,
+    badge_type      VARCHAR(20)  NOT NULL,
+    photo_id        BIGINT       NULL COMMENT '배지를 받게 한 사진, 사진을 지우면 NULL',
+    dong_code       CHAR(10)     NULL COMMENT 'DONG_FIRST·DONG_TOP10만, 화면의 동 이름 표시용',
+    created_at      DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (user_badge_id),
+    UNIQUE KEY uk_user_badges_user_type (user_id, badge_type),
+    CONSTRAINT fk_user_badges_user FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE,
+    CONSTRAINT fk_user_badges_photo FOREIGN KEY (photo_id) REFERENCES photos (photo_id) ON DELETE SET NULL,
+    CONSTRAINT fk_user_badges_dong FOREIGN KEY (dong_code) REFERENCES dongs (dong_code),
+    CONSTRAINT ck_user_badges_type CHECK (badge_type IN (
+        'FIRST_PHOTO', 'DONG_FIRST', 'DONG_TOP10', 'DONG_FIVE', 'ALL_TIME_BANDS', 'PHOTO_TEN'))
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;

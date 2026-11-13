@@ -42,7 +42,7 @@ public class SecurityConfig {
                 "/error").permitAll()
             .requestMatchers(HttpMethod.GET,
                 "/api/map/boundaries", "/api/map/dongs", "/api/dongs/*", "/api/photos/*",
-                "/api/shared-maps/*").permitAll()
+                "/api/shared-maps/*", "/api/map/regions").permitAll()
             .anyRequest().authenticated()
         )
         .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, userRepository),

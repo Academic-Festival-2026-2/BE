@@ -22,7 +22,7 @@
 | `test` | 테스트만 추가·수정 | `[test] 마이페이지 흐름 테스트 추가 #10` |
 | `docs` | README 등 문서 수정 | `[docs] README의 binteum 이름 pixel로 변경 #61` |
 | `chore` | 설정·잡일 (의존성, .env.example, .gitignore, SQL·데이터, 파일 정리) | `[chore] 부천 동 경계 SQL 추가 #41` |
-| `deploy` | 배포용 `dev` → `main` PR | `[deploy] 배포용 dev, main 머지` |
+| `deploy` | 배포용 `dev` → `main` PR | `[deploy] 배포용 dev, main 머지 (#배포이슈번호)` |
 
 ### 커밋 템플릿
 
@@ -46,6 +46,7 @@ git config commit.cleanup strip
 ## PR
 
 - 제목: `[타입] 기능 요약 (#이슈번호)`
+- 배포 PR(`dev` → `main`)은 `[deploy] 배포용 dev, main 머지 (#배포이슈번호)`로 올립니다.
 - 본문
 
   ```markdown
@@ -60,11 +61,18 @@ git config commit.cleanup strip
   - [ ] Reviewers 등록
   - [ ] Assignees 등록
   - [ ] Label 등록
-  - [ ] 로컬 실행 / 테스트 확인
+  - [ ] CI 정상 작동 확인
   ```
 
 - `dev` 머지는 2명 이상 승인이 필요합니다.
 - CodeRabbit 리뷰는 PR 댓글 `@coderabbitai review`로 요청합니다.
+
+## CI
+
+- `dev`·`main`으로 올린 PR과 `dev` push마다 GitHub Actions가 `./gradlew test`를 실행합니다.
+- `BE test` 체크가 통과해야 `dev`에 머지할 수 있습니다.
+- 실패하면 PR의 Checks 탭에서 로그를 확인합니다. 실패한 테스트 목록은 실행 페이지의 Artifacts → `be-test-report`(7일 보관)에 있습니다.
+- PR 전에 `pixel` 폴더에서 `./gradlew test`(PowerShell은 `.\gradlew test`)로 먼저 확인합니다.
 
 ## 코드 스타일
 

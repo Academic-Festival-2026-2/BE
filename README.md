@@ -84,6 +84,7 @@ pixel/db/
 ├── 01_schema.sql   # 테이블 전체
 ├── 02_dongs.sql    # 부천 37개 동 경계 (SGIS, 기준일 20250630)
 ├── 03_seed.sql     # 2026 가을 판 + 148칸
+├── dongs/          # 경기도 30개 시·군 경계 (자동 실행 안 함, dongs/README.md 참고)
 ├── migration/      # 운영 DB에 적용할 변경 SQL (필요할 때 추가, 자동 실행 안 함)
 └── legacy/         # 옛 빈틈 테이블 정리용 (자동 실행 안 함)
 ```

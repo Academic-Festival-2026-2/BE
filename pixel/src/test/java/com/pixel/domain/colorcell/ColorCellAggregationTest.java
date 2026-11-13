@@ -15,6 +15,7 @@ import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.photo.entity.Photo;
 import com.pixel.domain.photo.enums.AiVerdict;
 import com.pixel.domain.photo.repository.PhotoRepository;
+import com.pixel.domain.region.entity.Region;
 import com.pixel.domain.season.entity.Season;
 import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.domain.user.entity.User;
@@ -73,12 +74,19 @@ class ColorCellAggregationTest {
       em.createQuery("DELETE FROM User").executeUpdate();
       em.createQuery("DELETE FROM Season").executeUpdate();
       em.createQuery("DELETE FROM Dong").executeUpdate();
+      em.createQuery("DELETE FROM Region").executeUpdate();
+      var region = BeanUtils.instantiateClass(Region.class);
+      ReflectionTestUtils.setField(region, "regionCode", "3105");
+      ReflectionTestUtils.setField(region, "sidoName", "경기도");
+      ReflectionTestUtils.setField(region, "name", "부천시");
+      em.persist(region);
       for (String code : List.of(DONG, OTHER_DONG)) {
         var dong = BeanUtils.instantiateClass(Dong.class);
         ReflectionTestUtils.setField(dong, "dongCode", code);
         ReflectionTestUtils.setField(dong, "name", "테스트동");
         ReflectionTestUtils.setField(dong, "guName", "원미구");
         ReflectionTestUtils.setField(dong, "boundaryVersion", "20260101");
+        ReflectionTestUtils.setField(dong, "region", region);
         em.persist(dong);
       }
       var season = BeanUtils.instantiateClass(Season.class);
@@ -132,7 +140,7 @@ class ColorCellAggregationTest {
     upload(userId, DAY, DONG, TimeBand.NIGHT);
     upload(userId, DAY, OTHER_DONG, TimeBand.DAY);
     tx.executeWithoutResult(status -> {
-      var result = cells.findForMap(em.find(Season.class, seasonId), TimeBand.DAY);
+      var result = cells.findForMap(em.find(Season.class, seasonId), TimeBand.DAY, "3105");
       assertEquals(2, result.size());
       var cell = result.get(0);
       assertEquals(4, cell.getPhotoCount());
@@ -281,5 +289,34 @@ class ColorCellAggregationTest {
       upload(userId, DAY.plusDays(i), DONG, TimeBand.DAY);
     }
     tx.executeWithoutResult(status -> assertEquals(CellStatus.OK, cells.findAll().get(0).getStatus()));
+  }
+
+  @Test
+  void findForMapReturnsOnlyCellsOfRequestedRegion() {
+    String otherRegionDong = "31060110";
+    tx.executeWithoutResult(status -> {
+      var region = BeanUtils.instantiateClass(Region.class);
+      ReflectionTestUtils.setField(region, "regionCode", "3106");
+      ReflectionTestUtils.setField(region, "sidoName", "경기도");
+      ReflectionTestUtils.setField(region, "name", "광명시");
+      em.persist(region);
+
+      var dong = BeanUtils.instantiateClass(Dong.class);
+      ReflectionTestUtils.setField(dong, "dongCode", otherRegionDong);
+      ReflectionTestUtils.setField(dong, "name", "테스트동");
+      // 구가 없는 지역 의도적 확인
+      ReflectionTestUtils.setField(dong, "boundaryVersion", "20260101");
+      ReflectionTestUtils.setField(dong, "region", region);
+      em.persist(dong);
+    });
+
+    upload(userId, DAY, DONG, TimeBand.DAY);              // 부천 동
+    upload(userId, DAY, otherRegionDong, TimeBand.DAY);   // 광명 동
+
+    tx.executeWithoutResult(status -> {
+      var result = cells.findForMap(em.find(Season.class, seasonId), TimeBand.DAY, "3105");
+      assertEquals(1, result.size());
+      assertEquals(DONG, result.get(0).getDong().getDongCode());
+    });
   }
 }

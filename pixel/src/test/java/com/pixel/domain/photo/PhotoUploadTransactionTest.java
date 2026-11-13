@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.pixel.domain.colorcell.service.ColorCellService;
+import com.pixel.domain.colorcell.util.ColorBins;
 import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.photo.dto.PhotoUploadRequest;
 import com.pixel.domain.photo.enums.AiReason;
@@ -20,6 +21,7 @@ import com.pixel.domain.photo.moderation.ImageModerator;
 import com.pixel.domain.photo.moderation.ModerationResult;
 import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.photo.service.PhotoService;
+import com.pixel.domain.region.entity.Region;
 import com.pixel.domain.season.entity.Season;
 import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.domain.user.entity.User;
@@ -72,11 +74,18 @@ class PhotoUploadTransactionTest {
       em.createQuery("DELETE FROM User").executeUpdate();
       em.createQuery("DELETE FROM Season").executeUpdate();
       em.createQuery("DELETE FROM Dong").executeUpdate();
+      em.createQuery("DELETE FROM Region").executeUpdate();
+      var region = BeanUtils.instantiateClass(Region.class);
+      ReflectionTestUtils.setField(region, "regionCode", "3105");
+      ReflectionTestUtils.setField(region, "sidoName", "경기도");
+      ReflectionTestUtils.setField(region, "name", "부천시");
+      em.persist(region);
       var dong = BeanUtils.instantiateClass(Dong.class);
       ReflectionTestUtils.setField(dong, "dongCode", DONG);
       ReflectionTestUtils.setField(dong, "name", "심곡동");
       ReflectionTestUtils.setField(dong, "guName", "원미구");
       ReflectionTestUtils.setField(dong, "boundaryVersion", "20260101");
+      ReflectionTestUtils.setField(dong, "region", region);
       em.persist(dong);
       var season = BeanUtils.instantiateClass(Season.class);
       ReflectionTestUtils.setField(season, "year", (short) 2026);
@@ -101,7 +110,7 @@ class PhotoUploadTransactionTest {
 
   PhotoUploadRequest request() {
     return new PhotoUploadRequest(DONG, null, null, DAY.atTime(13, 0), null, true,
-        Collections.nCopies(5, "#123ABC"), Collections.nCopies(40, 0.025));
+        Collections.nCopies(5, ColorBins.HEX.get(0)), Collections.nCopies(40, 0.025));
   }
 
   @Test

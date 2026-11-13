@@ -28,6 +28,7 @@ import com.pixel.domain.photo.entity.Photo;
 import com.pixel.domain.photo.enums.AiVerdict;
 import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.photo.service.PhotoManagementService;
+import com.pixel.domain.region.entity.Region;
 import com.pixel.domain.season.entity.Season;
 import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.domain.user.entity.User;
@@ -88,12 +89,19 @@ class PhotoManagementTest {
       em.createQuery("DELETE FROM User").executeUpdate();
       em.createQuery("DELETE FROM Season").executeUpdate();
       em.createQuery("DELETE FROM Dong").executeUpdate();
+      em.createQuery("DELETE FROM Region").executeUpdate();
+      var region = BeanUtils.instantiateClass(Region.class);
+      ReflectionTestUtils.setField(region, "regionCode", "3105");
+      ReflectionTestUtils.setField(region, "sidoName", "경기도");
+      ReflectionTestUtils.setField(region, "name", "부천시");
+      em.persist(region);
       for (String code : List.of(DONG, OTHER_DONG)) {
         var dong = BeanUtils.instantiateClass(Dong.class);
         ReflectionTestUtils.setField(dong, "dongCode", code);
         ReflectionTestUtils.setField(dong, "name", "테스트동");
         ReflectionTestUtils.setField(dong, "guName", "원미구");
         ReflectionTestUtils.setField(dong, "boundaryVersion", "20260101");
+        ReflectionTestUtils.setField(dong, "region", region);
         em.persist(dong);
       }
       var season = BeanUtils.instantiateClass(Season.class);
@@ -160,7 +168,10 @@ class PhotoManagementTest {
         .andExpect(status().isForbidden());
     mvc.perform(get("/api/photos/" + id).header("Authorization", token(userId)))
         .andExpect(status().isOk()).andExpect(jsonPath("$.code").value("PHOTO200_1"))
-        .andExpect(jsonPath("$.result.name").value("테스트동"));
+        .andExpect(jsonPath("$.result.name").value("테스트동"))
+        .andExpect(jsonPath("$.result.bins.length()").value(40))
+        .andExpect(jsonPath("$.result.bins[0]").value(1.0))
+        .andExpect(jsonPath("$.result.bins[1]").value(0.0));
     management.changeVisibility(id, userId, true);
     mvc.perform(get("/api/photos/" + id)).andExpect(status().isOk());
     mvc.perform(get("/api/photos/999999")).andExpect(status().isNotFound());

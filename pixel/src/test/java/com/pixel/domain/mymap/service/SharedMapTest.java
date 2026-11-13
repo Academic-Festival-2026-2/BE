@@ -12,6 +12,8 @@ import com.pixel.domain.mymap.dto.MyMapResponse;
 import com.pixel.domain.mymap.dto.SharedMapResponse;
 import com.pixel.domain.photo.entity.Photo;
 import com.pixel.domain.photo.repository.PhotoRepository;
+import com.pixel.domain.region.entity.Region;
+import com.pixel.domain.region.service.RegionService;
 import com.pixel.domain.season.entity.Season;
 import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.domain.season.service.SeasonService;
@@ -27,7 +29,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Sort;
 
 @ExtendWith(MockitoExtension.class)
 class SharedMapTest {
@@ -50,8 +51,13 @@ class SharedMapTest {
   @Mock
   private UserRepository userRepository;
 
+  @Mock
+  private RegionService regionService;
+
   @InjectMocks
   private MyMapServiceImpl myMapService;
+
+  private final Region region = mock(Region.class);
 
   @Test
   void excludesPrivatePhotosFromSharedMap() {
@@ -67,10 +73,13 @@ class SharedMapTest {
     // mock 생성이 다른 설정 도중에 일어나지 않도록 목록을 먼저 만든다
     List<Photo> photos = List.of(publicPhoto(dong), privatePhoto());
     given(seasonService.getSeason(SeasonType.AUTUMN)).willReturn(season);
-    given(dongRepository.findAll(Sort.by("dongCode"))).willReturn(List.of(dong));
+    given(regionService.getRegion("3105")).willReturn(region);
+    given(region.getRegionCode()).willReturn("3105");
+    given(dongRepository.findByRegionRegionCodeOrderByDongCode("3105")).willReturn(List.of(dong));
     given(photoRepository.findMyMapPhotos(OWNER_ID, season)).willReturn(photos);
 
-    SharedMapResponse response = myMapService.getSharedMap(SHARE_KEY, SeasonType.AUTUMN);
+    SharedMapResponse response = myMapService
+        .getSharedMap(SHARE_KEY, SeasonType.AUTUMN, "3105");
 
     assertThat(response.nickname()).isEqualTo("노을러");
     assertThat(response.profileImage()).isEqualTo(ProfileImage.CAT_CHEESE);

@@ -9,8 +9,9 @@ import org.springframework.http.HttpStatus;
 @Getter
 @AllArgsConstructor
 public enum MapSuccessCode implements BaseCode {
-  _BOUNDARIES_FOUND(HttpStatus.OK, "MAP200_2", "부천 동 경계를 조회했습니다."),
-  _MAP_FOUND(HttpStatus.OK, "MAP200_1", "부천 지도를 조회했습니다."),
+  _BOUNDARIES_FOUND(HttpStatus.OK, "MAP200_2", "동 경계를 조회했습니다."),
+  _MAP_FOUND(HttpStatus.OK, "MAP200_1", "지도를 조회했습니다."),
+  _REGIONS_FOUND(HttpStatus.OK, "MAP200_3", "지역 목록을 조회했습니다."),
   ;
 
   private final HttpStatus httpStatus;

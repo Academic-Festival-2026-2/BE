@@ -1,7 +1,9 @@
 package com.pixel.domain.photo.service;
 
+import com.pixel.domain.badge.service.BadgeService;
 import com.pixel.domain.colorcell.enums.TimeBand;
 import com.pixel.domain.colorcell.service.ColorCellService;
+import com.pixel.domain.colorcell.util.ColorBins;
 import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.dong.repository.DongRepository;
 import com.pixel.domain.photo.dto.PhotoUploadRequest;
@@ -31,7 +33,6 @@ import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
-import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -48,7 +49,6 @@ public class PhotoService {
 
   private static final long MAX_FILE_SIZE = 10L * 1024 * 1024;
   private static final double GPS_EPSILON = 0.00001;
-  private static final Pattern HEX_COLOR = Pattern.compile("^#[0-9A-F]{6}$");
 
   private final PhotoRepository photoRepository;
   private final UserRepository userRepository;
@@ -60,6 +60,7 @@ public class PhotoService {
   private final ColorCellService colorCellService;
   private final ImageModerator imageModerator;
   private final TransactionTemplate transactionTemplate;
+  private final BadgeService badgeService;
 
   public PhotoUploadResponse upload(Long userId, MultipartFile file, PhotoUploadRequest request) {
     if (file == null || file.isEmpty()) {
@@ -278,6 +279,9 @@ public class PhotoService {
       }
 
       var contribution = colorCellService.aggregate(photo);
+      // 집계와 같은 트랜잭션에서 준다. 동 잠금을 잡은 뒤라 "동의 몇 번째 사진"이 겹치지 않는다.
+      var newBadges =
+          badgeService.awardForUpload(photo, Photo.countsForPublicMap(exifVerified, aiVerdict));
 
       return new PhotoUploadResponse(
           photo.getPhotoId(),
@@ -290,7 +294,8 @@ public class PhotoService {
           aiVerdict,
           moderation.toAiReason(),
           contribution.cellPhotoCount(),
-          contribution.firstInCell());
+          contribution.firstInCell(),
+          newBadges);
     });
   }
 
@@ -303,7 +308,7 @@ public class PhotoService {
     }
 
     for (String color : palette) {
-      if (color == null || !HEX_COLOR.matcher(color).matches()) {
+      if (color == null || !ColorBins.HEX.contains(color)) {
         throw new GeneralException(PhotoErrorCode.INVALID_PALETTE_COLOR);
       }
     }

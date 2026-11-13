@@ -39,7 +39,7 @@ public class ClaudeImageModerator implements ImageModerator {
   private static final long MAX_TOKENS = 256L;
 
   static final String SYSTEM_PROMPT = """
-      너는 "부천 동네 풍경 사진 지도" 서비스의 사진 검수 담당이다.
+      너는 "동네 풍경 사진 지도" 서비스의 사진 검수 담당이다.
       사용자가 올린 사진 한 장을 보고 아래 기준으로 verdict와 reason을 하나씩 고른다.
 
       REJECT (reason: INAPPROPRIATE)

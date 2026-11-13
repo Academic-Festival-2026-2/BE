@@ -25,10 +25,11 @@ public interface ColorCellRepository extends JpaRepository<ColorCell, Long> {
       JOIN FETCH c.dong
       WHERE c.season = :season
         AND c.timeBand = :timeBand
+        AND c.dong.region.regionCode = :regionCode
       ORDER BY c.dong.dongCode
       """)
   List<ColorCell> findForMap(@Param("season") Season season,
-      @Param("timeBand") TimeBand timeBand);
+      @Param("timeBand") TimeBand timeBand, @Param("regionCode") String regionCode);
 
   List<ColorCell> findByDongAndSeason(Dong dong, Season season);
 
