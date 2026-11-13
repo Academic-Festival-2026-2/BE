@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.pixel.domain.colorcell.service.ColorCellService;
+import com.pixel.domain.colorcell.util.ColorBins;
 import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.photo.dto.PhotoUploadRequest;
 import com.pixel.domain.photo.enums.AiReason;
@@ -109,7 +110,7 @@ class PhotoUploadTransactionTest {
 
   PhotoUploadRequest request() {
     return new PhotoUploadRequest(DONG, null, null, DAY.atTime(13, 0), null, true,
-        Collections.nCopies(5, "#123ABC"), Collections.nCopies(40, 0.025));
+        Collections.nCopies(5, ColorBins.HEX.get(0)), Collections.nCopies(40, 0.025));
   }
 
   @Test

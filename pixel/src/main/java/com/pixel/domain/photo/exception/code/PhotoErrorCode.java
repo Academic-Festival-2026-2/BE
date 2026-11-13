@@ -26,7 +26,7 @@ public enum PhotoErrorCode implements BaseErrorCode {
   SEASON_NOT_FOUND(HttpStatus.BAD_REQUEST, "PHOTO400_12", "해당 날짜에 등록된 계절이 없습니다."),
   INVALID_IMAGE(HttpStatus.BAD_REQUEST, "PHOTO400_13", "이미지를 처리할 수 없습니다."),
   INVALID_PALETTE_SIZE(HttpStatus.BAD_REQUEST, "PHOTO400_14", "palette는 색상 5개가 필요합니다."),
-  INVALID_PALETTE_COLOR(HttpStatus.BAD_REQUEST, "PHOTO400_15", "색상은 #RRGGBB 대문자 형식이어야 합니다."),
+  INVALID_PALETTE_COLOR(HttpStatus.BAD_REQUEST, "PHOTO400_15", "지원하지 않는 색상입니다. 새로고침 후 다시 올려 주세요."),
   INVALID_BINS_SIZE(HttpStatus.BAD_REQUEST, "PHOTO400_16", "bins는 40개 숫자가 필요합니다."),
   INVALID_BINS_VALUE(HttpStatus.BAD_REQUEST, "PHOTO400_17", "bins 값은 0~1이어야 합니다."),
   INVALID_BINS_SUM(HttpStatus.BAD_REQUEST, "PHOTO400_18", "bins의 합은 1이어야 합니다."),

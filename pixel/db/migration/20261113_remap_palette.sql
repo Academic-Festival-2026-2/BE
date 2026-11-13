@@ -1,11 +1,14 @@
--- #135 지도 색 40개를 확정 팔레트로 교체 (운영 DB 전용, 한 번만 실행)
--- 서버를 멈춘 뒤 새 BE를 배포하기 전에 실행한다. 두 번 실행하면 다시 옮겨져 색이 틀어진다.
+-- #135 지도 색 40개를 확정 팔레트로 교체 (운영 DB 전용)
+-- RDS 스냅샷을 뜨고, 서버를 멈춘 뒤 새 BE를 배포하기 전에 실행한다.
+-- 다시 실행해도 안전하다: 색 분포는 아직 옛 색인 행만 옮기고(사진은 대표색 첫 색, 칸은 칸 대표색으로 판단),
+-- 대표색 5개·칸 대표색 다시 계산은 몇 번 해도 결과가 같다.
 -- 옛 40색의 각 칸을 Lab 거리로 가장 가까운 새 색으로 옮긴다. 옛 무채색(36~39)은 새 무채색(34~39) 안에서만 고른다.
 -- 새 순서: 0~33 유채색, 34~39 무채색(먹색 → 그림자 → 아스팔트 → 회색 건물 → 안개 → 구름). ColorBins.HEX와 같다.
 
 START TRANSACTION;
 
 -- 1) 색 분포: 새 칸 = 그 칸으로 옮겨 온 옛 칸의 합 (합계는 그대로)
+-- 옛 FE가 만든 사진은 대표색 첫 색이 옛 40색 중 하나다
 UPDATE photos SET bins = JSON_ARRAY(
       0,
       CAST(JSON_EXTRACT(bins, '$[26]') AS DOUBLE),
@@ -46,8 +49,10 @@ UPDATE photos SET bins = JSON_ARRAY(
       0,
       CAST(JSON_EXTRACT(bins, '$[38]') AS DOUBLE),
       0,
-      CAST(JSON_EXTRACT(bins, '$[39]') AS DOUBLE));
+      CAST(JSON_EXTRACT(bins, '$[39]') AS DOUBLE))
+WHERE JSON_UNQUOTE(JSON_EXTRACT(palette, '$[0]')) IN ('#861318', '#E31C24', '#F17E83', '#863213', '#E3511C', '#F19D7E', '#864A13', '#E37B1C', '#F1B57E', '#866413', '#E3A91C', '#F1CF7E', '#868113', '#E3DB1C', '#F1EC7E', '#608613', '#A1E31C', '#CBF17E', '#13861D', '#1CE32D', '#7EF188', '#13867C', '#1CE3D2', '#7EF1E7', '#135186', '#1C88E3', '#7EBCF1', '#131886', '#1C24E3', '#7E83F1', '#561386', '#901CE3', '#C17EF1', '#861360', '#E31CA1', '#F17ECB', '#1C1C1C', '#555555', '#9E9E9E', '#E6E6E6');
 
+-- 사진이 있는 칸은 칸 대표색이 옛 40색 중 하나, 사진 0장 칸은 분포가 모두 0이라 몇 번 옮겨도 같다
 UPDATE color_cells SET bins_sum = JSON_ARRAY(
       0,
       CAST(JSON_EXTRACT(bins_sum, '$[26]') AS DOUBLE),
@@ -88,7 +93,8 @@ UPDATE color_cells SET bins_sum = JSON_ARRAY(
       0,
       CAST(JSON_EXTRACT(bins_sum, '$[38]') AS DOUBLE),
       0,
-      CAST(JSON_EXTRACT(bins_sum, '$[39]') AS DOUBLE));
+      CAST(JSON_EXTRACT(bins_sum, '$[39]') AS DOUBLE))
+WHERE dominant_color IN ('#861318', '#E31C24', '#F17E83', '#863213', '#E3511C', '#F19D7E', '#864A13', '#E37B1C', '#F1B57E', '#866413', '#E3A91C', '#F1CF7E', '#868113', '#E3DB1C', '#F1EC7E', '#608613', '#A1E31C', '#CBF17E', '#13861D', '#1CE32D', '#7EF188', '#13867C', '#1CE3D2', '#7EF1E7', '#135186', '#1C88E3', '#7EBCF1', '#131886', '#1C24E3', '#7E83F1', '#561386', '#901CE3', '#C17EF1', '#861360', '#E31CA1', '#F17ECB', '#1C1C1C', '#555555', '#9E9E9E', '#E6E6E6') OR photo_count = 0;
 
 -- 새 40색 (인덱스, 헥스)
 CREATE TEMPORARY TABLE palette_hex (idx INT PRIMARY KEY, hex CHAR(7) NOT NULL);
