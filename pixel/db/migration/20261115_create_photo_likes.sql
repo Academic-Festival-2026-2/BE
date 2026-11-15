@@ -1,8 +1,10 @@
 -- #142 사진 좋아요 테이블 추가 (운영 DB 전용, 재빌드 전에 실행)
--- 새 테이블이라 옛 서버는 영향을 받지 않는다. 한 번만 실행한다.
--- 중간에 오류로 멈추면 DROP TABLE photo_likes; 로 지우고 원인을 고친 뒤 처음부터 다시 실행한다.
+-- 새 테이블이라 옛 서버는 영향을 받지 않는다.
+-- 다시 실행해도 안전하다: 테이블이 이미 있으면 건너뛴다(IF NOT EXISTS). 재실행 오류를 피하려고 DROP하지 않는다.
+--   (운영 중 DROP TABLE photo_likes 는 누른 좋아요를 모두 지운다)
+-- 이미 있던 테이블은 정의를 바꾸지 않으므로, 확인이 필요하면 SHOW CREATE TABLE photo_likes; 로 아래와 같은지 본다.
 
-CREATE TABLE photo_likes (
+CREATE TABLE IF NOT EXISTS photo_likes (
     photo_like_id   BIGINT       NOT NULL AUTO_INCREMENT,
     user_id         BIGINT       NOT NULL,
     photo_id        BIGINT       NOT NULL,
