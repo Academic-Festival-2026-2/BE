@@ -40,6 +40,11 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
   @Query("SELECT p FROM Photo p WHERE p.photoId = :photoId")
   Optional<Photo> findForUpdate(@Param("photoId") Long photoId);
 
+  // 좋아요용 공유 잠금(MySQL FOR SHARE). 삭제·공개 변경(findForUpdate)은 기다리고, 좋아요끼리는 동시에 읽는다.
+  @Lock(LockModeType.PESSIMISTIC_READ)
+  @Query("SELECT p FROM Photo p WHERE p.photoId = :photoId")
+  Optional<Photo> findForShare(@Param("photoId") Long photoId);
+
   @EntityGraph(attributePaths = {"dong", "user"})
   Page<Photo> findByUserUserId(Long userId, Pageable pageable);
 
