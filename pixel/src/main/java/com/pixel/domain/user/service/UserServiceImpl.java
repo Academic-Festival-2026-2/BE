@@ -4,7 +4,6 @@ import com.pixel.domain.mymap.service.MyMapService;
 import com.pixel.domain.photo.repository.PhotoLikeRepository;
 import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.refreshtoken.repository.RefreshTokenRepository;
-import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.domain.user.dto.ChangePasswordRequest;
 import com.pixel.domain.user.dto.MyInfoResponse;
 import com.pixel.domain.user.dto.UpdateMyInfoRequest;
@@ -38,7 +37,7 @@ public class UserServiceImpl implements UserService {
     User user = getActiveUser(userId);
     long photoCount = photoRepository.countByUserUserId(userId);
     // 나의 지도와 같은 기준으로 세서 두 화면의 채운 칸 수가 항상 같게 한다.
-    int filledCellCount = myMapService.countFilledCells(userId, SeasonType.AUTUMN);
+    int filledCellCount = myMapService.countFilledCells(userId, null);
     return MyInfoResponse.of(user, photoCount, filledCellCount);
   }
 

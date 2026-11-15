@@ -57,7 +57,9 @@ public class MyMapServiceImpl implements MyMapService {
   // 공유 지도는 publicOnly = true로 비공개 사진을 뺀다.
   private MyMapResponse buildMap(Long userId, SeasonType seasonType, boolean publicOnly,
       String regionCode) {
-    Season season = seasonService.getSeason(seasonType);
+    Season season = seasonType == null
+        ? seasonService.getCurrentSeason()
+        : seasonService.getSeason(seasonType);
     Region region = regionService.getRegion(regionCode);
 
     List<Dong> dongs = dongRepository.findByRegionRegionCodeOrderByDongCode(region.getRegionCode());
@@ -131,6 +133,11 @@ public class MyMapServiceImpl implements MyMapService {
 
   @Override
   public int countFilledCells(Long userId, SeasonType seasonType) {
+    if (seasonType == null) {
+      return seasonService.findCurrentSeason()
+          .map(season -> groupMyPhotosByCell(userId, season, false).size())
+          .orElse(0);
+    }
     return seasonService.findSeason(seasonType)
         .map(season -> groupMyPhotosByCell(userId, season, false).size())
         .orElse(0);
@@ -142,7 +149,9 @@ public class MyMapServiceImpl implements MyMapService {
     if (!dongRepository.existsById(dongCode)) {
       throw new GeneralException(DongErrorCode._DONG_NOT_FOUND);
     }
-    Season season = seasonService.getSeason(seasonType);
+    Season season = seasonType == null
+        ? seasonService.getCurrentSeason()
+        : seasonService.getSeason(seasonType);
     String band = timeBand == null ? null : timeBand.name();
 
     List<DongDetailResponse.Point> points = photoRepository

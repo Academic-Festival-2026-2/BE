@@ -24,7 +24,7 @@ public class SharedMapController {
   @GetMapping("/{shareKey}")
   public ResponseEntity<ApiResponse<SharedMapResponse>> getSharedMap(
       @PathVariable String shareKey,
-      @RequestParam(defaultValue = "AUTUMN") SeasonType season,
+      @RequestParam(required = false) SeasonType season,
       @RequestParam(defaultValue = Region.DEFAULT_CODE) String regionCode) {
     return ResponseEntity.ok(ApiResponse.of(MyMapSuccessCode._SHARED_MAP_FOUND,
         myMapService.getSharedMap(shareKey, season, regionCode)));
