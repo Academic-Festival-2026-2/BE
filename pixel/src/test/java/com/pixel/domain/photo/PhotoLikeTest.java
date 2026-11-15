@@ -43,6 +43,8 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -65,6 +67,7 @@ class PhotoLikeTest {
   @Autowired PhotoRepository photos;
   @Autowired PhotoLikeRepository likes;
   @Autowired PlatformTransactionManager manager;
+  @Autowired PasswordEncoder passwordEncoder;
   TransactionTemplate tx;
   Long ownerId;
   Long likerId;
@@ -290,5 +293,32 @@ class PhotoLikeTest {
     mvc.perform(get("/api/users/me/liked-photos").header("Authorization", token(likerId)))
         .andExpect(jsonPath("$.result.totalElements").value(1))
         .andExpect(jsonPath("$.result.photos[0].photoId").value(kept));
+  }
+
+  @Test
+  void withdrawingRemovesTheirLikes() throws Exception {
+    Long id = upload(ownerId, true);
+    Long other = upload(ownerId, true);
+    Long leaverId = tx.execute(status -> {
+      var leaver = user("leaver");
+      ReflectionTestUtils.setField(leaver, "passwordHash", passwordEncoder.encode("password123"));
+      return leaver.getUserId();
+    });
+    like(id, leaverId);
+    like(other, leaverId);
+    like(id, likerId);
+
+    mvc.perform(delete("/api/users/me").header("Authorization", token(leaverId))
+            .contentType(MediaType.APPLICATION_JSON).content("{\"password\": \"password123\"}"))
+        .andExpect(status().isOk());
+
+    // 탈퇴한 회원의 좋아요만 빠지고 다른 회원의 좋아요는 그대로
+    assertEquals(1, likes.countByPhotoId(id));
+    assertEquals(0, likes.countByPhotoId(other));
+    mvc.perform(get("/api/photos/" + id)).andExpect(jsonPath("$.result.likeCount").value(1));
+    // 남은 access token으로도 다시 누를 수 없다
+    mvc.perform(post("/api/photos/" + other + "/likes").header("Authorization", token(leaverId)))
+        .andExpect(status().isUnauthorized());
+    assertEquals(0, likes.countByPhotoId(other));
   }
 }

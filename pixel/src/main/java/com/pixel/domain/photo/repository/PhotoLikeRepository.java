@@ -35,6 +35,11 @@ public interface PhotoLikeRepository extends JpaRepository<PhotoLike, Long> {
   @Query("DELETE FROM PhotoLike l WHERE l.photoId = :photoId")
   void deleteAllByPhotoId(@Param("photoId") Long photoId);
 
+  // 회원 탈퇴 때 그 회원이 누른 좋아요를 모두 지운다 (회원 행은 남기는 소프트 삭제라 FK CASCADE가 돌지 않음)
+  @Modifying
+  @Query("DELETE FROM PhotoLike l WHERE l.userId = :userId")
+  void deleteAllByUserId(@Param("userId") Long userId);
+
   // 좋아요한 사진 중 지금 볼 수 있는 사진만 최근에 누른 순으로 돌려준다.
   // 남의 사진이 나중에 비공개로 바뀌면 목록에서 빠지고, 다시 공개되면 돌아온다.
   @Query(value = """

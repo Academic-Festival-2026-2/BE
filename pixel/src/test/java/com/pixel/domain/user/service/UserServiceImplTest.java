@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.pixel.domain.mymap.service.MyMapService;
+import com.pixel.domain.photo.repository.PhotoLikeRepository;
 import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.refreshtoken.entity.RefreshToken;
 import com.pixel.domain.refreshtoken.repository.RefreshTokenRepository;
@@ -57,13 +58,16 @@ class UserServiceImplTest {
   @Mock
   private MyMapService myMapService;
 
+  @Mock
+  private PhotoLikeRepository photoLikeRepository;
+
   private UserServiceImpl userService;
   private User user;
 
   @BeforeEach
   void setUp() {
     userService = new UserServiceImpl(userRepository, refreshTokenRepository, passwordEncoder,
-        photoRepository, myMapService);
+        photoRepository, myMapService, photoLikeRepository);
     user = User.builder()
         .email("tester@example.com")
         .passwordHash(passwordEncoder.encode(PASSWORD))
@@ -157,18 +161,19 @@ class UserServiceImplTest {
 
   @Test
   void 비밀번호가_틀리면_탈퇴에_실패하고_계정은_그대로다() throws Exception {
-    given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+    given(userRepository.findForUpdate(USER_ID)).willReturn(Optional.of(user));
 
     assertErrorCode(() -> userService.withdraw(USER_ID, withdrawRequest("wrong1234")),
         UserErrorCode.PASSWORD_MISMATCH);
     assertThat(user.getStatus()).isEqualTo(UserStatus.ACTIVE);
     verify(refreshTokenRepository, never()).delete(any());
+    verify(photoLikeRepository, never()).deleteAllByUserId(any());
   }
 
   @Test
-  void 탈퇴하면_익명화되고_refresh_token을_삭제한다() throws Exception {
+  void 탈퇴하면_익명화되고_refresh_token과_좋아요를_삭제한다() throws Exception {
     RefreshToken token = refreshToken();
-    given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+    given(userRepository.findForUpdate(USER_ID)).willReturn(Optional.of(user));
     given(refreshTokenRepository.findByUserUserId(USER_ID)).willReturn(Optional.of(token));
 
     userService.withdraw(USER_ID, withdrawRequest(PASSWORD));
@@ -176,6 +181,7 @@ class UserServiceImplTest {
     assertThat(user.getStatus()).isEqualTo(UserStatus.DELETED);
     assertThat(user.getEmail()).isEqualTo("deleted:1");
     verify(refreshTokenRepository).delete(token);
+    verify(photoLikeRepository).deleteAllByUserId(USER_ID);
   }
 
   @Test

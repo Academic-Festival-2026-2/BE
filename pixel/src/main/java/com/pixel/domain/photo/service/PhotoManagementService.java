@@ -58,7 +58,8 @@ public class PhotoManagementService {
   // (같은 회원이 동시에 두 번 눌러도 liked=true인데 개수에 자기 좋아요가 빠지지 않게)
   @Transactional(isolation = Isolation.READ_COMMITTED)
   public PhotoLikeResponse like(Long photoId, Long userId) {
-    requireActiveUser(userId);
+    // 회원도 공유 잠금으로 읽어, 탈퇴(좋아요를 지움)와 겹쳐도 탈퇴한 뒤에 좋아요가 남지 않게 한다.
+    requireActiveUser(userId, true);
     // 공유 잠금으로 읽어, 좋아요를 넣는 동안 사진이 지워지거나 비공개로 바뀌지 않게 한다.
     // (그사이 지워지면 FK 오류로 500이 났음. 좋아요끼리는 서로 막지 않음)
     Photo photo = photos.findForShare(photoId)
@@ -160,10 +161,16 @@ public class PhotoManagementService {
   }
 
   private void requireActiveUser(Long userId) {
+    requireActiveUser(userId, false);
+  }
+
+  // forShare: 공유 잠금(FOR SHARE)으로 읽음. 탈퇴(UserRepository.findForUpdate)가 진행 중이면
+  // 끝날 때까지 기다렸다가 바뀐 상태를 본다.
+  private void requireActiveUser(Long userId, boolean forShare) {
     if (userId == null) {
       throw new GeneralException(ErrorStatus._UNAUTHORIZED);
     }
-    var user = users.findById(userId)
+    var user = (forShare ? users.findForShare(userId) : users.findById(userId))
         .orElseThrow(() -> new GeneralException(UserErrorCode._NOT_FOUND));
     if (user.getStatus() != UserStatus.ACTIVE) {
       throw new GeneralException(UserErrorCode.INACTIVE_USER);
