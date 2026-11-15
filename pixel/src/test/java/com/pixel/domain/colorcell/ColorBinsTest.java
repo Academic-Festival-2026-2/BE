@@ -186,4 +186,26 @@ public class ColorBinsTest {
         .isEqualTo(ColorBins.HEX.get(ColorBins.CHROMATIC_COUNT));
     assertThat(ColorBins.votedColor(votes, ColorBins.zeros())).isNull();
   }
+
+  @Test
+  void topRatiosPutsFirstColorFirstWithItsRatio() {
+    List<Double> bins = ColorBins.zeros();
+    bins.set(26, 0.6);
+    bins.set(19, 0.4);
+    assertThat(ColorBins.topRatios(bins, 5, ColorBins.HEX.get(19))).containsExactly(
+        new ColorRatio(ColorBins.HEX.get(19), 0.4), new ColorRatio(ColorBins.HEX.get(26), 0.6));
+  }
+
+  @Test
+  void topRatiosShowsFirstColorMissingFromBinsWithMinimumRatio() {
+    List<Double> bins = ColorBins.zeros();
+    bins.set(26, 1.0);
+    assertThat(ColorBins.topRatios(bins, 5, ColorBins.HEX.get(19))).containsExactly(
+        new ColorRatio(ColorBins.HEX.get(19), ColorBins.FIRST_MIN_RATIO),
+        new ColorRatio(ColorBins.HEX.get(26), 1.0));
+    // 칸 색이 없거나 팔레트에 없는 색이면 분포 순서 그대로
+    assertThat(ColorBins.topRatios(bins, 5, null)).isEqualTo(ColorBins.topRatios(bins, 5));
+    assertThat(ColorBins.topRatios(bins, 5, "#123ABC")).isEqualTo(ColorBins.topRatios(bins, 5));
+    assertThat(ColorBins.topRatios(ColorBins.zeros(), 5, ColorBins.HEX.get(19))).isEmpty();
+  }
 }

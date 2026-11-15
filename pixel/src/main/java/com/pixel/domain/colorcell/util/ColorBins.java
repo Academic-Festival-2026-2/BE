@@ -21,6 +21,9 @@ public final class ColorBins {
   /** 0 ~ CHROMATIC_COUNT-1은 유채색, 그 뒤 6개(먹색 → 구름)는 무채색이다. */
   public static final int CHROMATIC_COUNT = 34;
 
+  /** 색 막대 첫 칸(칸 색)의 최소 비율. 분포에 거의 없는 색이어도 막대에 보이게 한다. */
+  public static final double FIRST_MIN_RATIO = 0.1;
+
   private ColorBins() {
   }
 
@@ -102,18 +105,36 @@ public final class ColorBins {
   }
 
   public static List<ColorRatio> topRatios(List<Double> bins, int limit) {
+    return topRatios(bins, limit, null);
+  }
+
+  /**
+   * 색 막대용 상위 색 비율. first(칸 색)가 있으면 항상 첫 칸에 두고, 나머지는 분포가 큰 순으로 채운다.
+   * 칸 색은 표 수로 정해서 분포에는 적을 수 있으므로, 실제 비율이 FIRST_MIN_RATIO보다 작으면 그 값으로 보여 준다.
+   */
+  public static List<ColorRatio> topRatios(List<Double> bins, int limit, String first) {
     double total = bins.stream().mapToDouble(Double::doubleValue).sum();
-    if (total == 0) {
+    if (total == 0 || limit <= 0) {
       return List.of();
     }
-    return IntStream.range(0, bins.size())
+    int firstIndex = first == null ? -1 : HEX.indexOf(first);
+    List<ColorRatio> result = new ArrayList<>();
+    if (firstIndex >= 0) {
+      result.add(new ColorRatio(first,
+          Math.max(FIRST_MIN_RATIO, ratioOf(bins.get(firstIndex), total))));
+    }
+    IntStream.range(0, bins.size())
         .boxed()
-        .filter(i -> bins.get(i) > 0)
+        .filter(i -> i != firstIndex && bins.get(i) > 0)
         .sorted(Comparator.comparingDouble((Integer i) -> bins.get(i)).reversed())
-        .limit(limit)
-        .map(i -> new ColorRatio(HEX.get(i),
-            Math.round(bins.get(i) / total * 100) / 100.0))
+        .map(i -> new ColorRatio(HEX.get(i), ratioOf(bins.get(i), total)))
         .filter(color -> color.ratio() > 0)
-        .toList();
+        .limit(limit - result.size())
+        .forEach(result::add);
+    return List.copyOf(result);
+  }
+
+  private static double ratioOf(double value, double total) {
+    return Math.round(value / total * 100) / 100.0;
   }
 }
