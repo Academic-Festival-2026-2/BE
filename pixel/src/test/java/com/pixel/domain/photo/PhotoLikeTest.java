@@ -1,6 +1,7 @@
 package com.pixel.domain.photo;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -13,6 +14,7 @@ import com.pixel.domain.colorcell.enums.TimeBand;
 import com.pixel.domain.colorcell.repository.ColorCellRepository;
 import com.pixel.domain.colorcell.service.ColorCellService;
 import com.pixel.domain.dong.entity.Dong;
+import com.pixel.domain.photo.dto.PhotoLikeResponse;
 import com.pixel.domain.photo.entity.Photo;
 import com.pixel.domain.photo.enums.AiVerdict;
 import com.pixel.domain.photo.repository.PhotoLikeRepository;
@@ -31,6 +33,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.BeanUtils;
@@ -181,6 +187,33 @@ class PhotoLikeTest {
         .andExpect(status().isNotFound());
     mvc.perform(delete("/api/photos/999999/likes").header("Authorization", token(likerId)))
         .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void concurrentLikesAreCountedOnceEach() throws Exception {
+    Long id = upload(ownerId, true);
+    // 같은 회원이 두 번 + 다른 두 회원이 동시에 누름 → 3명분만 남고, 응답 개수에 자기 좋아요가 빠지지 않음
+    List<Long> users = List.of(likerId, likerId, thirdId, ownerId);
+    var start = new CountDownLatch(1);
+    var pool = Executors.newFixedThreadPool(users.size());
+    try {
+      List<Future<PhotoLikeResponse>> results = new ArrayList<>();
+      for (Long user : users) {
+        results.add(pool.submit(() -> {
+          start.await();
+          return management.like(id, user);
+        }));
+      }
+      start.countDown();
+      for (var result : results) {
+        PhotoLikeResponse response = result.get(10, TimeUnit.SECONDS);
+        assertTrue(response.liked());
+        assertTrue(response.likeCount() >= 1 && response.likeCount() <= 3);
+      }
+    } finally {
+      pool.shutdownNow();
+    }
+    assertEquals(3, likes.countByPhotoId(id));
   }
 
   @Test

@@ -22,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -53,10 +54,14 @@ public class PhotoManagementService {
   }
 
   // 볼 수 있는 사진(공개 사진이거나 내 사진)에만 누를 수 있다. 이미 눌렀으면 그대로 둔다.
-  @Transactional
+  // READ_COMMITTED: 마지막 개수 조회가 첫 조회 시점의 스냅샷이 아니라 그사이 커밋된 좋아요까지 센다.
+  // (같은 회원이 동시에 두 번 눌러도 liked=true인데 개수에 자기 좋아요가 빠지지 않게)
+  @Transactional(isolation = Isolation.READ_COMMITTED)
   public PhotoLikeResponse like(Long photoId, Long userId) {
     requireActiveUser(userId);
-    Photo photo = photos.findById(photoId)
+    // 공유 잠금으로 읽어, 좋아요를 넣는 동안 사진이 지워지거나 비공개로 바뀌지 않게 한다.
+    // (그사이 지워지면 FK 오류로 500이 났음. 좋아요끼리는 서로 막지 않음)
+    Photo photo = photos.findForShare(photoId)
         .orElseThrow(() -> new GeneralException(PhotoErrorCode.NOT_FOUND));
     if (!photo.isPublic()) {
       requireOwner(photo, userId);
@@ -67,7 +72,8 @@ public class PhotoManagementService {
   }
 
   // 사진이 비공개로 바뀌어도 내가 누른 좋아요는 취소할 수 있다. 누르지 않았으면 그대로 둔다.
-  @Transactional
+  // like()와 같은 이유로 READ_COMMITTED
+  @Transactional(isolation = Isolation.READ_COMMITTED)
   public PhotoLikeResponse unlike(Long photoId, Long userId) {
     requireActiveUser(userId);
     if (!photos.existsById(photoId)) {
