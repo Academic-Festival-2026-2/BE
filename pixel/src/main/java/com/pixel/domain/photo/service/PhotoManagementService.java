@@ -42,7 +42,8 @@ public class PhotoManagementService {
     }
     return new PhotoDetailResponse(photo.getPhotoId(), storage.readUrl(photo.getImageKey()),
         photo.getUser().getNickname(), photo.getDong().getName(), photo.getTakenAt(),
-        photo.getTimeBand(), photo.getPalette(), photo.getBins());
+        photo.getTimeBand(), photo.getPalette(), photo.getBins(),
+        photo.getSeason().getSeason());
   }
 
   public MyPhotosResponse myPhotos(Long userId, int page, int size) {
@@ -56,7 +57,8 @@ public class PhotoManagementService {
         storage.readUrl(photo.getThumbnailKey()), photo.getDong().getDongCode(),
         photo.getDong().getName(), photo.getTimeBand(), photo.getTakenAt(),
         // 사진의 점 색은 palette[0], 지도 셀의 집계 색은 bins 기준이다.
-        photo.getPalette().get(0), photo.isPublic(), photo.getAiVerdict())).getContent();
+        photo.getPalette().get(0), photo.isPublic(), photo.getAiVerdict(),
+        photo.getSeason().getSeason())).getContent();
     return new MyPhotosResponse(items, page, size, result.getTotalElements(), result.hasNext());
   }
 
