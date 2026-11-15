@@ -108,7 +108,7 @@ public class PhotoManagementService {
     var items = result.map(photo -> new MyPhotosResponse.Item(photo.getPhotoId(),
         storage.readUrl(photo.getThumbnailKey()), photo.getDong().getDongCode(),
         photo.getDong().getName(), photo.getTimeBand(), photo.getTakenAt(),
-        // 사진의 점 색은 palette[0], 지도 셀의 집계 색은 bins 기준이다.
+        // 사진의 점 색은 palette[0]이고, 지도 칸 색도 칸 사진들의 palette[0] 표 수로 정한다.
         photo.getPalette().get(0), photo.isPublic(), photo.getAiVerdict())).getContent();
     return new MyPhotosResponse(items, page, size, result.getTotalElements(), result.hasNext());
   }

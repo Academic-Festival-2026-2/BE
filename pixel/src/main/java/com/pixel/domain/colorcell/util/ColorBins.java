@@ -1,6 +1,8 @@
 package com.pixel.domain.colorcell.util;
 
 import com.pixel.domain.colorcell.dto.ColorRatio;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.IntStream;
@@ -59,6 +61,44 @@ public final class ColorBins {
       }
     }
     return HEX.get(best);
+  }
+
+  /** 40칸이 모두 0인 분포(또는 표 수)를 만든다. */
+  public static List<Double> zeros() {
+    return new ArrayList<>(Collections.nCopies(HEX.size(), 0.0));
+  }
+
+  /** 사진 대표색(palette[0])에 사진 가중치만큼 표를 더한다. 팔레트에 없는 색은 표로 세지 않는다. */
+  public static void addVote(List<Double> votes, List<String> palette, double weight) {
+    if (palette == null || palette.isEmpty()) {
+      return;
+    }
+    int index = HEX.indexOf(palette.get(0));
+    if (index >= 0) {
+      votes.set(index, votes.get(index) + weight);
+    }
+  }
+
+  /**
+   * 칸 색: 사진 대표색(palette[0]) 표가 가장 많은 색. 사진 한 장이 한 표다.
+   * 동점이면 색상 분포 합계(bins)가 큰 색, 그래도 같으면 작은 인덱스를 고른다.
+   * 표가 하나도 없으면(예전 팔레트 색만 있는 경우) 색상 분포 기준 {@link #dominantColor}로 고른다.
+   */
+  public static String votedColor(List<Double> votes, List<Double> bins) {
+    validateBins(votes);
+    validateBins(bins);
+    int best = -1;
+    for (int i = 0; i < HEX.size(); i++) {
+      double vote = votes.get(i);
+      if (vote <= 0) {
+        continue;
+      }
+      if (best < 0 || vote > votes.get(best)
+          || (vote == votes.get(best) && bins.get(i) > bins.get(best))) {
+        best = i;
+      }
+    }
+    return best < 0 ? dominantColor(bins) : HEX.get(best);
   }
 
   public static List<ColorRatio> topRatios(List<Double> bins, int limit) {

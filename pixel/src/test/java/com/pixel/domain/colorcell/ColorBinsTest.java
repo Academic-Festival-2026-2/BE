@@ -98,7 +98,7 @@ public class ColorBinsTest {
     bins.set(0, 0.15);
     bins.set(ColorBins.CHROMATIC_COUNT, 0.85);
     for (long id = 1; id <= 21; id++) {
-      cell.contribute(id, bins, 1.0f, id == 1);
+      cell.contribute(id, bins, 1.0f, id == 1, ColorBins.zeros());
     }
     assertThat(cell.getDominantColor()).isEqualTo(ColorBins.HEX.get(0));
     assertThat(cell.getPhotoCount()).isEqualTo(21);
@@ -106,7 +106,7 @@ public class ColorBinsTest {
     assertThat(cell.getFirstPhotoId()).isEqualTo(1L);
     org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
         () -> cell.contribute(22L,
-            Collections.nCopies(40, -1.0), 1.0f, false));
+            Collections.nCopies(40, -1.0), 1.0f, false, ColorBins.zeros()));
     assertThat(cell.getPhotoCount()).isEqualTo(21);
   }
 
@@ -157,5 +157,33 @@ public class ColorBinsTest {
     gray.set(34, 0.9);
     gray.set(0, 0.1);
     assertThat(ColorBins.dominantColor(gray)).isEqualTo(ColorBins.HEX.get(34));
+  }
+
+  @Test
+  void votedColorPrefersVotesThenBinsThenIndex() {
+    List<Double> votes = ColorBins.zeros();
+    List<Double> bins = ColorBins.zeros();
+    bins.set(26, 0.9);
+    bins.set(19, 0.1);
+    ColorBins.addVote(votes, List.of(ColorBins.HEX.get(19)), 1.0);
+    assertThat(ColorBins.votedColor(votes, bins)).isEqualTo(ColorBins.HEX.get(19));
+    ColorBins.addVote(votes, List.of(ColorBins.HEX.get(26)), 1.0);
+    assertThat(ColorBins.votedColor(votes, bins)).isEqualTo(ColorBins.HEX.get(26));
+    bins.set(26, 0.1);
+    assertThat(ColorBins.votedColor(votes, bins)).isEqualTo(ColorBins.HEX.get(19));
+  }
+
+  @Test
+  void votedColorIgnoresUnknownColorsAndFallsBackToBins() {
+    List<Double> votes = ColorBins.zeros();
+    ColorBins.addVote(votes, List.of("#123ABC"), 1.0);
+    ColorBins.addVote(votes, List.of(), 1.0);
+    ColorBins.addVote(votes, null, 1.0);
+    List<Double> bins = ColorBins.zeros();
+    bins.set(ColorBins.CHROMATIC_COUNT, 1.0);
+    assertThat(votes).containsOnly(0.0);
+    assertThat(ColorBins.votedColor(votes, bins))
+        .isEqualTo(ColorBins.HEX.get(ColorBins.CHROMATIC_COUNT));
+    assertThat(ColorBins.votedColor(votes, ColorBins.zeros())).isNull();
   }
 }

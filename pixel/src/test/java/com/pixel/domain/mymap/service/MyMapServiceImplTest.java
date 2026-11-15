@@ -121,6 +121,21 @@ class MyMapServiceImplTest {
   }
 
   @Test
+  void myColorIsMostPickedRepresentativeColor() {
+    // 분포는 12가 많지만 고른 대표색은 0이 2표
+    givenPhotos(
+        photo(dongA, TimeBand.DAY, bins(Map.of(12, 1.0)), 0),
+        photo(dongA, TimeBand.DAY, bins(Map.of(12, 1.0)), 0),
+        photo(dongA, TimeBand.DAY, bins(Map.of(12, 1.0)), 12));
+
+    givenColorCells();
+
+    MyMapResponse response = myMapService.getMyMap(USER_ID, SeasonType.AUTUMN, "3105");
+
+    assertThat(cellOf(response, "A", TimeBand.DAY).getMyColor()).isEqualTo(ColorBins.HEX.get(0));
+  }
+
+  @Test
   void includesPreviewColorOnEmptyCell() {
     givenPhotos();
     givenColorCells(colorCell(dongB, TimeBand.NIGHT, "#861318"));
@@ -156,6 +171,12 @@ class MyMapServiceImplTest {
     given(dong.getName()).willReturn(dongCode + "동");
 
     return dong;
+  }
+
+  private Photo photo(Dong dong, TimeBand timeBand, List<Double> bins, int pick) {
+    Photo photo = photo(dong, timeBand, bins);
+    given(photo.getPalette()).willReturn(List.of(ColorBins.HEX.get(pick)));
+    return photo;
   }
 
   private Photo photo(Dong dong, TimeBand timeBand, List<Double> bins) {
