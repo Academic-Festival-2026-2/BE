@@ -24,6 +24,7 @@ import com.pixel.domain.photo.moderation.ImageModerator;
 import com.pixel.domain.photo.moderation.ModerationResult;
 import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.photo.service.PhotoService;
+import com.pixel.domain.photo.service.PhotoServiceImpl;
 import com.pixel.domain.photo.util.PhotoImageProcessor;
 import com.pixel.domain.photo.util.PhotoMetadataReader;
 import com.pixel.domain.season.entity.Season;
@@ -69,7 +70,7 @@ class PhotoUploadTest {
   private final TransactionTemplate tx =
       new TransactionTemplate(mock(PlatformTransactionManager.class));
   private final PhotoService service =
-      new PhotoService(
+      new PhotoServiceImpl(
           photos, users, dongs, seasons, metadata, images, storage, aggregation, moderator, tx,
           badges);
   private final MockMultipartFile file =
@@ -350,7 +351,7 @@ class PhotoUploadTest {
   @Test
   void moderationRunsBeforeTransactionStarts() {
     PlatformTransactionManager manager = mock(PlatformTransactionManager.class);
-    var uploadService = new PhotoService(photos, users, dongs, seasons, metadata, images, storage,
+    var uploadService = new PhotoServiceImpl(photos, users, dongs, seasons, metadata, images, storage,
         aggregation, moderator, new TransactionTemplate(manager), badges);
     uploadService.upload(1L, file, request("13:00", null, null));
     var order = inOrder(moderator, manager, storage);
@@ -362,7 +363,7 @@ class PhotoUploadTest {
   @Test
   void rejectedPhotoNeverStartsTransaction() {
     PlatformTransactionManager manager = mock(PlatformTransactionManager.class);
-    var uploadService = new PhotoService(photos, users, dongs, seasons, metadata, images, storage,
+    var uploadService = new PhotoServiceImpl(photos, users, dongs, seasons, metadata, images, storage,
         aggregation, moderator, new TransactionTemplate(manager), badges);
     when(moderator.moderate(any())).thenReturn(ModerationResult.rejected());
     assertThrows(GeneralException.class,
@@ -621,7 +622,7 @@ class PhotoUploadTest {
     var realProcessor = new PhotoImageProcessor();
     when(dongs.findDongCodeByCoordinates(37.5, 126.7)).thenReturn(Optional.of("31050110"));
     when(photos.updateLocationAndVerification(7L, 37.5, 126.7, false)).thenReturn(1);
-    var uploadService = new PhotoService(photos, users, dongs, seasons, new PhotoMetadataReader(),
+    var uploadService = new PhotoServiceImpl(photos, users, dongs, seasons, new PhotoMetadataReader(),
         realProcessor, storage, aggregation, moderator, tx, badges);
     uploadService.upload(1L,
         new MockMultipartFile("image", "gps.jpg", "image/jpeg", original),
