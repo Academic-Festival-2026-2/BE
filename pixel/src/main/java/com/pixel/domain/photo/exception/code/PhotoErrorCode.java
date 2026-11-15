@@ -37,7 +37,8 @@ public enum PhotoErrorCode implements BaseErrorCode {
   INVALID_MULTIPART(HttpStatus.BAD_REQUEST, "PHOTO400_21", "사진 파일과 올바른 메타데이터가 필요합니다."),
   SEASON_REQUIRED(HttpStatus.BAD_REQUEST, "PHOTO400_22", "촬영 시각이 없으면 계절을 선택해야 합니다."),
   TIME_BAND_REQUIRED(HttpStatus.BAD_REQUEST, "PHOTO400_23", "촬영 시각이 없으면 시간대를 선택해야 합니다."),
-  SHOT_DATE_WITHOUT_TAKEN_AT(HttpStatus.BAD_REQUEST, "PHOTO400_24", "촬영 날짜만 입력할 수 없습니다. 촬영 시각을 입력하거나 계절과 시간대를 선택하세요.");
+  SHOT_DATE_WITHOUT_TAKEN_AT(HttpStatus.BAD_REQUEST, "PHOTO400_24",
+      "촬영 날짜만 입력할 수 없습니다. 촬영 시각을 입력하거나 계절과 시간대를 선택하세요.");
 
   private final HttpStatus httpStatus;
   private final String code;

@@ -1,6 +1,7 @@
 package com.pixel.domain.user.service;
 
 import com.pixel.domain.mymap.service.MyMapService;
+import com.pixel.domain.photo.repository.PhotoLikeRepository;
 import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.refreshtoken.repository.RefreshTokenRepository;
 import com.pixel.domain.season.enums.SeasonType;
@@ -13,6 +14,7 @@ import com.pixel.domain.user.enums.UserStatus;
 import com.pixel.domain.user.exception.code.UserErrorCode;
 import com.pixel.domain.user.repository.UserRepository;
 import com.pixel.global.apiPayload.exception.GeneralException;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -28,6 +30,7 @@ public class UserServiceImpl implements UserService {
   private final PasswordEncoder passwordEncoder;
   private final PhotoRepository photoRepository;
   private final MyMapService myMapService;
+  private final PhotoLikeRepository photoLikeRepository;
 
   @Override
   @Transactional(readOnly = true)
@@ -71,16 +74,23 @@ public class UserServiceImpl implements UserService {
 
   @Override
   public void withdraw(Long userId, WithdrawRequest request) {
-    User user = getActiveUser(userId);
+    // 잠가서 읽어, 탈퇴하는 동안 들어온 좋아요가 아래에서 지운 뒤에 남지 않게 한다.
+    // (좋아요는 회원을 공유 잠금으로 읽으므로 탈퇴가 끝날 때까지 기다렸다가 탈퇴 회원으로 거절됨)
+    User user = activeUser(userRepository.findForUpdate(userId));
     checkPassword(user, request.getPassword());
     deleteRefreshToken(userId);
+    // 탈퇴한 회원의 좋아요는 지워 사진의 좋아요 수에서 빠지게 한다
+    photoLikeRepository.deleteAllByUserId(userId);
     user.withdraw();
   }
 
   // 탈퇴 후에도 access token은 만료(30분) 전까지 유효하므로 여기서 상태를 확인
   private User getActiveUser(Long userId) {
-    User user = userRepository.findById(userId)
-        .orElseThrow(() -> new GeneralException(UserErrorCode._NOT_FOUND));
+    return activeUser(userRepository.findById(userId));
+  }
+
+  private User activeUser(Optional<User> found) {
+    User user = found.orElseThrow(() -> new GeneralException(UserErrorCode._NOT_FOUND));
     if (user.getStatus() != UserStatus.ACTIVE) {
       throw new GeneralException(UserErrorCode.INACTIVE_USER);
     }

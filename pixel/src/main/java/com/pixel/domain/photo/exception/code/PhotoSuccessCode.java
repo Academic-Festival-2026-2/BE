@@ -13,6 +13,9 @@ public enum PhotoSuccessCode implements BaseCode {
   _UPDATED(HttpStatus.OK, "PHOTO200_2", "사진 공개 여부를 변경했습니다."),
   _DELETED(HttpStatus.OK, "PHOTO200_3", "사진을 삭제했습니다."),
   _MY_PHOTOS(HttpStatus.OK, "PHOTO200_4", "내 사진 목록을 조회했습니다."),
+  _LIKED(HttpStatus.OK, "PHOTO200_5", "사진에 좋아요를 눌렀습니다."),
+  _UNLIKED(HttpStatus.OK, "PHOTO200_6", "사진 좋아요를 취소했습니다."),
+  _LIKED_PHOTOS(HttpStatus.OK, "PHOTO200_7", "좋아요한 사진 목록을 조회했습니다."),
   _CREATED(HttpStatus.CREATED, "PHOTO201_1", "사진 업로드에 성공했습니다.");
 
   private final HttpStatus httpStatus;
