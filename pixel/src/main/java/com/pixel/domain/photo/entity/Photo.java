@@ -55,7 +55,7 @@ public class Photo {
   @Column(name = "taken_at")
   private LocalDateTime takenAt;
 
-  @Column(name = "shot_date", nullable = false)
+  @Column(name = "shot_date")
   private LocalDate shotDate;
 
   // location은 MySQL POINT SRID 4326 컬럼이다.
