@@ -29,7 +29,8 @@ class PhotoImageProcessorTest {
         .getInt(ExifIFD0Directory.TAG_ORIENTATION));
     assertNotNull(before.getFirstDirectoryOfType(GpsDirectory.class).getGeoLocation());
     var result = new PhotoImageProcessor().process(input);
-    for (byte[] bytes : new byte[][] {result.originalBytes(), result.thumbnailBytes()}) {
+    for (byte[] bytes :
+        new byte[][] {result.originalBytes(), result.thumbnailBytes(), result.displayBytes()}) {
       var after = ImageMetadataReader.readMetadata(new ByteArrayInputStream(bytes));
       assertNull(after.getFirstDirectoryOfType(GpsDirectory.class));
       assertNull(after.getFirstDirectoryOfType(ExifIFD0Directory.class));
@@ -72,6 +73,52 @@ class PhotoImageProcessorTest {
     } finally {
       reader.dispose();
     }
+  }
+
+  // 크게 보기용 축소 이미지: 긴 변 2048px 이하 JPEG, 비율 유지. 원본이 더 작으면 원본 크기 그대로
+  @ParameterizedTest
+  @CsvSource({"4000,3000,2048,1536", "3000,4000,1536,2048", "8000,2000,2048,512",
+      "2048,1000,2048,1000", "1200,600,1200,600"})
+  void displayImageFitsLongSideWithinLimit(int width, int height, int expectedWidth,
+      int expectedHeight) throws Exception {
+    var source = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+    var graphics = source.createGraphics();
+    graphics.setColor(new java.awt.Color(0x3366cc));
+    graphics.fillRect(0, 0, width, height);
+    graphics.dispose();
+    var jpeg = new ByteArrayOutputStream();
+    ImageIO.write(source, "jpg", jpeg);
+
+    byte[] display = new PhotoImageProcessor().process(jpeg.toByteArray()).displayBytes();
+    assertEquals(0xFF, display[0] & 0xFF);
+    assertEquals(0xD8, display[1] & 0xFF);
+    var decoded = ImageIO.read(new ByteArrayInputStream(display));
+    assertEquals(expectedWidth, decoded.getWidth());
+    assertEquals(expectedHeight, decoded.getHeight());
+    int center = decoded.getRGB(expectedWidth / 2, expectedHeight / 2);
+    for (int shift : new int[] {0, 8, 16}) {
+      assertTrue(Math.abs(((0x3366cc >> shift) & 255) - ((center >> shift) & 255)) < 12);
+    }
+  }
+
+  // 투명 PNG도 크게 보기용은 흰 배경 JPEG (원본은 PNG 그대로)
+  @org.junit.jupiter.api.Test
+  void transparentPngDisplayIsJpegOnWhite() throws Exception {
+    var source = new BufferedImage(3000, 1500, BufferedImage.TYPE_INT_ARGB);
+    var png = new ByteArrayOutputStream();
+    ImageIO.write(source, "png", png);
+
+    var result = new PhotoImageProcessor().process(png.toByteArray());
+    var display = ImageIO.read(new ByteArrayInputStream(result.displayBytes()));
+    assertEquals(2048, display.getWidth());
+    assertEquals(1024, display.getHeight());
+    assertFalse(display.getColorModel().hasAlpha());
+    int center = display.getRGB(1024, 512);
+    for (int shift : new int[] {0, 8, 16}) {
+      assertTrue(((center >> shift) & 255) >= 245);
+    }
+    assertTrue(ImageIO.read(new ByteArrayInputStream(result.originalBytes()))
+        .getColorModel().hasAlpha());
   }
 
   // APP1 EXIF 디렉터리, GPS 좌표와 기기 제조사 정보를 포함한 실제 JPEG 바이트를 생성한다.

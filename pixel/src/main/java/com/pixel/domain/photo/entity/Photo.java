@@ -87,6 +87,10 @@ public class Photo {
   @Column(name = "thumbnail_key", length = 255, nullable = false)
   private String thumbnailKey;
 
+  // 크게 보기용 축소 이미지 S3 키. 이 기능 전에 올린 사진은 null (원본을 씀)
+  @Column(name = "display_key", length = 255)
+  private String displayKey;
+
   @Column(name = "image_hash", columnDefinition = "CHAR(64)", nullable = false, unique = true)
   private String imageHash;
 
@@ -135,6 +139,7 @@ public class Photo {
       List<Double> bins,
       String imageKey,
       String thumbnailKey,
+      String displayKey,
       String imageHash,
       boolean isPublic) {
     this.user = user;
@@ -149,6 +154,7 @@ public class Photo {
     this.bins = bins;
     this.imageKey = imageKey;
     this.thumbnailKey = thumbnailKey;
+    this.displayKey = displayKey;
     this.imageHash = imageHash;
     // 검수를 통과하지 않은 사진은 공개 요청이 와도 비공개로 저장한다.
     this.isPublic = isPublic && aiVerdict == AiVerdict.PUBLIC;

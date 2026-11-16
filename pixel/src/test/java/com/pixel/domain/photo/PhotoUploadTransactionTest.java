@@ -3,6 +3,7 @@ package com.pixel.domain.photo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -126,8 +127,10 @@ class PhotoUploadTransactionTest {
       var saved = photos.findById(response.photoId()).orElseThrow();
       assertEquals(AiVerdict.PERSONAL_ONLY, saved.getAiVerdict());
       assertFalse(saved.isPublic());
+      // 크게 보기용 축소 이미지 키가 DB(display_key)에 저장됨
+      assertTrue(saved.getDisplayKey().startsWith("photos/display/"));
     });
-    verify(storage, times(2)).upload(anyString(), any(), anyString());
+    verify(storage, times(3)).upload(anyString(), any(), anyString());
     verify(storage, never()).deleteAllQuietly(any());
   }
 
@@ -139,6 +142,6 @@ class PhotoUploadTransactionTest {
     assertThrows(IllegalStateException.class, () -> service.upload(userId, jpeg(), request()));
 
     assertEquals(0, photos.count());
-    verify(storage).deleteAllQuietly(argThat(keys -> keys.size() == 2));
+    verify(storage).deleteAllQuietly(argThat(keys -> keys.size() == 3));
   }
 }

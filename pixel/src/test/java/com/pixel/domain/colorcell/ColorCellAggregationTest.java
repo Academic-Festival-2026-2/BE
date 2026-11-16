@@ -119,7 +119,7 @@ class ColorCellAggregationTest {
     bins.set(0, 1.0);
     return new Photo(em.getReference(User.class, owner), em.getReference(Dong.class, dong),
         em.getReference(Season.class, seasonId), band, date.atTime(13, 0), date, verified,
-        verdict, Collections.nCopies(5, "#123ABC"), bins, "original", "thumbnail",
+        verdict, Collections.nCopies(5, "#123ABC"), bins, "original", "thumbnail", "display",
         UUID.randomUUID().toString(), false);
   }
 

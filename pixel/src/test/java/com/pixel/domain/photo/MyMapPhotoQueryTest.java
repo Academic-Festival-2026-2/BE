@@ -100,6 +100,6 @@ public class MyMapPhotoQueryTest {
     bins.set(0, 1.0);
     return new Photo(owner, dong, season, TimeBand.DAY, DAY.atTime(13, 0), DAY, exifVerified,
         AiVerdict.PUBLIC, Collections.nCopies(5, "#123ABC"), bins, "original", "thumbnail",
-        UUID.randomUUID().toString(), false);
+        "display", UUID.randomUUID().toString(), false);
   }
 }

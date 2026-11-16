@@ -18,6 +18,10 @@ import org.springframework.stereotype.Component;
 public class PhotoImageProcessor {
 
   private static final float JPEG_QUALITY = 0.90f;
+  // 크게 보기용 축소 이미지: 긴 변 이 값 이하 JPEG. 원본이 더 작으면 원본 크기 그대로
+  // (크게 보기는 화면 크기에 맞춰 줄여 보여서 원본 해상도가 필요 없음. 원본 1.5~3.3MB → 수백 KB)
+  static final int DISPLAY_MAX_SIDE = 2048;
+  private static final float DISPLAY_JPEG_QUALITY = 0.85f;
 
   public ImageData process(byte[] original) {
     try {
@@ -46,7 +50,8 @@ public class PhotoImageProcessor {
       } finally {
         graphics.dispose();
       }
-      return new ImageData(encode(image, png ? "png" : "jpg"), encode(thumbnail, "jpg"));
+      return new ImageData(encode(image, png ? "png" : "jpg"), encode(thumbnail, "jpg"),
+          encode(display(image), "jpg", DISPLAY_JPEG_QUALITY));
     } catch (IllegalArgumentException e) {
       throw e;
     } catch (Exception e) {
@@ -84,7 +89,47 @@ public class PhotoImageProcessor {
     return target;
   }
 
+  // 크게 보기용: 긴 변을 DISPLAY_MAX_SIDE 이하로 줄이고, 투명 PNG도 JPEG로 저장하도록 흰 배경 RGB로 만든다.
+  // bilinear로 한 번에 절반 넘게 줄이면 계단·물결이 생겨, 절반씩 줄이다가 마지막에 목표 크기로 맞춘다.
+  private BufferedImage display(BufferedImage image) {
+    double scale = Math.min(1.0,
+        (double) DISPLAY_MAX_SIDE / Math.max(image.getWidth(), image.getHeight()));
+    int targetWidth = Math.max(1, (int) Math.round(image.getWidth() * scale));
+    int targetHeight = Math.max(1, (int) Math.round(image.getHeight() * scale));
+    BufferedImage current = image;
+    int width = image.getWidth();
+    int height = image.getHeight();
+    do {
+      boolean last = width / 2 < targetWidth || height / 2 < targetHeight;
+      width = last ? targetWidth : width / 2;
+      height = last ? targetHeight : height / 2;
+      current = redraw(current, width, height);
+    } while (width != targetWidth || height != targetHeight);
+    return current;
+  }
+
+  private BufferedImage redraw(BufferedImage source, int width, int height) {
+    BufferedImage target = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+    Graphics2D graphics = target.createGraphics();
+    try {
+      graphics.setColor(Color.WHITE);
+      graphics.fillRect(0, 0, width, height);
+      graphics.setRenderingHint(
+          RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+      graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+      graphics.drawImage(source, 0, 0, width, height, null);
+    } finally {
+      graphics.dispose();
+    }
+    return target;
+  }
+
   private byte[] encode(BufferedImage image, String format) throws java.io.IOException {
+    return encode(image, format, JPEG_QUALITY);
+  }
+
+  private byte[] encode(BufferedImage image, String format, float jpegQuality)
+      throws java.io.IOException {
     // 사용자 ICC 프로필을 재첨부하지 않도록 기존 출력과 동일한 sRGB로 변환한다.
     if (!image.getColorModel().getColorSpace().isCS_sRGB()) {
       BufferedImage rgb = new BufferedImage(image.getWidth(), image.getHeight(),
@@ -108,7 +153,7 @@ public class PhotoImageProcessor {
         writer.setOutput(stream);
         var parameters = writer.getDefaultWriteParam();
         parameters.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
-        parameters.setCompressionQuality(JPEG_QUALITY);
+        parameters.setCompressionQuality(jpegQuality);
         writer.write(null, new IIOImage(image, null, null), parameters);
       } finally {
         writer.dispose();
@@ -119,5 +164,6 @@ public class PhotoImageProcessor {
     return output.toByteArray();
   }
 
-  public record ImageData(byte[] originalBytes, byte[] thumbnailBytes) {}
+  // displayBytes: 크게 보기용 축소 이미지 (긴 변 DISPLAY_MAX_SIDE 이하 JPEG)
+  public record ImageData(byte[] originalBytes, byte[] thumbnailBytes, byte[] displayBytes) {}
 }

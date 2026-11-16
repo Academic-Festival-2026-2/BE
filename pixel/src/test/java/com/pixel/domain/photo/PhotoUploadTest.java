@@ -93,7 +93,8 @@ class PhotoUploadTest {
     when(dongs.findById("31050110")).thenReturn(Optional.of(dong));
     when(seasons.findCurrent(any())).thenReturn(Optional.of(season));
     when(metadata.read(any())).thenReturn(new PhotoMetadataReader.PhotoMetadata(null, null, null));
-    when(images.process(any())).thenReturn(new PhotoImageProcessor.ImageData(new byte[] {2}, new byte[] {1}));
+    when(images.process(any())).thenReturn(
+        new PhotoImageProcessor.ImageData(new byte[] {2}, new byte[] {1}, new byte[] {3}));
     when(photos.saveAndFlush(any()))
         .thenAnswer(
             invocation -> {
@@ -309,7 +310,7 @@ class PhotoUploadTest {
     service.upload(1L, file, request("13:00", null, null));
     var order = inOrder(moderator, storage);
     order.verify(moderator).moderate(argThat(bytes -> bytes.length == 1 && bytes[0] == 1));
-    order.verify(storage, times(2)).upload(anyString(), any(), anyString());
+    order.verify(storage, times(3)).upload(anyString(), any(), anyString());
   }
 
   @ParameterizedTest
@@ -357,7 +358,7 @@ class PhotoUploadTest {
     var order = inOrder(moderator, manager, storage);
     order.verify(moderator).moderate(any());
     order.verify(manager).getTransaction(any());
-    order.verify(storage, times(2)).upload(anyString(), any(), anyString());
+    order.verify(storage, times(3)).upload(anyString(), any(), anyString());
   }
 
   @Test
@@ -392,7 +393,7 @@ class PhotoUploadTest {
     assertThrows(IllegalStateException.class,
         () -> service.upload(1L, file, request("13:00", null, null)));
     complete(TransactionSynchronization.STATUS_ROLLED_BACK);
-    verify(storage).deleteAllQuietly(argThat(keys -> keys.size() == 2));
+    verify(storage).deleteAllQuietly(argThat(keys -> keys.size() == 3));
   }
 
   @Test
@@ -431,13 +432,39 @@ class PhotoUploadTest {
   }
 
   @Test
+  void displayUploadFailureCleansOriginalAndThumbnail() {
+    doThrow(new IllegalStateException("S3 failure"))
+        .when(storage)
+        .upload(startsWith("photos/display/"), any(), anyString());
+    assertThrows(
+        IllegalStateException.class, () -> service.upload(1L, file, request("13:00", null, null)));
+    verify(storage)
+        .deleteAllQuietly(
+            argThat(keys -> keys.size() == 2 && keys.get(0).startsWith("photos/original/")
+                && keys.get(1).startsWith("photos/thumbnail/")));
+    verify(photos, never()).saveAndFlush(any());
+  }
+
+  @Test
+  void savedPhotoKeepsDisplayKeyWithSameFileId() {
+    service.upload(1L, file, request("13:00", null, null));
+    var saved = org.mockito.ArgumentCaptor.forClass(Photo.class);
+    verify(photos).saveAndFlush(saved.capture());
+    String original = saved.getValue().getImageKey();
+    String fileId = original.substring("photos/original/".length(), original.lastIndexOf('.'));
+    assertEquals("photos/display/" + fileId + ".jpg", saved.getValue().getDisplayKey());
+    verify(storage).upload(eq("photos/display/" + fileId + ".jpg"),
+        argThat(bytes -> bytes.length == 1 && bytes[0] == 3), eq("image/jpeg"));
+  }
+
+  @Test
   void databaseFailureRegistersRollbackCleanup() {
     doThrow(new DataIntegrityViolationException("constraint")).when(photos).saveAndFlush(any());
     assertThrows(
         DataIntegrityViolationException.class,
         () -> service.upload(1L, file, request("13:00", null, null)));
     complete(TransactionSynchronization.STATUS_ROLLED_BACK);
-    verify(storage).deleteAllQuietly(argThat(keys -> keys.size() == 2));
+    verify(storage).deleteAllQuietly(argThat(keys -> keys.size() == 3));
   }
 
   private void complete(int status) {
@@ -571,7 +598,7 @@ class PhotoUploadTest {
         () -> service.upload(1L, file, request("13:00", null, null)));
     assertEquals(PhotoErrorCode.DUPLICATE_PHOTO, ex.getCode());
     complete(TransactionSynchronization.STATUS_ROLLED_BACK);
-    verify(storage).deleteAllQuietly(argThat(keys -> keys.size() == 2));
+    verify(storage).deleteAllQuietly(argThat(keys -> keys.size() == 3));
   }
 
   @Test
@@ -629,7 +656,7 @@ class PhotoUploadTest {
         request("13:00", null, null));
     verify(photos).updateLocationAndVerification(7L, 37.5, 126.7, false);
     var captured = org.mockito.ArgumentCaptor.forClass(byte[].class);
-    verify(storage, times(2)).upload(anyString(), captured.capture(), eq("image/jpeg"));
+    verify(storage, times(3)).upload(anyString(), captured.capture(), eq("image/jpeg"));
     for (byte[] stored : captured.getAllValues()) {
       assertFalse(java.util.Arrays.equals(original, stored));
       var parsed = com.drew.imaging.ImageMetadataReader.readMetadata(
