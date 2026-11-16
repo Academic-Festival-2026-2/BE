@@ -23,9 +23,13 @@ public class SeasonServiceImpl implements SeasonService {
 
   @Override
   public Season getCurrentSeason() {
-    LocalDate today = LocalDate.now(SEOUL);
-    return seasonRepository.findCurrent(today)
+    return findCurrentSeason()
         .orElseThrow(() -> new GeneralException(SeasonErrorCode._SEASON_NOT_FOUND));
+  }
+
+  @Override
+  public Optional<Season> findCurrentSeason() {
+    return seasonRepository.findCurrent(LocalDate.now(SEOUL));
   }
 
   @Override

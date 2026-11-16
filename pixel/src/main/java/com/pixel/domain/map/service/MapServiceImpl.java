@@ -12,6 +12,7 @@ import com.pixel.domain.region.entity.Region;
 import com.pixel.domain.region.repository.RegionRepository;
 import com.pixel.domain.region.service.RegionService;
 import com.pixel.domain.season.entity.Season;
+import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.domain.season.service.SeasonService;
 import java.util.Comparator;
 import java.util.List;
@@ -52,7 +53,15 @@ public class MapServiceImpl implements MapService {
 
   @Override
   public MapDongsResponse getDongs(TimeBand timeBand, String regionCode) {
-    Season season = seasonService.getCurrentSeason();
+    return getDongs(timeBand, regionCode, null);
+  }
+
+  @Override
+  public MapDongsResponse getDongs(TimeBand timeBand, String regionCode,
+      SeasonType requestedSeason) {
+    Season season = requestedSeason == null
+        ? seasonService.getCurrentSeason()
+        : seasonService.getSeason(requestedSeason);
     Region region = regionService.getRegion(regionCode);
 
     List<ColorCell> cells =

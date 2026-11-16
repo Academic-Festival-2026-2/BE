@@ -11,6 +11,7 @@ import com.pixel.domain.dong.exception.code.DongErrorCode;
 import com.pixel.domain.dong.repository.DongRepository;
 import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.season.entity.Season;
+import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.domain.season.service.SeasonService;
 import com.pixel.global.apiPayload.exception.GeneralException;
 import java.util.Arrays;
@@ -36,10 +37,18 @@ public class DongServiceImpl implements DongService {
 
   @Override
   public DongDetailResponse getDetail(String dongCode, TimeBand timeBand) {
+    return getDetail(dongCode, timeBand, null);
+  }
+
+  @Override
+  public DongDetailResponse getDetail(String dongCode, TimeBand timeBand,
+      SeasonType requestedSeason) {
     Dong dong = dongRepository.findById(dongCode)
         .orElseThrow(() -> new GeneralException(DongErrorCode._DONG_NOT_FOUND));
 
-    Season season = seasonService.getCurrentSeason();
+    Season season = requestedSeason == null
+        ? seasonService.getCurrentSeason()
+        : seasonService.getSeason(requestedSeason);
 
     Map<TimeBand, ColorCell> cells = colorCellRepository.findByDongAndSeason(dong, season)
         .stream()
