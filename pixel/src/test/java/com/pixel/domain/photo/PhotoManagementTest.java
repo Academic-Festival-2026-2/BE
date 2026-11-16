@@ -192,7 +192,9 @@ class PhotoManagementTest {
     management.changeVisibility(id, userId, true);
     mvc.perform(get("/api/photos/" + id)).andExpect(status().isOk())
         .andExpect(jsonPath("$.result.imageUrl").value("signed:original"))
-        .andExpect(jsonPath("$.result.displayUrl").value("signed:display"));
+        .andExpect(jsonPath("$.result.displayUrl").value("signed:display"))
+        // #149의 season과 이 PR의 displayUrl이 한 응답에 같이 온다
+        .andExpect(jsonPath("$.result.season").value("AUTUMN"));
 
     clearDisplayKey(id);
     mvc.perform(get("/api/photos/" + id)).andExpect(status().isOk())
