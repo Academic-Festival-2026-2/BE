@@ -9,6 +9,7 @@ import com.pixel.domain.photo.entity.Photo;
 import com.pixel.domain.photo.exception.code.PhotoErrorCode;
 import com.pixel.domain.photo.repository.PhotoLikeRepository;
 import com.pixel.domain.photo.repository.PhotoRepository;
+import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.domain.user.enums.UserStatus;
 import com.pixel.domain.user.exception.code.UserErrorCode;
 import com.pixel.domain.user.repository.UserRepository;
@@ -104,12 +105,19 @@ public class PhotoManagementService {
   }
 
   public MyPhotosResponse myPhotos(Long userId, int page, int size) {
+    return myPhotos(userId, page, size, null);
+  }
+
+  public MyPhotosResponse myPhotos(Long userId, int page, int size, SeasonType season) {
     requireActiveUser(userId);
     if (page < 0 || size < 1 || size > 100) {
       throw new GeneralException(ErrorStatus._BAD_REQUEST);
     }
-    var result = photos.findByUserUserId(userId, PageRequest.of(page, size,
-        Sort.by(Sort.Direction.DESC, "createdAt", "photoId")));
+    var pageable = PageRequest.of(page, size,
+        Sort.by(Sort.Direction.DESC, "createdAt", "photoId"));
+    var result = season == null
+        ? photos.findByUserUserId(userId, pageable)
+        : photos.findByUserUserIdAndSeason_Season(userId, season, pageable);
     var items = result.map(photo -> new MyPhotosResponse.Item(photo.getPhotoId(),
         storage.readUrl(photo.getThumbnailKey()), photo.getDong().getDongCode(),
         photo.getDong().getName(), photo.getTimeBand(), photo.getTakenAt(),

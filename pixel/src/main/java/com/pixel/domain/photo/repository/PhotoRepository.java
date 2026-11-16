@@ -4,6 +4,7 @@ import com.pixel.domain.colorcell.enums.TimeBand;
 import com.pixel.domain.photo.dto.PhotoPointView;
 import com.pixel.domain.photo.entity.Photo;
 import com.pixel.domain.season.entity.Season;
+import com.pixel.domain.season.enums.SeasonType;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDate;
 import java.util.List;
@@ -47,6 +48,10 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
 
   @EntityGraph(attributePaths = {"dong", "user"})
   Page<Photo> findByUserUserId(Long userId, Pageable pageable);
+
+  // DB에서 계절 필터를 적용한 다음 페이지를 나눕니다. (FE 현재 페이지 필터링 금지)
+  @EntityGraph(attributePaths = {"dong", "user", "season"})
+  Page<Photo> findByUserUserIdAndSeason_Season(Long userId, SeasonType season, Pageable pageable);
 
   // 칸 색(대표색 표 수) 계산용. 동 잠금(lockForUpload) 뒤에 불러서 업로드·삭제와 순서가 겹치지 않고,
   // 잠금 읽기라 REPEATABLE READ의 이전 스냅샷 대신 최신 커밋을 읽는다.
