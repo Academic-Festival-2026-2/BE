@@ -7,6 +7,7 @@ import com.pixel.domain.photo.dto.PhotoLikeResponse;
 import com.pixel.domain.photo.dto.PhotoVisibilityRequest;
 import com.pixel.domain.photo.exception.code.PhotoSuccessCode;
 import com.pixel.domain.photo.service.PhotoManagementService;
+import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.global.apiPayload.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -37,9 +38,10 @@ public class PhotoManagementController {
   @GetMapping("/api/users/me/photos")
   public ResponseEntity<ApiResponse<MyPhotosResponse>> myPhotos(
       @AuthenticationPrincipal Long userId, @RequestParam(defaultValue = "0") int page,
-      @RequestParam(defaultValue = "20") int size) {
+      @RequestParam(defaultValue = "20") int size,
+      @RequestParam(required = false) SeasonType season) {
     return ResponseEntity.ok(ApiResponse.of(PhotoSuccessCode._MY_PHOTOS,
-        service.myPhotos(userId, page, size)));
+        service.myPhotos(userId, page, size, season)));
   }
 
   @GetMapping("/api/users/me/liked-photos")
