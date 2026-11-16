@@ -139,7 +139,7 @@ public class PhotoManagementService {
     Photo photo = lockedPhoto(photoId);
     requireOwner(photo, userId);
     cells.retract(photo);
-    // 축소 이미지는 이 기능 전에 올린 사진이면 없다 (null)
+    // 축소 이미지는 이 기능 전에 올린 사진이나 작은 사진이면 없다 (null)
     List<String> keys = Stream.of(photo.getImageKey(), photo.getThumbnailKey(),
         photo.getDisplayKey()).filter(Objects::nonNull).toList();
     // 운영 DB는 FK ON DELETE CASCADE로도 지우지만, 테이블 정의와 상관없이 같은 결과가 나오도록 먼저 지운다.

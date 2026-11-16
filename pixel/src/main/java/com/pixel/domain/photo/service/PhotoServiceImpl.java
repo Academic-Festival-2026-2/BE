@@ -197,7 +197,9 @@ public class PhotoServiceImpl implements PhotoService {
       String fileId = UUID.randomUUID().toString();
       String originalKey = "photos/original/" + fileId + "." + imageType;
       String thumbnailKey = "photos/thumbnail/" + fileId + ".jpg";
-      String displayKey = "photos/display/" + fileId + ".jpg";
+      // JPEG 원본이 이미 작아 축소본을 만들지 않았으면 null (상세 displayUrl도 null → FE는 원본을 씀)
+      String displayKey =
+          processed.displayBytes() == null ? null : "photos/display/" + fileId + ".jpg";
 
       List<String> uploadedKeys = new ArrayList<>();
 
@@ -211,8 +213,10 @@ public class PhotoServiceImpl implements PhotoService {
         uploadedKeys.add(thumbnailKey);
 
         // 크게 보기용 축소 이미지 (사진 상세 displayUrl)
-        storageService.upload(displayKey, processed.displayBytes(), "image/jpeg");
-        uploadedKeys.add(displayKey);
+        if (displayKey != null) {
+          storageService.upload(displayKey, processed.displayBytes(), "image/jpeg");
+          uploadedKeys.add(displayKey);
+        }
       } catch (RuntimeException e) {
         storageService.deleteAllQuietly(uploadedKeys);
         throw e;

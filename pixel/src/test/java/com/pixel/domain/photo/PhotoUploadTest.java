@@ -457,6 +457,19 @@ class PhotoUploadTest {
         argThat(bytes -> bytes.length == 1 && bytes[0] == 3), eq("image/jpeg"));
   }
 
+  // 원본이 작아 축소본이 없으면 원본·썸네일만 올리고 displayKey는 null
+  @Test
+  void smallPhotoSkipsDisplayUpload() {
+    when(images.process(any())).thenReturn(
+        new PhotoImageProcessor.ImageData(new byte[] {2}, new byte[] {1}, null));
+    service.upload(1L, file, request("13:00", null, null));
+    var saved = org.mockito.ArgumentCaptor.forClass(Photo.class);
+    verify(photos).saveAndFlush(saved.capture());
+    assertNull(saved.getValue().getDisplayKey());
+    verify(storage, times(2)).upload(anyString(), any(), anyString());
+    verify(storage, never()).upload(startsWith("photos/display/"), any(), anyString());
+  }
+
   @Test
   void databaseFailureRegistersRollbackCleanup() {
     doThrow(new DataIntegrityViolationException("constraint")).when(photos).saveAndFlush(any());
@@ -656,7 +669,8 @@ class PhotoUploadTest {
         request("13:00", null, null));
     verify(photos).updateLocationAndVerification(7L, 37.5, 126.7, false);
     var captured = org.mockito.ArgumentCaptor.forClass(byte[].class);
-    verify(storage, times(3)).upload(anyString(), captured.capture(), eq("image/jpeg"));
+    // 80x40 사진이라 크게 보기용 축소본은 없다 (원본·썸네일만)
+    verify(storage, times(2)).upload(anyString(), captured.capture(), eq("image/jpeg"));
     for (byte[] stored : captured.getAllValues()) {
       assertFalse(java.util.Arrays.equals(original, stored));
       var parsed = com.drew.imaging.ImageMetadataReader.readMetadata(

@@ -102,8 +102,9 @@ class PhotoUploadTransactionTest {
     });
   }
 
+  // 긴 변이 2048px보다 커야 크게 보기용 축소본까지 만들어 세 파일을 올린다.
   MockMultipartFile jpeg() throws Exception {
-    var image = new BufferedImage(8, 8, BufferedImage.TYPE_INT_RGB);
+    var image = new BufferedImage(2100, 8, BufferedImage.TYPE_INT_RGB);
     var out = new ByteArrayOutputStream();
     ImageIO.write(image, "jpg", out);
     return new MockMultipartFile("image", "photo.jpg", "image/jpeg", out.toByteArray());

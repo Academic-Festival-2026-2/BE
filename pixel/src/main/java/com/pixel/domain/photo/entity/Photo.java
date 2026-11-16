@@ -87,7 +87,7 @@ public class Photo {
   @Column(name = "thumbnail_key", length = 255, nullable = false)
   private String thumbnailKey;
 
-  // 크게 보기용 축소 이미지 S3 키. 이 기능 전에 올린 사진은 null (원본을 씀)
+  // 크게 보기용 축소 이미지 S3 키. 이 기능 전에 올린 사진과 긴 변이 2048px 이하인 JPEG은 null (원본을 씀)
   @Column(name = "display_key", length = 255)
   private String displayKey;
 

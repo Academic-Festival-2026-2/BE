@@ -18,7 +18,8 @@ import org.springframework.stereotype.Component;
 public class PhotoImageProcessor {
 
   private static final float JPEG_QUALITY = 0.90f;
-  // 크게 보기용 축소 이미지: 긴 변 이 값 이하 JPEG. 원본이 더 작으면 원본 크기 그대로
+  // 크게 보기용 축소 이미지: 긴 변 이 값 이하 JPEG. JPEG 원본이 이 값 이하면 만들지 않는다 (원본과 크기가
+  // 같아 저장·업로드만 늘어서. displayBytes = null → FE는 원본을 씀)
   // (크게 보기는 화면 크기에 맞춰 줄여 보여서 원본 해상도가 필요 없음. 원본 1.5~3.3MB → 수백 KB)
   static final int DISPLAY_MAX_SIDE = 2048;
   private static final float DISPLAY_JPEG_QUALITY = 0.85f;
@@ -50,8 +51,12 @@ public class PhotoImageProcessor {
       } finally {
         graphics.dispose();
       }
+      // PNG는 작아도 만든다: 투명한 부분이 크게 보기의 검은 배경에서 검게 보이지 않게 흰 배경 JPEG로
+      // (무손실 PNG보다 파일도 훨씬 작다)
+      boolean needsDisplay =
+          png || Math.max(image.getWidth(), image.getHeight()) > DISPLAY_MAX_SIDE;
       return new ImageData(encode(image, png ? "png" : "jpg"), encode(thumbnail, "jpg"),
-          encode(display(image), "jpg", DISPLAY_JPEG_QUALITY));
+          needsDisplay ? encode(display(image), "jpg", DISPLAY_JPEG_QUALITY) : null);
     } catch (IllegalArgumentException e) {
       throw e;
     } catch (Exception e) {
@@ -164,6 +169,6 @@ public class PhotoImageProcessor {
     return output.toByteArray();
   }
 
-  // displayBytes: 크게 보기용 축소 이미지 (긴 변 DISPLAY_MAX_SIDE 이하 JPEG)
+  // displayBytes: 크게 보기용 축소 이미지 (긴 변 DISPLAY_MAX_SIDE 이하 JPEG). JPEG 원본이 그 이하면 null
   public record ImageData(byte[] originalBytes, byte[] thumbnailBytes, byte[] displayBytes) {}
 }
