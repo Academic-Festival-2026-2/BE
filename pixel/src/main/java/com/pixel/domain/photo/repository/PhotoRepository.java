@@ -46,7 +46,7 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
   @Query("SELECT p FROM Photo p WHERE p.photoId = :photoId")
   Optional<Photo> findForShare(@Param("photoId") Long photoId);
 
-  @EntityGraph(attributePaths = {"dong", "user"})
+  @EntityGraph(attributePaths = {"dong", "user", "season"})
   Page<Photo> findByUserUserId(Long userId, Pageable pageable);
 
   // DB에서 계절 필터를 적용한 다음 페이지를 나눕니다. (FE 현재 페이지 필터링 금지)

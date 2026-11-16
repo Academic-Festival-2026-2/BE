@@ -104,10 +104,6 @@ public class PhotoManagementService {
         result.hasNext());
   }
 
-  public MyPhotosResponse myPhotos(Long userId, int page, int size) {
-    return myPhotos(userId, page, size, null);
-  }
-
   public MyPhotosResponse myPhotos(Long userId, int page, int size, SeasonType season) {
     requireActiveUser(userId);
     if (page < 0 || size < 1 || size > 100) {
