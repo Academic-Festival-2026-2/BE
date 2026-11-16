@@ -25,6 +25,8 @@ public class MapDongsResponse {
     private final String name;
     private final String dominantColor;
     private final int photoCount;
+    // 동 상세에 점으로 보이는 사진 수(공개, 위치 있는 사진) / photoCount와 다르면 나만 보기 사진이 있는 것
+    private final int pointCount;
     private final CellStatus status;
     private final List<ColorRatio> colorRatio;
   }

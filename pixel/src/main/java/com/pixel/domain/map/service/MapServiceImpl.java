@@ -8,6 +8,8 @@ import com.pixel.domain.dong.repository.DongRepository;
 import com.pixel.domain.map.dto.BoundaryResponse;
 import com.pixel.domain.map.dto.MapDongsResponse;
 import com.pixel.domain.map.dto.RegionListResponse;
+import com.pixel.domain.photo.dto.DongPointCountView;
+import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.region.entity.Region;
 import com.pixel.domain.region.repository.RegionRepository;
 import com.pixel.domain.region.service.RegionService;
@@ -16,6 +18,8 @@ import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.domain.season.service.SeasonService;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -34,6 +38,7 @@ public class MapServiceImpl implements MapService {
   private final SeasonService seasonService;
   private final RegionService regionService;
   private final RegionRepository regionRepository;
+  private final PhotoRepository photoRepository;
 
   @Override
   public BoundaryResponse getBoundaries(String regionCode) {
@@ -67,6 +72,13 @@ public class MapServiceImpl implements MapService {
     List<ColorCell> cells =
         colorCellRepository.findForMap(season, timeBand, region.getRegionCode());
 
+    // 동 상세에 점으로 보이는 사진 수 (지역 전체를 한 번에 셈). 없는 동은 0
+    Map<String, Integer> pointCounts = photoRepository
+        .countPhotoPoints(region.getRegionCode(), season.getSeasonId(), timeBand.name())
+        .stream()
+        .collect(Collectors.toMap(DongPointCountView::getDongCode,
+            view -> view.getPointCount().intValue()));
+
     List<MapDongsResponse.DongColor> dongs = cells
         .stream()
         .map(cell -> new MapDongsResponse.DongColor(
@@ -74,6 +86,7 @@ public class MapServiceImpl implements MapService {
             cell.getDong().getName(),
             cell.getDominantColor(),
             cell.getPhotoCount(),
+            pointCounts.getOrDefault(cell.getDong().getDongCode(), 0),
             cell.getStatus(),
             ColorBins.topRatios(cell.getBinsSum(), COLOR_RATIO_LIMIT, cell.getDominantColor())))
         .toList();
