@@ -37,12 +37,11 @@ public class SecurityConfig {
         .exceptionHandling(exception -> exception
             .authenticationEntryPoint(jwtAuthenticationEntryPoint))
         .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/api/auth/logout").authenticated()
-            .requestMatchers("/health", "/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**",
-                "/error").permitAll()
-            .requestMatchers(HttpMethod.GET,
-                "/api/map/boundaries", "/api/map/dongs", "/api/dongs/*", "/api/photos/*",
-                "/api/shared-maps/*", "/api/map/regions").permitAll()
+            .requestMatchers(PublicEndpoints.AUTHENTICATED.toArray(String[]::new))
+            .authenticated()
+            .requestMatchers(PublicEndpoints.ALL_METHODS.toArray(String[]::new)).permitAll()
+            .requestMatchers(HttpMethod.GET, PublicEndpoints.GET_ONLY.toArray(String[]::new))
+            .permitAll()
             .anyRequest().authenticated()
         )
         .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, userRepository),
