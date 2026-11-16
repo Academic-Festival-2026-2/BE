@@ -170,8 +170,8 @@ public class PhotoServiceImpl implements PhotoService {
           .orElseThrow(() -> new GeneralException(PhotoErrorCode.SEASON_NOT_FOUND));
       timeBand = resolveTimeBand(takenAt.toLocalTime());
     } else {
-      // 연도는 알 수 없으므로 해당 계절 중 가장 최근 시즌에 연결한다.
-      season = seasonRepository.findFirstBySeasonOrderByYearDesc(request.season())
+      // 촬영 연도가 없어도 고정된 네 계절 중 선택한 계절에 연결한다.
+      season = seasonRepository.findBySeason(request.season())
           .orElseThrow(() -> new GeneralException(PhotoErrorCode.SEASON_NOT_FOUND));
       timeBand = request.timeBand();
     }

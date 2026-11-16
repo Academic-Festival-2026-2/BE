@@ -134,7 +134,7 @@ class PhotoUploadTest {
   void withoutTimeUsesSelectedSeasonAndBandOnlyOnMyMap() {
     Season autumn = org.springframework.beans.BeanUtils.instantiateClass(Season.class);
     ReflectionTestUtils.setField(autumn, "season", SeasonType.AUTUMN);
-    when(seasons.findFirstBySeasonOrderByYearDesc(SeasonType.AUTUMN))
+    when(seasons.findBySeason(SeasonType.AUTUMN))
         .thenReturn(Optional.of(autumn));
 
     var response = service.upload(1L, file, withoutTime(SeasonType.AUTUMN, TimeBand.SUNSET));
@@ -185,7 +185,7 @@ class PhotoUploadTest {
     assertEquals(exifTime, saved.getValue().getTakenAt());
     assertEquals(exifTime.toLocalDate(), saved.getValue().getShotDate());
     verify(seasons).findCurrent(exifTime.toLocalDate());
-    verify(seasons, never()).findFirstBySeasonOrderByYearDesc(any());
+    verify(seasons, never()).findBySeason(any());
   }
 
   @ParameterizedTest

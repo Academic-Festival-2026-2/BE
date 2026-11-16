@@ -40,6 +40,6 @@ public class SeasonServiceImpl implements SeasonService {
 
   @Override
   public Optional<Season> findSeason(SeasonType season) {
-    return seasonRepository.findFirstBySeasonOrderByYearDesc(season);
+    return seasonRepository.findBySeason(season);
   }
 }

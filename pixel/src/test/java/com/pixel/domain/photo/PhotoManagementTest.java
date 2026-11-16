@@ -105,10 +105,7 @@ class PhotoManagementTest {
         em.persist(dong);
       }
       var season = BeanUtils.instantiateClass(Season.class);
-      ReflectionTestUtils.setField(season, "year", (short) 2026);
       ReflectionTestUtils.setField(season, "season", SeasonType.AUTUMN);
-      ReflectionTestUtils.setField(season, "startsOn", DAY.minusMonths(1));
-      ReflectionTestUtils.setField(season, "endsOn", DAY.plusMonths(1));
       em.persist(season);
       seasonId = season.getSeasonId();
       userId = user("one").getUserId();
