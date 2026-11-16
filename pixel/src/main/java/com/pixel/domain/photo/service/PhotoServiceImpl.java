@@ -102,14 +102,24 @@ public class PhotoServiceImpl implements PhotoService {
     // 유효한 EXIF 촬영 시각을 우선하고, 누락된 경우에만 요청의 KST 시각을 사용한다.
     LocalDateTime takenAt = exif.takenAt() != null ? exif.takenAt() : request.takenAt();
 
-    if (takenAt == null) {
-      throw new GeneralException(PhotoErrorCode.TAKEN_AT_REQUIRED);
-    }
-
-    LocalDate shotDate = request.shotDate() != null ? request.shotDate() : takenAt.toLocalDate();
-
-    if (!shotDate.equals(takenAt.toLocalDate())) {
-      throw new GeneralException(PhotoErrorCode.SHOT_DATE_MISMATCH);
+    // EXIF/기존 수동 시각이 있으면 정확한 날짜를 유지한다.
+    // 정확한 시각이 전혀 없으면 날짜를 만들지 않고 계절·시간대만 받는다.
+    LocalDate shotDate = takenAt == null ? null
+        : (request.shotDate() != null ? request.shotDate() : takenAt.toLocalDate());
+    if (takenAt != null) {
+      if (!shotDate.equals(takenAt.toLocalDate())) {
+        throw new GeneralException(PhotoErrorCode.SHOT_DATE_MISMATCH);
+      }
+    } else {
+      if (request.shotDate() != null) {
+        throw new GeneralException(PhotoErrorCode.SHOT_DATE_WITHOUT_TAKEN_AT);
+      }
+      if (request.season() == null) {
+        throw new GeneralException(PhotoErrorCode.SEASON_REQUIRED);
+      }
+      if (request.timeBand() == null) {
+        throw new GeneralException(PhotoErrorCode.TIME_BAND_REQUIRED);
+      }
     }
 
     if ((request.latitude() == null) != (request.longitude() == null)) {
@@ -153,16 +163,23 @@ public class PhotoServiceImpl implements PhotoService {
 
     Dong dong = dongRepository.findById(dongCode).orElseThrow(() -> new GeneralException(PhotoErrorCode.DONG_NOT_FOUND));
 
-    Season season =
-        seasonRepository
-            .findCurrent(shotDate)
-            .orElseThrow(() -> new GeneralException(PhotoErrorCode.SEASON_NOT_FOUND));
-
-    TimeBand timeBand = resolveTimeBand(takenAt.toLocalTime());
+    Season season;
+    TimeBand timeBand;
+    if (takenAt != null) {
+      season = seasonRepository.findCurrent(shotDate)
+          .orElseThrow(() -> new GeneralException(PhotoErrorCode.SEASON_NOT_FOUND));
+      timeBand = resolveTimeBand(takenAt.toLocalTime());
+    } else {
+      // 연도는 알 수 없으므로 해당 계절 중 가장 최근 시즌에 연결한다.
+      season = seasonRepository.findFirstBySeasonOrderByYearDesc(request.season())
+          .orElseThrow(() -> new GeneralException(PhotoErrorCode.SEASON_NOT_FOUND));
+      timeBand = request.timeBand();
+    }
 
     // latitude가 null이면 nearlyEqual(double, double) 언박싱에서 NPE가 나므로 좌표 유무를 먼저 본다.
     boolean exifVerified =
-        latitude != null
+        takenAt != null
+            && latitude != null
             && exif.takenAt() != null
             && exif.latitude() != null
             && exif.longitude() != null

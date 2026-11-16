@@ -4,6 +4,7 @@ import com.pixel.domain.colorcell.enums.TimeBand;
 import com.pixel.domain.dong.dto.DongDetailResponse;
 import com.pixel.domain.dong.exception.code.DongSuccessCode;
 import com.pixel.domain.dong.service.DongService;
+import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.global.apiPayload.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -22,8 +23,9 @@ public class DongController {
 
   @GetMapping("/{dongCode}")
   public ResponseEntity<ApiResponse<DongDetailResponse>> getDetail(@PathVariable String dongCode,
-      @RequestParam(required = false) TimeBand timeBand) {
-    return ResponseEntity.ok(
-        ApiResponse.of(DongSuccessCode._DETAIL_FOUND, dongService.getDetail(dongCode, timeBand)));
+      @RequestParam(required = false) TimeBand timeBand,
+      @RequestParam(required = false) SeasonType season) {
+    DongDetailResponse result = dongService.getDetail(dongCode, timeBand, season);
+    return ResponseEntity.ok(ApiResponse.of(DongSuccessCode._DETAIL_FOUND, result));
   }
 }

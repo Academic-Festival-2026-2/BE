@@ -123,6 +123,26 @@ class ColorCellAggregationTest {
         UUID.randomUUID().toString(), false);
   }
 
+  // 대표색(palette[0]) pick, 색상 분포는 binIndex 한 칸 100%인 사진을 올린다.
+  Photo uploadPicked(int pick, int binIndex) {
+    return tx.execute(status -> {
+      service.lockForUpload(DONG);
+      var photo = photo(userId, DAY, DONG, TimeBand.DAY, true);
+      var bins = new ArrayList<>(Collections.nCopies(40, 0.0));
+      bins.set(binIndex, 1.0);
+      ReflectionTestUtils.setField(photo, "bins", bins);
+      ReflectionTestUtils.setField(photo, "palette",
+          Collections.nCopies(5, ColorBins.HEX.get(pick)));
+      photos.saveAndFlush(photo);
+      service.aggregate(photo);
+      return photo;
+    });
+  }
+
+  String cellColor() {
+    return tx.execute(status -> cells.findAll().get(0).getDominantColor());
+  }
+
   ColorCellService.Contribution upload(Long owner, LocalDate date, String dong, TimeBand band) {
     return tx.execute(status -> {
       service.lockForUpload(dong);
@@ -318,5 +338,74 @@ class ColorCellAggregationTest {
       assertEquals(1, result.size());
       assertEquals(DONG, result.get(0).getDong().getDongCode());
     });
+  }
+
+  @Test
+  void cellColorIsMostPickedRepresentativeColorNotBinsSum() {
+    // 분포는 나무·흙(26)이 3장 모두 가장 많지만, 사용자가 고른 대표색은 단풍 빨강(19) 2표
+    uploadPicked(19, 26);
+    uploadPicked(19, 26);
+    uploadPicked(26, 26);
+    assertEquals(ColorBins.HEX.get(19), cellColor());
+  }
+
+  @Test
+  void tiedVotesPickColorWithLargerBinsSumThenSmallerIndex() {
+    uploadPicked(26, 19);
+    uploadPicked(19, 19);
+    // 1표씩 동점, 분포 합계는 19가 큼
+    assertEquals(ColorBins.HEX.get(19), cellColor());
+    uploadPicked(17, 0);
+    uploadPicked(26, 26);
+    uploadPicked(17, 0);
+    // 26·17 2표씩 동점, 분포 합계는 26(1.0)·17(0.0)
+    assertEquals(ColorBins.HEX.get(26), cellColor());
+  }
+
+  @Test
+  void equalVotesAndBinsPickSmallerIndex() {
+    uploadPicked(26, 26);
+    uploadPicked(19, 19);
+    assertEquals(ColorBins.HEX.get(19), cellColor());
+  }
+
+  @Test
+  void retractRecountsVotesOfRemainingPhotos() {
+    var first = uploadPicked(19, 26);
+    uploadPicked(19, 26);
+    var third = uploadPicked(17, 17);
+    var fourth = uploadPicked(17, 17);
+    uploadPicked(17, 17);
+    assertEquals(ColorBins.HEX.get(17), cellColor());
+    delete(third);
+    delete(fourth);
+    // 19 2표, 17 1표
+    assertEquals(ColorBins.HEX.get(19), cellColor());
+    delete(first);
+    // 19·17 1표씩, 분포 합계는 19(0)·17(1)
+    assertEquals(ColorBins.HEX.get(17), cellColor());
+    tx.executeWithoutResult(status -> {
+      var cell = cells.findAll().get(0);
+      assertEquals(2, cell.getPhotoCount());
+      assertEquals(photos.findAll().stream().map(Photo::getPhotoId).min(Long::compare)
+          .orElseThrow(), cell.getFirstPhotoId());
+    });
+  }
+
+  void delete(Photo photo) {
+    tx.executeWithoutResult(status -> {
+      service.lockForUpload(DONG);
+      var locked = em.find(Photo.class, photo.getPhotoId());
+      service.retract(locked);
+      photos.delete(locked);
+      photos.flush();
+    });
+  }
+
+  @Test
+  void unknownRepresentativeColorsFallBackToBinsRule() {
+    // 팔레트에 없는 대표색만 있으면 표가 0이라 기존 분포 규칙(15%)으로 고른다.
+    upload(userId, DAY, DONG, TimeBand.DAY);
+    assertEquals(ColorBins.HEX.get(0), cellColor());
   }
 }

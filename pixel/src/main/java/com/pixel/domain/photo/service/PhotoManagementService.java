@@ -53,6 +53,7 @@ public class PhotoManagementService {
         displayKey == null ? null : storage.readUrl(displayKey),
         photo.getUser().getNickname(), photo.getDong().getName(), photo.getTakenAt(),
         photo.getTimeBand(), photo.getPalette(), photo.getBins(),
+        photo.getSeason().getSeason(),
         likes.countByPhotoId(photoId),
         userId != null && likes.existsByUserIdAndPhotoId(userId, photoId));
   }
@@ -112,8 +113,9 @@ public class PhotoManagementService {
     var items = result.map(photo -> new MyPhotosResponse.Item(photo.getPhotoId(),
         storage.readUrl(photo.getThumbnailKey()), photo.getDong().getDongCode(),
         photo.getDong().getName(), photo.getTimeBand(), photo.getTakenAt(),
-        // 사진의 점 색은 palette[0], 지도 셀의 집계 색은 bins 기준이다.
-        photo.getPalette().get(0), photo.isPublic(), photo.getAiVerdict())).getContent();
+        // 사진의 점 색은 palette[0]이고, 지도 칸 색도 칸 사진들의 palette[0] 표 수로 정한다.
+        photo.getPalette().get(0), photo.isPublic(), photo.getAiVerdict(),
+        photo.getSeason().getSeason())).getContent();
     return new MyPhotosResponse(items, page, size, result.getTotalElements(), result.hasNext());
   }
 

@@ -7,6 +7,7 @@ import com.pixel.domain.map.dto.RegionListResponse;
 import com.pixel.domain.map.exception.code.MapSuccessCode;
 import com.pixel.domain.map.service.MapService;
 import com.pixel.domain.region.entity.Region;
+import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.global.apiPayload.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -31,9 +32,10 @@ public class MapController {
 
   @GetMapping("/dongs")
   public ResponseEntity<ApiResponse<MapDongsResponse>> getDongs(@RequestParam TimeBand timeBand,
-      @RequestParam(defaultValue = Region.DEFAULT_CODE) String regionCode) {
-    return ResponseEntity.ok(
-        ApiResponse.of(MapSuccessCode._MAP_FOUND, mapService.getDongs(timeBand, regionCode)));
+      @RequestParam(defaultValue = Region.DEFAULT_CODE) String regionCode,
+      @RequestParam(required = false) SeasonType season) {
+    MapDongsResponse result = mapService.getDongs(timeBand, regionCode, season);
+    return ResponseEntity.ok(ApiResponse.of(MapSuccessCode._MAP_FOUND, result));
   }
 
   @GetMapping("/regions")

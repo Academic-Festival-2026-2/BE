@@ -12,7 +12,6 @@ import com.pixel.domain.photo.repository.PhotoLikeRepository;
 import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.refreshtoken.entity.RefreshToken;
 import com.pixel.domain.refreshtoken.repository.RefreshTokenRepository;
-import com.pixel.domain.season.enums.SeasonType;
 import com.pixel.domain.user.dto.ChangePasswordRequest;
 import com.pixel.domain.user.dto.MyInfoResponse;
 import com.pixel.domain.user.dto.UpdateMyInfoRequest;
@@ -82,7 +81,7 @@ class UserServiceImplTest {
   void 내_정보에_사진_수와_나의_지도_채운_칸_수가_포함된다() {
     given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
     given(photoRepository.countByUserUserId(USER_ID)).willReturn(7L);
-    given(myMapService.countFilledCells(USER_ID, SeasonType.AUTUMN)).willReturn(3);
+    given(myMapService.countFilledCells(USER_ID, null)).willReturn(3);
 
     MyInfoResponse response = userService.getMyInfo(USER_ID);
 
