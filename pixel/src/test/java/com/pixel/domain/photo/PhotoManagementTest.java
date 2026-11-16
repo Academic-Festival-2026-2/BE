@@ -169,6 +169,7 @@ class PhotoManagementTest {
     mvc.perform(get("/api/photos/" + id).header("Authorization", token(userId)))
         .andExpect(status().isOk()).andExpect(jsonPath("$.code").value("PHOTO200_1"))
         .andExpect(jsonPath("$.result.name").value("테스트동"))
+        .andExpect(jsonPath("$.result.season").value("AUTUMN"))
         .andExpect(jsonPath("$.result.bins.length()").value(40))
         .andExpect(jsonPath("$.result.bins[0]").value(1.0))
         .andExpect(jsonPath("$.result.bins[1]").value(0.0));
@@ -190,6 +191,7 @@ class PhotoManagementTest {
         .andExpect(jsonPath("$.result.photos[0].photoId").value(newest))
         .andExpect(jsonPath("$.result.photos[0].isPublic").value(false))
         .andExpect(jsonPath("$.result.photos[0].aiVerdict").value("PUBLIC"))
+        .andExpect(jsonPath("$.result.photos[0].season").value("AUTUMN"))
         .andExpect(jsonPath("$.result.hasNext").value(true));
     mvc.perform(get("/api/users/me/photos?size=1&page=1").header("Authorization", token(userId)))
         .andExpect(status().isOk()).andExpect(jsonPath("$.result.hasNext").value(false));
@@ -197,6 +199,24 @@ class PhotoManagementTest {
       mvc.perform(get("/api/users/me/photos?" + query).header("Authorization", token(userId)))
           .andExpect(status().isBadRequest());
     }
+  }
+
+  @Test
+  void photoWithoutExactDateReturnsSeasonOnDetailAndList() throws Exception {
+    Long id = tx.execute(status -> {
+      Photo photo = photo(userId, DAY, DONG, TimeBand.SUNSET, false);
+      ReflectionTestUtils.setField(photo, "takenAt", null);
+      ReflectionTestUtils.setField(photo, "shotDate", null);
+      return photos.saveAndFlush(photo).getPhotoId();
+    });
+    assertNull(management.detail(id, userId).takenAt());
+    mvc.perform(get("/api/photos/" + id).header("Authorization", token(userId)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.result.season").value("AUTUMN"))
+        .andExpect(jsonPath("$.result.timeBand").value("SUNSET"));
+    mvc.perform(get("/api/users/me/photos").header("Authorization", token(userId)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.result.photos[0].season").value("AUTUMN"));
   }
 
   @Test

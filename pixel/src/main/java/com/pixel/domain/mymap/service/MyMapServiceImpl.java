@@ -25,9 +25,7 @@ import com.pixel.domain.user.enums.UserStatus;
 import com.pixel.domain.user.exception.code.UserErrorCode;
 import com.pixel.domain.user.repository.UserRepository;
 import com.pixel.global.apiPayload.exception.GeneralException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -125,7 +123,7 @@ public class MyMapServiceImpl implements MyMapService {
   private MyMapResponse.Cell toCell(Dong dong, TimeBand timeBand, List<Photo> photos,
       String previewColor) {
     boolean filled = !photos.isEmpty();
-    String myColor = filled ? ColorBins.dominantColor(sumBins(photos)) : null;
+    String myColor = filled ? ColorBins.votedColor(sumVotes(photos), sumBins(photos)) : null;
 
     return new MyMapResponse.Cell(dong.getDongCode(), dong.getName(), timeBand, filled,
         myColor, photos.size(), previewColor);
@@ -174,8 +172,17 @@ public class MyMapServiceImpl implements MyMapService {
             photo -> new CellKey(photo.getDong().getDongCode(), photo.getTimeBand())));
   }
 
+  // 공유 지도 칸과 같은 규칙: 사진 한 장 = 대표색(palette[0]) 한 표
+  private List<Double> sumVotes(List<Photo> photos) {
+    List<Double> votes = ColorBins.zeros();
+    for (Photo photo : photos) {
+      ColorBins.addVote(votes, photo.getPalette(), photo.getWeight());
+    }
+    return votes;
+  }
+
   private List<Double> sumBins(List<Photo> photos) {
-    List<Double> sum = new ArrayList<>(Collections.nCopies(BIN_COUNT, 0.0));
+    List<Double> sum = ColorBins.zeros();
     for (Photo photo : photos) {
       for (int i = 0; i < BIN_COUNT; i++) {
         sum.set(i, sum.get(i) + photo.getBins().get(i) * photo.getWeight());
