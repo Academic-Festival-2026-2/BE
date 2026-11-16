@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.pixel.domain.badge.enums.BadgeType;
 import com.pixel.domain.badge.service.BadgeService;
+import com.pixel.domain.colorcell.enums.TimeBand;
 import com.pixel.domain.colorcell.util.ColorBins;
 import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.colorcell.service.ColorCellService;
@@ -24,6 +25,7 @@ import com.pixel.domain.photo.moderation.ImageModerator;
 import com.pixel.domain.photo.moderation.ModerationResult;
 import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.photo.service.PhotoService;
+import com.pixel.domain.photo.service.PhotoServiceImpl;
 import com.pixel.domain.photo.util.PhotoImageProcessor;
 import com.pixel.domain.photo.util.PhotoMetadataReader;
 import com.pixel.domain.season.entity.Season;
@@ -35,6 +37,7 @@ import com.pixel.global.apiPayload.exception.GeneralException;
 import com.pixel.global.apiPayload.exception.GlobalExceptionHandler;
 import com.pixel.global.storage.S3StorageService;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -69,7 +72,7 @@ class PhotoUploadTest {
   private final TransactionTemplate tx =
       new TransactionTemplate(mock(PlatformTransactionManager.class));
   private final PhotoService service =
-      new PhotoService(
+      new PhotoServiceImpl(
           photos, users, dongs, seasons, metadata, images, storage, aggregation, moderator, tx,
           badges);
   private final MockMultipartFile file =
@@ -92,7 +95,8 @@ class PhotoUploadTest {
     when(dongs.findById("31050110")).thenReturn(Optional.of(dong));
     when(seasons.findCurrent(any())).thenReturn(Optional.of(season));
     when(metadata.read(any())).thenReturn(new PhotoMetadataReader.PhotoMetadata(null, null, null));
-    when(images.process(any())).thenReturn(new PhotoImageProcessor.ImageData(new byte[] {2}, new byte[] {1}));
+    when(images.process(any())).thenReturn(
+        new PhotoImageProcessor.ImageData(new byte[] {2}, new byte[] {1}, new byte[] {3}));
     when(photos.saveAndFlush(any()))
         .thenAnswer(
             invocation -> {
@@ -118,6 +122,102 @@ class PhotoUploadTest {
         true,
         Collections.nCopies(5, ColorBins.HEX.get(0)),
         Collections.nCopies(40, 0.025));
+  }
+
+  private PhotoUploadRequest withoutTime(SeasonType season, TimeBand timeBand) {
+    return new PhotoUploadRequest(
+        "31050110", null, null, null, null, true,
+        Collections.nCopies(5, ColorBins.HEX.get(0)),
+        Collections.nCopies(40, 0.025), season, timeBand);
+  }
+
+  @Test
+  void withoutTimeUsesSelectedSeasonAndBandOnlyOnMyMap() {
+    Season autumn = org.springframework.beans.BeanUtils.instantiateClass(Season.class);
+    ReflectionTestUtils.setField(autumn, "season", SeasonType.AUTUMN);
+    when(seasons.findBySeason(SeasonType.AUTUMN))
+        .thenReturn(Optional.of(autumn));
+
+    var response = service.upload(1L, file, withoutTime(SeasonType.AUTUMN, TimeBand.SUNSET));
+
+    assertEquals(SeasonType.AUTUMN, response.season());
+    assertEquals("SUNSET", response.timeBand());
+    assertFalse(response.exifVerified());
+    assertNull(response.cellPhotoCount());
+    assertFalse(response.firstInCell());
+    var saved = org.mockito.ArgumentCaptor.forClass(Photo.class);
+    verify(photos).saveAndFlush(saved.capture());
+    assertNull(saved.getValue().getTakenAt());
+    assertNull(saved.getValue().getShotDate());
+    assertEquals(TimeBand.SUNSET, saved.getValue().getTimeBand());
+    verify(seasons, never()).findCurrent(any());
+    verify(aggregation, never()).lockForUpload(any());
+    verify(badges).awardForUpload(any(), eq(false));
+  }
+
+  @Test
+  void futureManualTakenAtIsRejected() {
+    var future = LocalDateTime.now(ZoneId.of("Asia/Seoul")).plusDays(1);
+    var request = new PhotoUploadRequest(
+        "31050110", null, null, future, null, true,
+        Collections.nCopies(5, ColorBins.HEX.get(0)),
+        Collections.nCopies(40, 0.025));
+
+    var ex = assertThrows(GeneralException.class,
+        () -> service.upload(1L, file, request));
+
+    assertEquals(PhotoErrorCode.TAKEN_AT_IN_FUTURE, ex.getCode());
+    assertEquals(HttpStatus.BAD_REQUEST, ex.getCode().getReasonHttpStatus().getHttpStatus());
+    verifyNoInteractions(storage);
+    verify(photos, never()).saveAndFlush(any());
+  }
+
+  @Test
+  void futureExifTakenAtIsRejectedEvenWhenRequestTimeIsValid() {
+    var future = LocalDateTime.now(ZoneId.of("Asia/Seoul")).plusDays(1);
+    when(metadata.read(any())).thenReturn(
+        new PhotoMetadataReader.PhotoMetadata(future, null, null));
+
+    var ex = assertThrows(GeneralException.class,
+        () -> service.upload(1L, file, request("13:00", null, null)));
+
+    assertEquals(PhotoErrorCode.TAKEN_AT_IN_FUTURE, ex.getCode());
+    verifyNoInteractions(storage);
+    verify(photos, never()).saveAndFlush(any());
+  }
+
+  @Test
+  void withoutTimeRequiresSeason() {
+    var ex = assertThrows(GeneralException.class,
+        () -> service.upload(1L, file, withoutTime(null, TimeBand.DAY)));
+    assertEquals(PhotoErrorCode.SEASON_REQUIRED, ex.getCode());
+    verifyNoInteractions(storage);
+  }
+
+  @Test
+  void withoutTimeRequiresTimeBand() {
+    var ex = assertThrows(GeneralException.class,
+        () -> service.upload(1L, file, withoutTime(SeasonType.AUTUMN, null)));
+    assertEquals(PhotoErrorCode.TIME_BAND_REQUIRED, ex.getCode());
+    verifyNoInteractions(storage);
+  }
+
+  @Test
+  void exifTimeOverridesSelectedSeasonAndTimeBand() {
+    LocalDateTime exifTime = LocalDateTime.parse("2026-10-29T17:00:00");
+    when(metadata.read(any())).thenReturn(
+        new PhotoMetadataReader.PhotoMetadata(exifTime, null, null));
+
+    var response = service.upload(1L, file, withoutTime(SeasonType.SPRING, TimeBand.DAY));
+
+    assertEquals(SeasonType.AUTUMN, response.season());
+    assertEquals("SUNSET", response.timeBand());
+    var saved = org.mockito.ArgumentCaptor.forClass(Photo.class);
+    verify(photos).saveAndFlush(saved.capture());
+    assertEquals(exifTime, saved.getValue().getTakenAt());
+    assertEquals(exifTime.toLocalDate(), saved.getValue().getShotDate());
+    verify(seasons).findCurrent(exifTime.toLocalDate());
+    verify(seasons, never()).findBySeason(any());
   }
 
   @ParameterizedTest
@@ -308,7 +408,7 @@ class PhotoUploadTest {
     service.upload(1L, file, request("13:00", null, null));
     var order = inOrder(moderator, storage);
     order.verify(moderator).moderate(argThat(bytes -> bytes.length == 1 && bytes[0] == 1));
-    order.verify(storage, times(2)).upload(anyString(), any(), anyString());
+    order.verify(storage, times(3)).upload(anyString(), any(), anyString());
   }
 
   @ParameterizedTest
@@ -350,19 +450,19 @@ class PhotoUploadTest {
   @Test
   void moderationRunsBeforeTransactionStarts() {
     PlatformTransactionManager manager = mock(PlatformTransactionManager.class);
-    var uploadService = new PhotoService(photos, users, dongs, seasons, metadata, images, storage,
+    var uploadService = new PhotoServiceImpl(photos, users, dongs, seasons, metadata, images, storage,
         aggregation, moderator, new TransactionTemplate(manager), badges);
     uploadService.upload(1L, file, request("13:00", null, null));
     var order = inOrder(moderator, manager, storage);
     order.verify(moderator).moderate(any());
     order.verify(manager).getTransaction(any());
-    order.verify(storage, times(2)).upload(anyString(), any(), anyString());
+    order.verify(storage, times(3)).upload(anyString(), any(), anyString());
   }
 
   @Test
   void rejectedPhotoNeverStartsTransaction() {
     PlatformTransactionManager manager = mock(PlatformTransactionManager.class);
-    var uploadService = new PhotoService(photos, users, dongs, seasons, metadata, images, storage,
+    var uploadService = new PhotoServiceImpl(photos, users, dongs, seasons, metadata, images, storage,
         aggregation, moderator, new TransactionTemplate(manager), badges);
     when(moderator.moderate(any())).thenReturn(ModerationResult.rejected());
     assertThrows(GeneralException.class,
@@ -391,7 +491,7 @@ class PhotoUploadTest {
     assertThrows(IllegalStateException.class,
         () -> service.upload(1L, file, request("13:00", null, null)));
     complete(TransactionSynchronization.STATUS_ROLLED_BACK);
-    verify(storage).deleteAllQuietly(argThat(keys -> keys.size() == 2));
+    verify(storage).deleteAllQuietly(argThat(keys -> keys.size() == 3));
   }
 
   @Test
@@ -430,13 +530,52 @@ class PhotoUploadTest {
   }
 
   @Test
+  void displayUploadFailureCleansOriginalAndThumbnail() {
+    doThrow(new IllegalStateException("S3 failure"))
+        .when(storage)
+        .upload(startsWith("photos/display/"), any(), anyString());
+    assertThrows(
+        IllegalStateException.class, () -> service.upload(1L, file, request("13:00", null, null)));
+    verify(storage)
+        .deleteAllQuietly(
+            argThat(keys -> keys.size() == 2 && keys.get(0).startsWith("photos/original/")
+                && keys.get(1).startsWith("photos/thumbnail/")));
+    verify(photos, never()).saveAndFlush(any());
+  }
+
+  @Test
+  void savedPhotoKeepsDisplayKeyWithSameFileId() {
+    service.upload(1L, file, request("13:00", null, null));
+    var saved = org.mockito.ArgumentCaptor.forClass(Photo.class);
+    verify(photos).saveAndFlush(saved.capture());
+    String original = saved.getValue().getImageKey();
+    String fileId = original.substring("photos/original/".length(), original.lastIndexOf('.'));
+    assertEquals("photos/display/" + fileId + ".jpg", saved.getValue().getDisplayKey());
+    verify(storage).upload(eq("photos/display/" + fileId + ".jpg"),
+        argThat(bytes -> bytes.length == 1 && bytes[0] == 3), eq("image/jpeg"));
+  }
+
+  // 원본이 작아 축소본이 없으면 원본·썸네일만 올리고 displayKey는 null
+  @Test
+  void smallPhotoSkipsDisplayUpload() {
+    when(images.process(any())).thenReturn(
+        new PhotoImageProcessor.ImageData(new byte[] {2}, new byte[] {1}, null));
+    service.upload(1L, file, request("13:00", null, null));
+    var saved = org.mockito.ArgumentCaptor.forClass(Photo.class);
+    verify(photos).saveAndFlush(saved.capture());
+    assertNull(saved.getValue().getDisplayKey());
+    verify(storage, times(2)).upload(anyString(), any(), anyString());
+    verify(storage, never()).upload(startsWith("photos/display/"), any(), anyString());
+  }
+
+  @Test
   void databaseFailureRegistersRollbackCleanup() {
     doThrow(new DataIntegrityViolationException("constraint")).when(photos).saveAndFlush(any());
     assertThrows(
         DataIntegrityViolationException.class,
         () -> service.upload(1L, file, request("13:00", null, null)));
     complete(TransactionSynchronization.STATUS_ROLLED_BACK);
-    verify(storage).deleteAllQuietly(argThat(keys -> keys.size() == 2));
+    verify(storage).deleteAllQuietly(argThat(keys -> keys.size() == 3));
   }
 
   private void complete(int status) {
@@ -570,7 +709,7 @@ class PhotoUploadTest {
         () -> service.upload(1L, file, request("13:00", null, null)));
     assertEquals(PhotoErrorCode.DUPLICATE_PHOTO, ex.getCode());
     complete(TransactionSynchronization.STATUS_ROLLED_BACK);
-    verify(storage).deleteAllQuietly(argThat(keys -> keys.size() == 2));
+    verify(storage).deleteAllQuietly(argThat(keys -> keys.size() == 3));
   }
 
   @Test
@@ -621,13 +760,14 @@ class PhotoUploadTest {
     var realProcessor = new PhotoImageProcessor();
     when(dongs.findDongCodeByCoordinates(37.5, 126.7)).thenReturn(Optional.of("31050110"));
     when(photos.updateLocationAndVerification(7L, 37.5, 126.7, false)).thenReturn(1);
-    var uploadService = new PhotoService(photos, users, dongs, seasons, new PhotoMetadataReader(),
+    var uploadService = new PhotoServiceImpl(photos, users, dongs, seasons, new PhotoMetadataReader(),
         realProcessor, storage, aggregation, moderator, tx, badges);
     uploadService.upload(1L,
         new MockMultipartFile("image", "gps.jpg", "image/jpeg", original),
         request("13:00", null, null));
     verify(photos).updateLocationAndVerification(7L, 37.5, 126.7, false);
     var captured = org.mockito.ArgumentCaptor.forClass(byte[].class);
+    // 80x40 사진이라 크게 보기용 축소본은 없다 (원본·썸네일만)
     verify(storage, times(2)).upload(anyString(), captured.capture(), eq("image/jpeg"));
     for (byte[] stored : captured.getAllValues()) {
       assertFalse(java.util.Arrays.equals(original, stored));

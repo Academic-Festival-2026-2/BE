@@ -3,6 +3,7 @@ package com.pixel.domain.photo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -88,10 +89,7 @@ class PhotoUploadTransactionTest {
       ReflectionTestUtils.setField(dong, "region", region);
       em.persist(dong);
       var season = BeanUtils.instantiateClass(Season.class);
-      ReflectionTestUtils.setField(season, "year", (short) 2026);
       ReflectionTestUtils.setField(season, "season", SeasonType.AUTUMN);
-      ReflectionTestUtils.setField(season, "startsOn", DAY.minusMonths(1));
-      ReflectionTestUtils.setField(season, "endsOn", DAY.plusMonths(1));
       em.persist(season);
       var user = User.builder().email("upload-tx@test.invalid").passwordHash("test")
           .nickname("uploadtx").termsAgreedAt(LocalDateTime.now())
@@ -101,8 +99,9 @@ class PhotoUploadTransactionTest {
     });
   }
 
+  // 긴 변이 2048px보다 커야 크게 보기용 축소본까지 만들어 세 파일을 올린다.
   MockMultipartFile jpeg() throws Exception {
-    var image = new BufferedImage(8, 8, BufferedImage.TYPE_INT_RGB);
+    var image = new BufferedImage(2100, 8, BufferedImage.TYPE_INT_RGB);
     var out = new ByteArrayOutputStream();
     ImageIO.write(image, "jpg", out);
     return new MockMultipartFile("image", "photo.jpg", "image/jpeg", out.toByteArray());
@@ -126,8 +125,10 @@ class PhotoUploadTransactionTest {
       var saved = photos.findById(response.photoId()).orElseThrow();
       assertEquals(AiVerdict.PERSONAL_ONLY, saved.getAiVerdict());
       assertFalse(saved.isPublic());
+      // 크게 보기용 축소 이미지 키가 DB(display_key)에 저장됨
+      assertTrue(saved.getDisplayKey().startsWith("photos/display/"));
     });
-    verify(storage, times(2)).upload(anyString(), any(), anyString());
+    verify(storage, times(3)).upload(anyString(), any(), anyString());
     verify(storage, never()).deleteAllQuietly(any());
   }
 
@@ -139,6 +140,6 @@ class PhotoUploadTransactionTest {
     assertThrows(IllegalStateException.class, () -> service.upload(userId, jpeg(), request()));
 
     assertEquals(0, photos.count());
-    verify(storage).deleteAllQuietly(argThat(keys -> keys.size() == 2));
+    verify(storage).deleteAllQuietly(argThat(keys -> keys.size() == 3));
   }
 }

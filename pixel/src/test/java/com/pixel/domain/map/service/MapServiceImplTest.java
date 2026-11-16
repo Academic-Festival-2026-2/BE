@@ -1,6 +1,7 @@
 package com.pixel.domain.map.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
@@ -12,6 +13,8 @@ import com.pixel.domain.colorcell.util.ColorBins;
 import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.dong.repository.DongRepository;
 import com.pixel.domain.map.dto.MapDongsResponse;
+import com.pixel.domain.photo.dto.DongPointCountView;
+import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.region.entity.Region;
 import com.pixel.domain.region.service.RegionService;
 import com.pixel.domain.season.entity.Season;
@@ -41,6 +44,9 @@ class MapServiceImplTest {
 
   @Mock
   private RegionService regionService;
+
+  @Mock
+  private PhotoRepository photoRepository;
 
   @InjectMocks
   private MapServiceImpl mapService;
@@ -101,6 +107,24 @@ class MapServiceImplTest {
   }
 
   @Test
+  void pointCountComesFromPhotoPointsAndDefaultsToZero() {
+    // A동은 사진 5장 중 점으로 보이는 게 3장(나머지는 나만 보기), B동은 점으로 보이는 사진 없음
+    givenCells(cell("A", 5), cell("B", 2));
+    given(season.getSeasonId()).willReturn((short) 1);
+    DongPointCountView a = mock(DongPointCountView.class);
+    given(a.getDongCode()).willReturn("A");
+    given(a.getPointCount()).willReturn(3L);
+    given(photoRepository.countPhotoPoints("3105", (short) 1, "DAY")).willReturn(List.of(a));
+
+    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105");
+
+    assertThat(response.getDongs())
+        .extracting(MapDongsResponse.DongColor::getDongCode,
+            MapDongsResponse.DongColor::getPointCount)
+        .containsExactly(tuple("A", 3), tuple("B", 0));
+  }
+
+  @Test
   void includesColorRatioForEachDong() {
     givenCells(cellWithBins("A", 5, bins(Map.of(0, 0.6, 12, 0.4))),
         cellWithBins("B", 0, bins(Map.of())));
@@ -121,6 +145,27 @@ class MapServiceImplTest {
     assertThat(response.getTopDongs().get(0).getColorRatio())
         .extracting(ColorRatio::hex)
         .containsExactly(ColorBins.HEX.get(0),ColorBins.HEX.get(12));
+  }
+
+  @Test
+  void colorRatioStartsWithCellColorEvenWhenItIsRareInBins() {
+    // 분포는 나무·흙(26)·나무 초록(14) 위주지만 표로 정한 칸 색은 단풍 빨강(19)
+    ColorCell cell = cellWithBins("A", 3,
+        bins(Map.of(26, 0.5, 14, 0.2, 13, 0.1, 15, 0.1, 16, 0.07, 19, 0.03)));
+    given(cell.getDominantColor()).willReturn(ColorBins.HEX.get(19));
+    givenCells(cell);
+
+    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105");
+
+    for (List<ColorRatio> ratios : List.of(response.getDongs().get(0).getColorRatio(),
+        response.getTopDongs().get(0).getColorRatio())) {
+      assertThat(ratios).hasSize(5);
+      assertThat(ratios.get(0)).isEqualTo(new ColorRatio(ColorBins.HEX.get(19),
+          ColorBins.FIRST_MIN_RATIO));
+      assertThat(ratios).extracting(ColorRatio::hex).containsExactly(ColorBins.HEX.get(19),
+          ColorBins.HEX.get(26), ColorBins.HEX.get(14), ColorBins.HEX.get(13),
+          ColorBins.HEX.get(15));
+    }
   }
 
   private void givenCells(ColorCell... cells) {

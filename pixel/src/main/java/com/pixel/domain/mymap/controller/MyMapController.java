@@ -29,7 +29,7 @@ public class MyMapController {
 
   @GetMapping
   public ResponseEntity<ApiResponse<MyMapResponse>> getMyMap(@AuthenticationPrincipal Long userId,
-      @RequestParam(defaultValue = "AUTUMN") SeasonType season,
+      @RequestParam(required = false) SeasonType season,
       @RequestParam(defaultValue = Region.DEFAULT_CODE) String regionCode) {
     return ResponseEntity.ok(
         ApiResponse.of(MyMapSuccessCode._MY_MAP_FOUND,
@@ -41,7 +41,7 @@ public class MyMapController {
       @AuthenticationPrincipal Long userId,
       @PathVariable String dongCode,
       @RequestParam(required = false) TimeBand timeBand,
-      @RequestParam(defaultValue = "AUTUMN") SeasonType season) {
+      @RequestParam(required = false) SeasonType season) {
     return ResponseEntity.ok(ApiResponse.of(MyMapSuccessCode._MY_DONG_PHOTOS_FOUND,
         myMapService.getMyDongPhotos(userId, dongCode, timeBand, season)));
   }

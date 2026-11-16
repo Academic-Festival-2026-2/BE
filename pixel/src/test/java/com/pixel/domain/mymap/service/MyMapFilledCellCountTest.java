@@ -76,6 +76,30 @@ class MyMapFilledCellCountTest {
     verify(photoRepository, never()).findMyMapPhotos(any(), any());
   }
 
+  @Test
+  void 현재_계절_기준으로_채운_칸을_센다() {
+    Season winter = mock(Season.class);
+    Dong dong = dong("A");
+    List<Photo> photos = List.of(photo(dong, TimeBand.DAY));
+    given(seasonService.findCurrentSeason()).willReturn(Optional.of(winter));
+    given(photoRepository.findMyMapPhotos(USER_ID, winter)).willReturn(photos);
+
+    int count = myMapService.countFilledCells(USER_ID, null);
+
+    assertThat(count).isEqualTo(1);
+    verify(seasonService).findCurrentSeason();
+  }
+
+  @Test
+  void 현재_시즌이_등록되지_않으면_채운_칸_수는_0이다() {
+    given(seasonService.findCurrentSeason()).willReturn(Optional.empty());
+
+    int count = myMapService.countFilledCells(USER_ID, null);
+
+    assertThat(count).isZero();
+    verifyNoInteractions(photoRepository);
+  }
+
   private Dong dong(String dongCode) {
     Dong dong = mock(Dong.class);
     given(dong.getDongCode()).willReturn(dongCode);

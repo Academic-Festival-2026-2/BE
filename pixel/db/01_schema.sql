@@ -70,14 +70,10 @@ CREATE TABLE dongs (
 
 CREATE TABLE seasons (
     season_id  SMALLINT   NOT NULL AUTO_INCREMENT,
-    `year`     SMALLINT   NOT NULL,
     season     VARCHAR(6) NOT NULL,
-    starts_on  DATE       NOT NULL,
-    ends_on    DATE       NOT NULL,
     PRIMARY KEY (season_id),
-    UNIQUE KEY uk_seasons_year_season (`year`, season),
-    CONSTRAINT ck_seasons_season CHECK (season IN ('SPRING', 'SUMMER', 'AUTUMN', 'WINTER')),
-    CONSTRAINT ck_seasons_range CHECK (ends_on >= starts_on)
+    UNIQUE KEY uk_seasons_season (season),
+    CONSTRAINT ck_seasons_season CHECK (season IN ('SPRING', 'SUMMER', 'AUTUMN', 'WINTER'))
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
 
 CREATE TABLE photos (
@@ -87,7 +83,7 @@ CREATE TABLE photos (
     season_id       SMALLINT     NOT NULL,
     time_band       VARCHAR(6)   NOT NULL COMMENT 'DAWN 05-08 / DAY 08-16 / SUNSET 16-19 / NIGHT 19-05',
     taken_at        DATETIME(6)  NULL COMMENT 'EXIF 촬영 시각(KST)',
-    shot_date       DATE         NOT NULL COMMENT '같은 사용자·같은 날 묶음 기준',
+    shot_date       DATE         NULL COMMENT '같은 사용자·같은 날 묶음 기준',
     location        POINT        SRID 4326 NULL COMMENT '촬영 좌표',
     exif_verified   BOOLEAN      NOT NULL DEFAULT FALSE COMMENT '시각·좌표가 있고 좌표가 동 경계 안. ai_verdict가 PUBLIC일 때만 모두의 지도 반영',
     ai_verdict      VARCHAR(13)  NOT NULL DEFAULT 'PUBLIC' COMMENT 'AI 검수 결과. PUBLIC 모두의 지도 가능 / PERSONAL_ONLY 풍경 아님·얼굴·번호판 / UNCHECKED 판정 실패',
@@ -96,6 +92,7 @@ CREATE TABLE photos (
     weight          FLOAT        NOT NULL DEFAULT 1.0 COMMENT '0-1, 이상치 사진은 낮춤',
     image_key       VARCHAR(255) NOT NULL COMMENT '원본 S3 키',
     thumbnail_key   VARCHAR(255) NOT NULL COMMENT '썸네일 S3 키',
+    display_key     VARCHAR(255) NULL COMMENT '크게 보기용 축소 이미지 S3 키 (긴 변 2048px 이하 JPEG). NULL이면 원본을 씀',
     image_hash      CHAR(64)     CHARACTER SET ascii COLLATE ascii_bin NOT NULL COMMENT '서버가 받은 파일로 계산한 SHA-256',
     is_public       BOOLEAN      NOT NULL DEFAULT TRUE,
     nearby_only     BOOLEAN      NOT NULL DEFAULT FALSE,
@@ -159,4 +156,18 @@ CREATE TABLE user_badges (
     CONSTRAINT fk_user_badges_dong FOREIGN KEY (dong_code) REFERENCES dongs (dong_code),
     CONSTRAINT ck_user_badges_type CHECK (badge_type IN (
         'FIRST_PHOTO', 'DONG_FIRST', 'DONG_TOP10', 'DONG_FIVE', 'ALL_TIME_BANDS', 'PHOTO_TEN'))
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
+
+-- 사진 좋아요. 회원당 사진 하나에 한 번만 누를 수 있다. 사진이나 회원을 지우면 함께 지운다.
+CREATE TABLE photo_likes (
+    photo_like_id   BIGINT       NOT NULL AUTO_INCREMENT,
+    user_id         BIGINT       NOT NULL,
+    photo_id        BIGINT       NOT NULL,
+    created_at      DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (photo_like_id),
+    UNIQUE KEY uk_photo_likes_user_photo (user_id, photo_id),
+    KEY idx_photo_likes_user (user_id, created_at DESC),
+    KEY idx_photo_likes_photo (photo_id),
+    CONSTRAINT fk_photo_likes_user FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE,
+    CONSTRAINT fk_photo_likes_photo FOREIGN KEY (photo_id) REFERENCES photos (photo_id) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;

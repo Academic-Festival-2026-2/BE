@@ -34,7 +34,13 @@ public enum PhotoErrorCode implements BaseErrorCode {
   UNSUPPORTED_IMAGE_TYPE(HttpStatus.BAD_REQUEST, "PHOTO400_20", "JPEG 또는 PNG 파일만 지원합니다."),
   UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "PHOTO401_1", "로그인 사용자를 찾을 수 없습니다."),
   DUPLICATE_PHOTO(HttpStatus.CONFLICT, "PHOTO409_1", "이미 등록된 사진입니다."),
-  INVALID_MULTIPART(HttpStatus.BAD_REQUEST, "PHOTO400_21", "사진 파일과 올바른 메타데이터가 필요합니다.");
+  INVALID_MULTIPART(HttpStatus.BAD_REQUEST, "PHOTO400_21", "사진 파일과 올바른 메타데이터가 필요합니다."),
+  SEASON_REQUIRED(HttpStatus.BAD_REQUEST, "PHOTO400_22", "촬영 시각이 없으면 계절을 선택해야 합니다."),
+  TIME_BAND_REQUIRED(HttpStatus.BAD_REQUEST, "PHOTO400_23", "촬영 시각이 없으면 시간대를 선택해야 합니다."),
+  SHOT_DATE_WITHOUT_TAKEN_AT(HttpStatus.BAD_REQUEST, "PHOTO400_24",
+      "촬영 날짜만 입력할 수 없습니다. 촬영 시각을 입력하거나 계절과 시간대를 선택하세요."),
+  TAKEN_AT_IN_FUTURE(HttpStatus.BAD_REQUEST, "PHOTO400_25",
+      "현재보다 미래의 촬영 시각은 등록할 수 없습니다.");
 
   private final HttpStatus httpStatus;
   private final String code;

@@ -105,10 +105,7 @@ class PhotoManagementTest {
         em.persist(dong);
       }
       var season = BeanUtils.instantiateClass(Season.class);
-      ReflectionTestUtils.setField(season, "year", (short) 2026);
       ReflectionTestUtils.setField(season, "season", SeasonType.AUTUMN);
-      ReflectionTestUtils.setField(season, "startsOn", DAY.minusMonths(1));
-      ReflectionTestUtils.setField(season, "endsOn", DAY.plusMonths(1));
       em.persist(season);
       seasonId = season.getSeasonId();
       userId = user("one").getUserId();
@@ -134,7 +131,7 @@ class PhotoManagementTest {
     bins.set(0, 1.0);
     return new Photo(em.getReference(User.class, owner), em.getReference(Dong.class, dong),
         em.getReference(Season.class, seasonId), band, date.atTime(13, 0), date, verified,
-        verdict, Collections.nCopies(5, "#123ABC"), bins, "original", "thumbnail",
+        verdict, Collections.nCopies(5, "#123ABC"), bins, "original", "thumbnail", "display",
         UUID.randomUUID().toString(), false);
   }
 
@@ -169,12 +166,56 @@ class PhotoManagementTest {
     mvc.perform(get("/api/photos/" + id).header("Authorization", token(userId)))
         .andExpect(status().isOk()).andExpect(jsonPath("$.code").value("PHOTO200_1"))
         .andExpect(jsonPath("$.result.name").value("테스트동"))
+        .andExpect(jsonPath("$.result.season").value("AUTUMN"))
         .andExpect(jsonPath("$.result.bins.length()").value(40))
         .andExpect(jsonPath("$.result.bins[0]").value(1.0))
         .andExpect(jsonPath("$.result.bins[1]").value(0.0));
     management.changeVisibility(id, userId, true);
     mvc.perform(get("/api/photos/" + id)).andExpect(status().isOk());
     mvc.perform(get("/api/photos/999999")).andExpect(status().isNotFound());
+  }
+
+  // 이 기능 전에 올린 사진처럼 크게 보기용 축소 이미지 키를 비움
+  void clearDisplayKey(Long photoId) {
+    tx.executeWithoutResult(status -> em.createNativeQuery(
+            "UPDATE photos SET display_key = NULL WHERE photo_id = :id")
+        .setParameter("id", photoId).executeUpdate());
+  }
+
+  @Test
+  void detailGivesDisplayUrlOnlyWhenDisplayImageExists() throws Exception {
+    when(storage.readUrl(anyString())).thenAnswer(call -> "signed:" + call.getArgument(0));
+    Long id = upload(userId, DAY, true);
+    management.changeVisibility(id, userId, true);
+    mvc.perform(get("/api/photos/" + id)).andExpect(status().isOk())
+        .andExpect(jsonPath("$.result.imageUrl").value("signed:original"))
+        .andExpect(jsonPath("$.result.displayUrl").value("signed:display"))
+        // #149의 season과 이 PR의 displayUrl이 한 응답에 같이 온다
+        .andExpect(jsonPath("$.result.season").value("AUTUMN"));
+
+    clearDisplayKey(id);
+    mvc.perform(get("/api/photos/" + id)).andExpect(status().isOk())
+        .andExpect(jsonPath("$.result.imageUrl").value("signed:original"))
+        .andExpect(jsonPath("$.result.displayUrl").value(org.hamcrest.Matchers.nullValue()));
+    verify(storage, never()).readUrl(org.mockito.ArgumentMatchers.isNull());
+  }
+
+  @Test
+  void deleteRemovesDisplayImageOnlyWhenItExists() {
+    Long withDisplay = upload(userId, DAY, true);
+    Long withoutDisplay = upload(userId, DAY, true);
+    clearDisplayKey(withoutDisplay);
+
+    management.delete(withDisplay, userId);
+    verify(storage).delete("original");
+    verify(storage).delete("thumbnail");
+    verify(storage).delete("display");
+
+    management.delete(withoutDisplay, userId);
+    verify(storage, times(2)).delete("original");
+    verify(storage, times(2)).delete("thumbnail");
+    verify(storage, times(1)).delete("display");
+    verify(storage, never()).delete(org.mockito.ArgumentMatchers.isNull());
   }
 
   @Test
@@ -190,6 +231,7 @@ class PhotoManagementTest {
         .andExpect(jsonPath("$.result.photos[0].photoId").value(newest))
         .andExpect(jsonPath("$.result.photos[0].isPublic").value(false))
         .andExpect(jsonPath("$.result.photos[0].aiVerdict").value("PUBLIC"))
+        .andExpect(jsonPath("$.result.photos[0].season").value("AUTUMN"))
         .andExpect(jsonPath("$.result.hasNext").value(true));
     mvc.perform(get("/api/users/me/photos?size=1&page=1").header("Authorization", token(userId)))
         .andExpect(status().isOk()).andExpect(jsonPath("$.result.hasNext").value(false));
@@ -197,6 +239,74 @@ class PhotoManagementTest {
       mvc.perform(get("/api/users/me/photos?" + query).header("Authorization", token(userId)))
           .andExpect(status().isBadRequest());
     }
+  }
+
+  @Test
+  void myPhotosSeasonFilterAppliesBeforePagination() throws Exception {
+    upload(userId, DAY, false);
+    upload(userId, DAY, false);
+    upload(otherUserId, DAY, false);
+
+    // 촬영 시각이 없는 봄 사진도 저장된 season 값으로 검색돼야 합니다.
+    Long springId = tx.execute(status -> {
+      var spring = BeanUtils.instantiateClass(Season.class);
+      ReflectionTestUtils.setField(spring, "season", SeasonType.SPRING);
+      em.persist(spring);
+      var photo = photo(userId, DAY, DONG, TimeBand.DAY, false);
+      ReflectionTestUtils.setField(photo, "season", spring);
+      ReflectionTestUtils.setField(photo, "takenAt", null);
+      ReflectionTestUtils.setField(photo, "shotDate", null);
+      return photos.saveAndFlush(photo).getPhotoId();
+    });
+
+    String auth = token(userId);
+    mvc.perform(get("/api/users/me/photos?season=SPRING&size=1")
+            .header("Authorization", auth))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.result.totalElements").value(1))
+        .andExpect(jsonPath("$.result.photos[0].photoId").value(springId))
+        .andExpect(jsonPath("$.result.photos[0].season").value("SPRING"))
+        .andExpect(jsonPath("$.result.hasNext").value(false));
+    mvc.perform(get("/api/users/me/photos?season=AUTUMN&size=1")
+            .header("Authorization", auth))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.result.totalElements").value(2))
+        .andExpect(jsonPath("$.result.photos.length()").value(1))
+        .andExpect(jsonPath("$.result.hasNext").value(true));
+    mvc.perform(get("/api/users/me/photos?season=AUTUMN&size=1&page=1")
+            .header("Authorization", auth))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.result.totalElements").value(2))
+        .andExpect(jsonPath("$.result.hasNext").value(false));
+    mvc.perform(get("/api/users/me/photos?season=WINTER")
+            .header("Authorization", auth))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.result.totalElements").value(0))
+        .andExpect(jsonPath("$.result.photos.length()").value(0));
+    mvc.perform(get("/api/users/me/photos").header("Authorization", auth))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.result.totalElements").value(3));
+    mvc.perform(get("/api/users/me/photos?season=INVALID")
+            .header("Authorization", auth))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void photoWithoutExactDateReturnsSeasonOnDetailAndList() throws Exception {
+    Long id = tx.execute(status -> {
+      Photo photo = photo(userId, DAY, DONG, TimeBand.SUNSET, false);
+      ReflectionTestUtils.setField(photo, "takenAt", null);
+      ReflectionTestUtils.setField(photo, "shotDate", null);
+      return photos.saveAndFlush(photo).getPhotoId();
+    });
+    assertNull(management.detail(id, userId).takenAt());
+    mvc.perform(get("/api/photos/" + id).header("Authorization", token(userId)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.result.season").value("AUTUMN"))
+        .andExpect(jsonPath("$.result.timeBand").value("SUNSET"));
+    mvc.perform(get("/api/users/me/photos").header("Authorization", token(userId)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.result.photos[0].season").value("AUTUMN"));
   }
 
   @Test

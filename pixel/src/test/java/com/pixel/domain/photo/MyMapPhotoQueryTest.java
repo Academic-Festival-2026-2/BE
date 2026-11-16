@@ -79,10 +79,7 @@ public class MyMapPhotoQueryTest {
 
   private Season season() {
     Season season = BeanUtils.instantiateClass(Season.class);
-    ReflectionTestUtils.setField(season, "year", (short) 2026);
     ReflectionTestUtils.setField(season, "season", SeasonType.AUTUMN);
-    ReflectionTestUtils.setField(season, "startsOn", DAY.minusMonths(1));
-    ReflectionTestUtils.setField(season, "endsOn", DAY.plusMonths(1));
     em.persist(season);
     return season;
   }
@@ -100,6 +97,6 @@ public class MyMapPhotoQueryTest {
     bins.set(0, 1.0);
     return new Photo(owner, dong, season, TimeBand.DAY, DAY.atTime(13, 0), DAY, exifVerified,
         AiVerdict.PUBLIC, Collections.nCopies(5, "#123ABC"), bins, "original", "thumbnail",
-        UUID.randomUUID().toString(), false);
+        "display", UUID.randomUUID().toString(), false);
   }
 }

@@ -1,9 +1,11 @@
 package com.pixel.domain.photo.repository;
 
 import com.pixel.domain.colorcell.enums.TimeBand;
+import com.pixel.domain.photo.dto.DongPointCountView;
 import com.pixel.domain.photo.dto.PhotoPointView;
 import com.pixel.domain.photo.entity.Photo;
 import com.pixel.domain.season.entity.Season;
+import com.pixel.domain.season.enums.SeasonType;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDate;
 import java.util.List;
@@ -40,18 +42,27 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
   @Query("SELECT p FROM Photo p WHERE p.photoId = :photoId")
   Optional<Photo> findForUpdate(@Param("photoId") Long photoId);
 
-  @EntityGraph(attributePaths = {"dong", "user"})
+  // 좋아요용 공유 잠금(MySQL FOR SHARE). 삭제·공개 변경(findForUpdate)은 기다리고, 좋아요끼리는 동시에 읽는다.
+  @Lock(LockModeType.PESSIMISTIC_READ)
+  @Query("SELECT p FROM Photo p WHERE p.photoId = :photoId")
+  Optional<Photo> findForShare(@Param("photoId") Long photoId);
+
+  @EntityGraph(attributePaths = {"dong", "user", "season"})
   Page<Photo> findByUserUserId(Long userId, Pageable pageable);
 
-  // 삭제 시에도 최신 커밋을 읽고, 다음 최초 기여 사진을 결정적으로 선택한다.
-  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  // DB에서 계절 필터를 적용한 다음 페이지를 나눕니다. (FE 현재 페이지 필터링 금지)
+  @EntityGraph(attributePaths = {"dong", "user", "season"})
+  Page<Photo> findByUserUserIdAndSeason_Season(Long userId, SeasonType season, Pageable pageable);
+
+  // 칸 색(대표색 표 수) 계산용. 동 잠금(lockForUpload) 뒤에 불러서 업로드·삭제와 순서가 겹치지 않고,
+  // 잠금 읽기라 REPEATABLE READ의 이전 스냅샷 대신 최신 커밋을 읽는다.
+  @Lock(LockModeType.PESSIMISTIC_READ)
   @Query("SELECT p FROM Photo p WHERE p.dong.dongCode = :dongCode"
       + " AND p.season.seasonId = :seasonId AND p.timeBand = :timeBand"
       + " AND p.exifVerified = true AND p.aiVerdict = com.pixel.domain.photo.enums.AiVerdict.PUBLIC"
-      + " AND p.photoId <> :photoId ORDER BY p.photoId")
-  List<Photo> findRemainingInCell(@Param("dongCode") String dongCode,
-      @Param("seasonId") Short seasonId, @Param("timeBand") TimeBand timeBand,
-      @Param("photoId") Long photoId, Pageable pageable);
+      + " ORDER BY p.photoId")
+  List<Photo> findCountedInCell(@Param("dongCode") String dongCode,
+      @Param("seasonId") Short seasonId, @Param("timeBand") TimeBand timeBand);
 
   boolean existsByImageHash(String imageHash);
 
@@ -97,6 +108,7 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
       @Param("longitude") Double longitude,
       @Param("verified") boolean verified);
 
+  // 점 조건은 countPhotoPoints(지도 API 점 개수)와 같아야 함. 한쪽을 바꾸면 다른 쪽도 같이 바꿀 것
   @Query(
       value =
           """
@@ -119,6 +131,29 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
       nativeQuery = true)
   List<PhotoPointView> findPhotoPoints(
       @Param("dongCode") String dongCode,
+      @Param("seasonId") Short seasonId,
+      @Param("timeBand") String timeBand);
+
+  // 지도 API: 지역 전체 동별 점 개수 (동 상세에 점으로 보이는 사진 수)
+  // 조건은 findPhotoPoints와 같아야 함. 한쪽을 바꾸면 다른 쪽도 같이 바꿀 것 (숫자가 어긋남)
+  @Query(
+      value =
+          """
+              SELECT p.dong_code AS dongCode, COUNT(*) AS pointCount
+              FROM photos p
+              JOIN dongs d ON d.dong_code = p.dong_code
+              WHERE d.region_code = :regionCode
+                AND p.season_id = :seasonId
+                AND p.time_band = :timeBand
+                AND p.exif_verified = TRUE
+                AND p.ai_verdict = 'PUBLIC'
+                AND p.is_public = TRUE
+                AND p.location IS NOT NULL
+              GROUP BY p.dong_code
+              """,
+      nativeQuery = true)
+  List<DongPointCountView> countPhotoPoints(
+      @Param("regionCode") String regionCode,
       @Param("seasonId") Short seasonId,
       @Param("timeBand") String timeBand);
 

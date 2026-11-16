@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 
 import com.pixel.domain.colorcell.repository.ColorCellRepository;
 import com.pixel.domain.dong.repository.DongRepository;
+import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.region.dto.RegionBoundsView;
 import com.pixel.domain.region.repository.RegionRepository;
 import com.pixel.domain.region.service.RegionService;
@@ -59,6 +60,9 @@ class MapServiceCacheTest {
 
   @MockitoBean
   private RegionService regionService;
+
+  @MockitoBean
+  private PhotoRepository photoRepository;
 
   @Autowired
   private MapService mapService;
