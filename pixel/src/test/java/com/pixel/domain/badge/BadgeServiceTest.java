@@ -113,7 +113,7 @@ class BadgeServiceTest {
       var photo = photos.saveAndFlush(new Photo(em.find(User.class, owner),
           em.getReference(Dong.class, dong), em.getReference(Season.class, seasonId), band,
           DAY.atTime(13, 0), DAY, publicMap, AiVerdict.PUBLIC, Collections.nCopies(5, "#123ABC"),
-          bins, "original", "thumbnail", UUID.randomUUID().toString(), false));
+          bins, "original", "thumbnail", "display", UUID.randomUUID().toString(), false));
       return service.awardForUpload(photo, publicMap);
     });
   }

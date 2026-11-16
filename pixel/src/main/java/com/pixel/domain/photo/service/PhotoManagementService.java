@@ -17,6 +17,8 @@ import com.pixel.global.apiPayload.status.ErrorStatus;
 import com.pixel.global.storage.S3StorageService;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -46,7 +48,9 @@ public class PhotoManagementService {
       requireActiveUser(userId);
       requireOwner(photo, userId);
     }
+    String displayKey = photo.getDisplayKey();
     return new PhotoDetailResponse(photo.getPhotoId(), storage.readUrl(photo.getImageKey()),
+        displayKey == null ? null : storage.readUrl(displayKey),
         photo.getUser().getNickname(), photo.getDong().getName(), photo.getTakenAt(),
         photo.getTimeBand(), photo.getPalette(), photo.getBins(),
         photo.getSeason().getSeason(),
@@ -137,7 +141,9 @@ public class PhotoManagementService {
     Photo photo = lockedPhoto(photoId);
     requireOwner(photo, userId);
     cells.retract(photo);
-    List<String> keys = List.of(photo.getImageKey(), photo.getThumbnailKey());
+    // 축소 이미지는 이 기능 전에 올린 사진이나 작은 사진이면 없다 (null)
+    List<String> keys = Stream.of(photo.getImageKey(), photo.getThumbnailKey(),
+        photo.getDisplayKey()).filter(Objects::nonNull).toList();
     // 운영 DB는 FK ON DELETE CASCADE로도 지우지만, 테이블 정의와 상관없이 같은 결과가 나오도록 먼저 지운다.
     likes.deleteAllByPhotoId(photoId);
     photos.delete(photo);

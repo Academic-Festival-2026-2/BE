@@ -134,7 +134,7 @@ class PhotoManagementTest {
     bins.set(0, 1.0);
     return new Photo(em.getReference(User.class, owner), em.getReference(Dong.class, dong),
         em.getReference(Season.class, seasonId), band, date.atTime(13, 0), date, verified,
-        verdict, Collections.nCopies(5, "#123ABC"), bins, "original", "thumbnail",
+        verdict, Collections.nCopies(5, "#123ABC"), bins, "original", "thumbnail", "display",
         UUID.randomUUID().toString(), false);
   }
 
@@ -176,6 +176,49 @@ class PhotoManagementTest {
     management.changeVisibility(id, userId, true);
     mvc.perform(get("/api/photos/" + id)).andExpect(status().isOk());
     mvc.perform(get("/api/photos/999999")).andExpect(status().isNotFound());
+  }
+
+  // 이 기능 전에 올린 사진처럼 크게 보기용 축소 이미지 키를 비움
+  void clearDisplayKey(Long photoId) {
+    tx.executeWithoutResult(status -> em.createNativeQuery(
+            "UPDATE photos SET display_key = NULL WHERE photo_id = :id")
+        .setParameter("id", photoId).executeUpdate());
+  }
+
+  @Test
+  void detailGivesDisplayUrlOnlyWhenDisplayImageExists() throws Exception {
+    when(storage.readUrl(anyString())).thenAnswer(call -> "signed:" + call.getArgument(0));
+    Long id = upload(userId, DAY, true);
+    management.changeVisibility(id, userId, true);
+    mvc.perform(get("/api/photos/" + id)).andExpect(status().isOk())
+        .andExpect(jsonPath("$.result.imageUrl").value("signed:original"))
+        .andExpect(jsonPath("$.result.displayUrl").value("signed:display"))
+        // #149의 season과 이 PR의 displayUrl이 한 응답에 같이 온다
+        .andExpect(jsonPath("$.result.season").value("AUTUMN"));
+
+    clearDisplayKey(id);
+    mvc.perform(get("/api/photos/" + id)).andExpect(status().isOk())
+        .andExpect(jsonPath("$.result.imageUrl").value("signed:original"))
+        .andExpect(jsonPath("$.result.displayUrl").value(org.hamcrest.Matchers.nullValue()));
+    verify(storage, never()).readUrl(org.mockito.ArgumentMatchers.isNull());
+  }
+
+  @Test
+  void deleteRemovesDisplayImageOnlyWhenItExists() {
+    Long withDisplay = upload(userId, DAY, true);
+    Long withoutDisplay = upload(userId, DAY, true);
+    clearDisplayKey(withoutDisplay);
+
+    management.delete(withDisplay, userId);
+    verify(storage).delete("original");
+    verify(storage).delete("thumbnail");
+    verify(storage).delete("display");
+
+    management.delete(withoutDisplay, userId);
+    verify(storage, times(2)).delete("original");
+    verify(storage, times(2)).delete("thumbnail");
+    verify(storage, times(1)).delete("display");
+    verify(storage, never()).delete(org.mockito.ArgumentMatchers.isNull());
   }
 
   @Test

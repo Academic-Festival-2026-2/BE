@@ -130,7 +130,7 @@ class PhotoLikeTest {
       var photo = photos.saveAndFlush(new Photo(em.getReference(User.class, owner),
           em.getReference(Dong.class, DONG), em.getReference(Season.class, seasonId),
           TimeBand.DAY, DAY.atTime(13, 0), DAY, true, AiVerdict.PUBLIC,
-          Collections.nCopies(5, "#123ABC"), bins, "original", "thumbnail",
+          Collections.nCopies(5, "#123ABC"), bins, "original", "thumbnail", "display",
           UUID.randomUUID().toString(), false));
       cellService.aggregate(photo);
       return photo.getPhotoId();
