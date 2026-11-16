@@ -29,6 +29,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
@@ -48,6 +49,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class PhotoServiceImpl implements PhotoService {
 
   private static final long MAX_FILE_SIZE = 10L * 1024 * 1024;
+  private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
   private static final double GPS_EPSILON = 0.00001;
 
   private final PhotoRepository photoRepository;
@@ -101,6 +103,9 @@ public class PhotoServiceImpl implements PhotoService {
 
     // 유효한 EXIF 촬영 시각을 우선하고, 누락된 경우에만 요청의 KST 시각을 사용한다.
     LocalDateTime takenAt = exif.takenAt() != null ? exif.takenAt() : request.takenAt();
+    if (takenAt != null && takenAt.isAfter(LocalDateTime.now(SEOUL))) {
+      throw new GeneralException(PhotoErrorCode.TAKEN_AT_IN_FUTURE);
+    }
 
     // EXIF/기존 수동 시각이 있으면 정확한 날짜를 유지한다.
     // 정확한 시각이 전혀 없으면 날짜를 만들지 않고 계절·시간대만 받는다.

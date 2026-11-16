@@ -38,7 +38,9 @@ public enum PhotoErrorCode implements BaseErrorCode {
   SEASON_REQUIRED(HttpStatus.BAD_REQUEST, "PHOTO400_22", "촬영 시각이 없으면 계절을 선택해야 합니다."),
   TIME_BAND_REQUIRED(HttpStatus.BAD_REQUEST, "PHOTO400_23", "촬영 시각이 없으면 시간대를 선택해야 합니다."),
   SHOT_DATE_WITHOUT_TAKEN_AT(HttpStatus.BAD_REQUEST, "PHOTO400_24",
-      "촬영 날짜만 입력할 수 없습니다. 촬영 시각을 입력하거나 계절과 시간대를 선택하세요.");
+      "촬영 날짜만 입력할 수 없습니다. 촬영 시각을 입력하거나 계절과 시간대를 선택하세요."),
+  TAKEN_AT_IN_FUTURE(HttpStatus.BAD_REQUEST, "PHOTO400_25",
+      "현재보다 미래의 촬영 시각은 등록할 수 없습니다.");
 
   private final HttpStatus httpStatus;
   private final String code;

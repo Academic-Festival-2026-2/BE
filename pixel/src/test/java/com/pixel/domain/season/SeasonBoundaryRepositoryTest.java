@@ -19,8 +19,11 @@ import org.springframework.test.util.ReflectionTestUtils;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
 class SeasonBoundaryRepositoryTest {
-  @Autowired private SeasonRepository repository;
-  @Autowired private TestEntityManager em;
+  @Autowired
+  private SeasonRepository repository;
+
+  @Autowired
+  private TestEntityManager em;
 
   @Test
   void 연도가_달라도_같은_계절을_찾고_경계일을_지킨다() {

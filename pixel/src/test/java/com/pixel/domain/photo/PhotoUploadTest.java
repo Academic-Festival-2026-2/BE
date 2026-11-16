@@ -37,6 +37,7 @@ import com.pixel.global.apiPayload.exception.GeneralException;
 import com.pixel.global.apiPayload.exception.GlobalExceptionHandler;
 import com.pixel.global.storage.S3StorageService;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -152,6 +153,37 @@ class PhotoUploadTest {
     verify(seasons, never()).findCurrent(any());
     verify(aggregation, never()).lockForUpload(any());
     verify(badges).awardForUpload(any(), eq(false));
+  }
+
+  @Test
+  void futureManualTakenAtIsRejected() {
+    var future = LocalDateTime.now(ZoneId.of("Asia/Seoul")).plusDays(1);
+    var request = new PhotoUploadRequest(
+        "31050110", null, null, future, null, true,
+        Collections.nCopies(5, ColorBins.HEX.get(0)),
+        Collections.nCopies(40, 0.025));
+
+    var ex = assertThrows(GeneralException.class,
+        () -> service.upload(1L, file, request));
+
+    assertEquals(PhotoErrorCode.TAKEN_AT_IN_FUTURE, ex.getCode());
+    assertEquals(HttpStatus.BAD_REQUEST, ex.getCode().getReasonHttpStatus().getHttpStatus());
+    verifyNoInteractions(storage);
+    verify(photos, never()).saveAndFlush(any());
+  }
+
+  @Test
+  void futureExifTakenAtIsRejectedEvenWhenRequestTimeIsValid() {
+    var future = LocalDateTime.now(ZoneId.of("Asia/Seoul")).plusDays(1);
+    when(metadata.read(any())).thenReturn(
+        new PhotoMetadataReader.PhotoMetadata(future, null, null));
+
+    var ex = assertThrows(GeneralException.class,
+        () -> service.upload(1L, file, request("13:00", null, null)));
+
+    assertEquals(PhotoErrorCode.TAKEN_AT_IN_FUTURE, ex.getCode());
+    verifyNoInteractions(storage);
+    verify(photos, never()).saveAndFlush(any());
   }
 
   @Test
