@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.pixel.domain.badge.enums.BadgeType;
 import com.pixel.domain.badge.service.BadgeService;
+import com.pixel.domain.colorcell.enums.TimeBand;
 import com.pixel.domain.colorcell.util.ColorBins;
 import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.colorcell.service.ColorCellService;
@@ -119,6 +120,71 @@ class PhotoUploadTest {
         true,
         Collections.nCopies(5, ColorBins.HEX.get(0)),
         Collections.nCopies(40, 0.025));
+  }
+
+  private PhotoUploadRequest withoutTime(SeasonType season, TimeBand timeBand) {
+    return new PhotoUploadRequest(
+        "31050110", null, null, null, null, true,
+        Collections.nCopies(5, ColorBins.HEX.get(0)),
+        Collections.nCopies(40, 0.025), season, timeBand);
+  }
+
+  @Test
+  void withoutTimeUsesSelectedSeasonAndBandOnlyOnMyMap() {
+    Season autumn = org.springframework.beans.BeanUtils.instantiateClass(Season.class);
+    ReflectionTestUtils.setField(autumn, "season", SeasonType.AUTUMN);
+    when(seasons.findFirstBySeasonOrderByYearDesc(SeasonType.AUTUMN))
+        .thenReturn(Optional.of(autumn));
+
+    var response = service.upload(1L, file, withoutTime(SeasonType.AUTUMN, TimeBand.SUNSET));
+
+    assertEquals(SeasonType.AUTUMN, response.season());
+    assertEquals("SUNSET", response.timeBand());
+    assertFalse(response.exifVerified());
+    assertNull(response.cellPhotoCount());
+    assertFalse(response.firstInCell());
+    var saved = org.mockito.ArgumentCaptor.forClass(Photo.class);
+    verify(photos).saveAndFlush(saved.capture());
+    assertNull(saved.getValue().getTakenAt());
+    assertNull(saved.getValue().getShotDate());
+    assertEquals(TimeBand.SUNSET, saved.getValue().getTimeBand());
+    verify(seasons, never()).findCurrent(any());
+    verify(aggregation, never()).lockForUpload(any());
+    verify(badges).awardForUpload(any(), eq(false));
+  }
+
+  @Test
+  void withoutTimeRequiresSeason() {
+    var ex = assertThrows(GeneralException.class,
+        () -> service.upload(1L, file, withoutTime(null, TimeBand.DAY)));
+    assertEquals(PhotoErrorCode.SEASON_REQUIRED, ex.getCode());
+    verifyNoInteractions(storage);
+  }
+
+  @Test
+  void withoutTimeRequiresTimeBand() {
+    var ex = assertThrows(GeneralException.class,
+        () -> service.upload(1L, file, withoutTime(SeasonType.AUTUMN, null)));
+    assertEquals(PhotoErrorCode.TIME_BAND_REQUIRED, ex.getCode());
+    verifyNoInteractions(storage);
+  }
+
+  @Test
+  void exifTimeOverridesSelectedSeasonAndTimeBand() {
+    LocalDateTime exifTime = LocalDateTime.parse("2026-10-29T17:00:00");
+    when(metadata.read(any())).thenReturn(
+        new PhotoMetadataReader.PhotoMetadata(exifTime, null, null));
+
+    var response = service.upload(1L, file, withoutTime(SeasonType.SPRING, TimeBand.DAY));
+
+    assertEquals(SeasonType.AUTUMN, response.season());
+    assertEquals("SUNSET", response.timeBand());
+    var saved = org.mockito.ArgumentCaptor.forClass(Photo.class);
+    verify(photos).saveAndFlush(saved.capture());
+    assertEquals(exifTime, saved.getValue().getTakenAt());
+    assertEquals(exifTime.toLocalDate(), saved.getValue().getShotDate());
+    verify(seasons).findCurrent(exifTime.toLocalDate());
+    verify(seasons, never()).findFirstBySeasonOrderByYearDesc(any());
   }
 
   @ParameterizedTest
