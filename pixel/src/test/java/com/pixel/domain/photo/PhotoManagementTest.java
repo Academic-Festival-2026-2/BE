@@ -105,10 +105,7 @@ class PhotoManagementTest {
         em.persist(dong);
       }
       var season = BeanUtils.instantiateClass(Season.class);
-      ReflectionTestUtils.setField(season, "year", (short) 2026);
       ReflectionTestUtils.setField(season, "season", SeasonType.AUTUMN);
-      ReflectionTestUtils.setField(season, "startsOn", DAY.minusMonths(1));
-      ReflectionTestUtils.setField(season, "endsOn", DAY.plusMonths(1));
       em.persist(season);
       seasonId = season.getSeasonId();
       userId = user("one").getUserId();
@@ -253,10 +250,7 @@ class PhotoManagementTest {
     // 촬영 시각이 없는 봄 사진도 저장된 season 값으로 검색돼야 합니다.
     Long springId = tx.execute(status -> {
       var spring = BeanUtils.instantiateClass(Season.class);
-      ReflectionTestUtils.setField(spring, "year", (short) 2026);
       ReflectionTestUtils.setField(spring, "season", SeasonType.SPRING);
-      ReflectionTestUtils.setField(spring, "startsOn", LocalDate.of(2026, 3, 1));
-      ReflectionTestUtils.setField(spring, "endsOn", LocalDate.of(2026, 5, 31));
       em.persist(spring);
       var photo = photo(userId, DAY, DONG, TimeBand.DAY, false);
       ReflectionTestUtils.setField(photo, "season", spring);

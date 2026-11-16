@@ -70,14 +70,10 @@ CREATE TABLE dongs (
 
 CREATE TABLE seasons (
     season_id  SMALLINT   NOT NULL AUTO_INCREMENT,
-    `year`     SMALLINT   NOT NULL,
     season     VARCHAR(6) NOT NULL,
-    starts_on  DATE       NOT NULL,
-    ends_on    DATE       NOT NULL,
     PRIMARY KEY (season_id),
-    UNIQUE KEY uk_seasons_year_season (`year`, season),
-    CONSTRAINT ck_seasons_season CHECK (season IN ('SPRING', 'SUMMER', 'AUTUMN', 'WINTER')),
-    CONSTRAINT ck_seasons_range CHECK (ends_on >= starts_on)
+    UNIQUE KEY uk_seasons_season (season),
+    CONSTRAINT ck_seasons_season CHECK (season IN ('SPRING', 'SUMMER', 'AUTUMN', 'WINTER'))
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
 
 CREATE TABLE photos (
