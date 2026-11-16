@@ -72,6 +72,6 @@ public class DongServiceImpl implements DongService {
         cell.getDominantColor(),
         cell.getPhotoCount(),
         cell.getStatus(),
-        ColorBins.topRatios(cell.getBinsSum(), COLOR_RATIO_LIMIT));
+        ColorBins.topRatios(cell.getBinsSum(), COLOR_RATIO_LIMIT, cell.getDominantColor()));
   }
 }

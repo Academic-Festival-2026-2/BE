@@ -123,6 +123,27 @@ class MapServiceImplTest {
         .containsExactly(ColorBins.HEX.get(0),ColorBins.HEX.get(12));
   }
 
+  @Test
+  void colorRatioStartsWithCellColorEvenWhenItIsRareInBins() {
+    // 분포는 나무·흙(26)·나무 초록(14) 위주지만 표로 정한 칸 색은 단풍 빨강(19)
+    ColorCell cell = cellWithBins("A", 3,
+        bins(Map.of(26, 0.5, 14, 0.2, 13, 0.1, 15, 0.1, 16, 0.07, 19, 0.03)));
+    given(cell.getDominantColor()).willReturn(ColorBins.HEX.get(19));
+    givenCells(cell);
+
+    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105");
+
+    for (List<ColorRatio> ratios : List.of(response.getDongs().get(0).getColorRatio(),
+        response.getTopDongs().get(0).getColorRatio())) {
+      assertThat(ratios).hasSize(5);
+      assertThat(ratios.get(0)).isEqualTo(new ColorRatio(ColorBins.HEX.get(19),
+          ColorBins.FIRST_MIN_RATIO));
+      assertThat(ratios).extracting(ColorRatio::hex).containsExactly(ColorBins.HEX.get(19),
+          ColorBins.HEX.get(26), ColorBins.HEX.get(14), ColorBins.HEX.get(13),
+          ColorBins.HEX.get(15));
+    }
+  }
+
   private void givenCells(ColorCell... cells) {
     given(colorCellRepository.findForMap(season, TimeBand.DAY, "3105"))
         .willReturn(List.of(cells));
