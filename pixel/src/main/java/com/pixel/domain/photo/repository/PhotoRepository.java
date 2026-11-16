@@ -1,6 +1,7 @@
 package com.pixel.domain.photo.repository;
 
 import com.pixel.domain.colorcell.enums.TimeBand;
+import com.pixel.domain.photo.dto.DongPointCountView;
 import com.pixel.domain.photo.dto.PhotoPointView;
 import com.pixel.domain.photo.entity.Photo;
 import com.pixel.domain.season.entity.Season;
@@ -102,6 +103,7 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
       @Param("longitude") Double longitude,
       @Param("verified") boolean verified);
 
+  // 점 조건은 countPhotoPoints(지도 API 점 개수)와 같아야 함. 한쪽을 바꾸면 다른 쪽도 같이 바꿀 것
   @Query(
       value =
           """
@@ -124,6 +126,29 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
       nativeQuery = true)
   List<PhotoPointView> findPhotoPoints(
       @Param("dongCode") String dongCode,
+      @Param("seasonId") Short seasonId,
+      @Param("timeBand") String timeBand);
+
+  // 지도 API: 지역 전체 동별 점 개수 (동 상세에 점으로 보이는 사진 수)
+  // 조건은 findPhotoPoints와 같아야 함. 한쪽을 바꾸면 다른 쪽도 같이 바꿀 것 (숫자가 어긋남)
+  @Query(
+      value =
+          """
+              SELECT p.dong_code AS dongCode, COUNT(*) AS pointCount
+              FROM photos p
+              JOIN dongs d ON d.dong_code = p.dong_code
+              WHERE d.region_code = :regionCode
+                AND p.season_id = :seasonId
+                AND p.time_band = :timeBand
+                AND p.exif_verified = TRUE
+                AND p.ai_verdict = 'PUBLIC'
+                AND p.is_public = TRUE
+                AND p.location IS NOT NULL
+              GROUP BY p.dong_code
+              """,
+      nativeQuery = true)
+  List<DongPointCountView> countPhotoPoints(
+      @Param("regionCode") String regionCode,
       @Param("seasonId") Short seasonId,
       @Param("timeBand") String timeBand);
 

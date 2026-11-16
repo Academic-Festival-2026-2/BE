@@ -1,6 +1,7 @@
 package com.pixel.domain.map.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
@@ -12,6 +13,8 @@ import com.pixel.domain.colorcell.util.ColorBins;
 import com.pixel.domain.dong.entity.Dong;
 import com.pixel.domain.dong.repository.DongRepository;
 import com.pixel.domain.map.dto.MapDongsResponse;
+import com.pixel.domain.photo.dto.DongPointCountView;
+import com.pixel.domain.photo.repository.PhotoRepository;
 import com.pixel.domain.region.entity.Region;
 import com.pixel.domain.region.service.RegionService;
 import com.pixel.domain.season.entity.Season;
@@ -41,6 +44,9 @@ class MapServiceImplTest {
 
   @Mock
   private RegionService regionService;
+
+  @Mock
+  private PhotoRepository photoRepository;
 
   @InjectMocks
   private MapServiceImpl mapService;
@@ -98,6 +104,24 @@ class MapServiceImplTest {
     MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105");
 
     assertThat(response.getTopDongs()).isEmpty();
+  }
+
+  @Test
+  void pointCountComesFromPhotoPointsAndDefaultsToZero() {
+    // A동은 사진 5장 중 점으로 보이는 게 3장(나머지는 나만 보기), B동은 점으로 보이는 사진 없음
+    givenCells(cell("A", 5), cell("B", 2));
+    given(season.getSeasonId()).willReturn((short) 1);
+    DongPointCountView a = mock(DongPointCountView.class);
+    given(a.getDongCode()).willReturn("A");
+    given(a.getPointCount()).willReturn(3L);
+    given(photoRepository.countPhotoPoints("3105", (short) 1, "DAY")).willReturn(List.of(a));
+
+    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105");
+
+    assertThat(response.getDongs())
+        .extracting(MapDongsResponse.DongColor::getDongCode,
+            MapDongsResponse.DongColor::getPointCount)
+        .containsExactly(tuple("A", 3), tuple("B", 0));
   }
 
   @Test
