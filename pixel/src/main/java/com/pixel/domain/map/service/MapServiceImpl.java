@@ -66,7 +66,7 @@ public class MapServiceImpl implements MapService {
             cell.getDominantColor(),
             cell.getPhotoCount(),
             cell.getStatus(),
-            ColorBins.topRatios(cell.getBinsSum(), COLOR_RATIO_LIMIT)))
+            ColorBins.topRatios(cell.getBinsSum(), COLOR_RATIO_LIMIT, cell.getDominantColor())))
         .toList();
 
     List<MapDongsResponse.TopDong> topDongs = cells.stream()
@@ -79,7 +79,7 @@ public class MapServiceImpl implements MapService {
             cell.getDong().getName(),
             cell.getDong().getGuName(),
             cell.getPhotoCount(),
-            ColorBins.topRatios(cell.getBinsSum(), COLOR_RATIO_LIMIT)))
+            ColorBins.topRatios(cell.getBinsSum(), COLOR_RATIO_LIMIT, cell.getDominantColor())))
         .toList();
 
     return new MapDongsResponse(season.getSeason(), timeBand, dongs, topDongs);

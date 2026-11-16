@@ -75,7 +75,9 @@ public class ColorCell {
     this.binsSum = new ArrayList<>(Collections.nCopies(40, 0.0));
   }
 
-  public void contribute(Long photoId, List<Double> bins, float weight, boolean newShot) {
+  // votes: 이 사진을 넣은 뒤 칸에 들어간 사진들의 대표색(palette[0]) 표 수 40칸
+  public void contribute(Long photoId, List<Double> bins, float weight, boolean newShot,
+      List<Double> votes) {
     ColorBins.validateBins(bins);
     if (photoId == null || !Float.isFinite(weight) || weight < 0 || weight > 1) {
       throw new IllegalArgumentException("사진 ID 또는 가중치가 유효하지 않습니다.");
@@ -84,7 +86,7 @@ public class ColorCell {
     for (int i = 0; i < 40; i++) {
       accumulated.set(i, accumulated.get(i) + bins.get(i) * weight);
     }
-    String color = ColorBins.dominantColor(accumulated);
+    String color = ColorBins.votedColor(votes, accumulated);
     // 현재 업로드 가중치는 1이다. 전부 0인 집계는 DB의 비어 있지 않은 셀 제약과 충돌한다.
     if (color == null) {
       throw new IllegalArgumentException("집계된 색상 분포 합계는 0보다 커야 합니다.");
@@ -100,7 +102,9 @@ public class ColorCell {
     dominantColor = color;
   }
 
-  public void retract(List<Double> bins, float weight, boolean lastShot, Long nextFirstPhotoId) {
+  // votes: 이 사진을 뺀 뒤 칸에 남은 사진들의 대표색(palette[0]) 표 수 40칸
+  public void retract(List<Double> bins, float weight, boolean lastShot, Long nextFirstPhotoId,
+      List<Double> votes) {
     ColorBins.validateBins(bins);
     if (photoCount <= 0 || !Float.isFinite(weight) || weight < 0 || weight > 1) {
       throw new IllegalStateException("차감할 집계 또는 가중치가 유효하지 않습니다.");
@@ -121,7 +125,7 @@ public class ColorCell {
       }
       remaining.set(i, count == 0 ? 0.0 : Math.max(0.0, difference));
     }
-    String color = ColorBins.dominantColor(remaining);
+    String color = count == 0 ? null : ColorBins.votedColor(votes, remaining);
     if (count > 0 && color == null) {
       throw new IllegalStateException("남은 사진의 색상 분포가 비어 있습니다.");
     }
