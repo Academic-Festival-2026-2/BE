@@ -27,7 +27,7 @@ class SeasonBoundaryRepositoryTest {
   private TestEntityManager entityManager;
 
   @Test
-  void november30IsAutumnAndDecember1IsWinter() {
+  void 가을과_겨울의_경계일을_정확히_조회한다() {
     save(SeasonType.AUTUMN, "2026-09-01", "2026-11-30");
     save(SeasonType.WINTER, "2026-12-01", "2027-02-28");
 

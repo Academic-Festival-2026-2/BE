@@ -43,7 +43,7 @@ class SeasonalMapSelectionTest {
   @InjectMocks MyMapServiceImpl myMapService;
 
   @Test
-  void sharedMapSelectsSpringAndReturnsEmptyData() {
+  void 공유_지도에서_봄을_조회하면_빈_결과를_반환한다() {
     Season spring = mock(Season.class);
     Region region = mock(Region.class);
 
@@ -61,7 +61,7 @@ class SeasonalMapSelectionTest {
   }
 
   @Test
-  void dongDetailUsesSelectedSeasonForColorsAndPoints() {
+  void 동_상세는_선택한_계절로_색상과_좌표를_조회한다() {
     String code = "31050110";
     Dong dong = mock(Dong.class);
     Region region = mock(Region.class);
@@ -82,7 +82,7 @@ class SeasonalMapSelectionTest {
   }
 
   @Test
-  void myMapWithoutSeasonUsesCurrentSeason() {
+  void 계절_미지정_나의_지도는_현재_계절을_사용한다() {
     Season winter = mock(Season.class);
     Region region = mock(Region.class);
 

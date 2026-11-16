@@ -37,6 +37,7 @@ public class UserServiceImpl implements UserService {
     User user = getActiveUser(userId);
     long photoCount = photoRepository.countByUserUserId(userId);
     // 나의 지도와 같은 기준으로 세서 두 화면의 채운 칸 수가 항상 같게 한다.
+    // season=null은 한국 시간 기준 현재 계절을 의미한다.
     int filledCellCount = myMapService.countFilledCells(userId, null);
     return MyInfoResponse.of(user, photoCount, filledCellCount);
   }
