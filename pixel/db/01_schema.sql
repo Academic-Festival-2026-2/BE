@@ -96,6 +96,7 @@ CREATE TABLE photos (
     weight          FLOAT        NOT NULL DEFAULT 1.0 COMMENT '0-1, 이상치 사진은 낮춤',
     image_key       VARCHAR(255) NOT NULL COMMENT '원본 S3 키',
     thumbnail_key   VARCHAR(255) NOT NULL COMMENT '썸네일 S3 키',
+    display_key     VARCHAR(255) NULL COMMENT '크게 보기용 축소 이미지 S3 키 (긴 변 2048px 이하 JPEG). NULL이면 원본을 씀',
     image_hash      CHAR(64)     CHARACTER SET ascii COLLATE ascii_bin NOT NULL COMMENT '서버가 받은 파일로 계산한 SHA-256',
     is_public       BOOLEAN      NOT NULL DEFAULT TRUE,
     nearby_only     BOOLEAN      NOT NULL DEFAULT FALSE,
