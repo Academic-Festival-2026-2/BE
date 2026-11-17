@@ -10,8 +10,6 @@ public interface MapService {
 
   BoundaryResponse getBoundaries(String regionCode);
 
-  MapDongsResponse getDongs(TimeBand timeBand, String regionCode);
-
   MapDongsResponse getDongs(TimeBand timeBand, String regionCode, SeasonType season);
 
   RegionListResponse getRegions();

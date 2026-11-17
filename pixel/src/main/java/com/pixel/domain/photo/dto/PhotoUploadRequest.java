@@ -19,18 +19,4 @@ public record PhotoUploadRequest(
     List<String> palette,
     List<Double> bins,
     SeasonType season,
-    TimeBand timeBand) {
-
-  // 기존 Java 코드에서 8개 인자를 전달하는 호출을 유지한다.
-  public PhotoUploadRequest(
-      String dongCode,
-      Double latitude,
-      Double longitude,
-      LocalDateTime takenAt,
-      LocalDate shotDate,
-      Boolean isPublic,
-      List<String> palette,
-      List<Double> bins) {
-    this(dongCode, latitude, longitude, takenAt, shotDate, isPublic, palette, bins, null, null);
-  }
-}
+    TimeBand timeBand) {}

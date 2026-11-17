@@ -36,11 +36,6 @@ public class DongServiceImpl implements DongService {
   private final SeasonService seasonService;
 
   @Override
-  public DongDetailResponse getDetail(String dongCode, TimeBand timeBand) {
-    return getDetail(dongCode, timeBand, null);
-  }
-
-  @Override
   public DongDetailResponse getDetail(String dongCode, TimeBand timeBand,
       SeasonType requestedSeason) {
     Dong dong = dongRepository.findById(dongCode)
