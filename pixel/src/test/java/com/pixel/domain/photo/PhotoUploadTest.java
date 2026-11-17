@@ -121,7 +121,9 @@ class PhotoUploadTest {
         null,
         true,
         Collections.nCopies(5, ColorBins.HEX.get(0)),
-        Collections.nCopies(40, 0.025));
+        Collections.nCopies(40, 0.025),
+        null,
+        null);
   }
 
   private PhotoUploadRequest withoutTime(SeasonType season, TimeBand timeBand) {
@@ -161,7 +163,7 @@ class PhotoUploadTest {
     var request = new PhotoUploadRequest(
         "31050110", null, null, future, null, true,
         Collections.nCopies(5, ColorBins.HEX.get(0)),
-        Collections.nCopies(40, 0.025));
+        Collections.nCopies(40, 0.025), null, null);
 
     var ex = assertThrows(GeneralException.class,
         () -> service.upload(1L, file, request));
@@ -337,7 +339,8 @@ class PhotoUploadTest {
     when(metadata.read(any())).thenReturn(new PhotoMetadataReader.PhotoMetadata(
         LocalDateTime.parse("2026-10-29T13:00"), 37.5, 126.7));
     var noDong = new PhotoUploadRequest(null, null, null, LocalDateTime.parse("2026-10-29T13:00"),
-        null, true, Collections.nCopies(5, ColorBins.HEX.get(0)), Collections.nCopies(40, 0.025));
+        null, true, Collections.nCopies(5, ColorBins.HEX.get(0)), Collections.nCopies(40, 0.025),
+        null, null);
 
     var ex = assertThrows(GeneralException.class, () -> service.upload(1L, file, noDong));
 
@@ -806,7 +809,7 @@ class PhotoUploadTest {
     // 옛 팔레트의 첫 색. 새로고침 안 한 옛 화면에서 올린 경우
     var oldPalette = new PhotoUploadRequest("31050110", null, null,
         LocalDateTime.parse("2026-10-29T13:00"), null, true,
-        Collections.nCopies(5, "#861318"), Collections.nCopies(40, 0.025));
+        Collections.nCopies(5, "#861318"), Collections.nCopies(40, 0.025), null, null);
 
     var ex = assertThrows(GeneralException.class, () -> service.upload(1L, file, oldPalette));
 

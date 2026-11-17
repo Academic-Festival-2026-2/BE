@@ -84,7 +84,7 @@ public class UserServiceImpl implements UserService {
     user.withdraw();
   }
 
-  // 탈퇴 후에도 access token은 만료(30분) 전까지 유효하므로 여기서 상태를 확인
+  // 탈퇴 회원은 인증 필터가 먼저 막는다. 필터를 지난 뒤 탈퇴한 요청을 위해 한 번 더 확인한다.
   private User getActiveUser(Long userId) {
     return activeUser(userRepository.findById(userId));
   }

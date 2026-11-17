@@ -109,7 +109,7 @@ class PhotoUploadTransactionTest {
 
   PhotoUploadRequest request() {
     return new PhotoUploadRequest(DONG, null, null, DAY.atTime(13, 0), null, true,
-        Collections.nCopies(5, ColorBins.HEX.get(0)), Collections.nCopies(40, 0.025));
+        Collections.nCopies(5, ColorBins.HEX.get(0)), Collections.nCopies(40, 0.025), null, null);
   }
 
   @Test

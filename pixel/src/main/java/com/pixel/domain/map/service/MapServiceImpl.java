@@ -57,11 +57,6 @@ public class MapServiceImpl implements MapService {
   }
 
   @Override
-  public MapDongsResponse getDongs(TimeBand timeBand, String regionCode) {
-    return getDongs(timeBand, regionCode, null);
-  }
-
-  @Override
   public MapDongsResponse getDongs(TimeBand timeBand, String regionCode,
       SeasonType requestedSeason) {
     Season season = requestedSeason == null
