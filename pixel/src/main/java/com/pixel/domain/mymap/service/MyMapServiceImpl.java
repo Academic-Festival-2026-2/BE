@@ -64,9 +64,9 @@ public class MyMapServiceImpl implements MyMapService {
 
     Map<CellKey, List<Photo>> myPhotos = groupMyPhotosByCell(userId, season, publicOnly);
 
-    Map<CellKey, String> previewColors = colorCellRepository.findBySeason(season)
+    Map<CellKey, String> previewColors = colorCellRepository
+        .findColoredInRegion(season, region.getRegionCode())
         .stream()
-        .filter(cell -> cell.getDominantColor() != null)
         .collect(Collectors.toMap(
             cell -> new CellKey(cell.getDong().getDongCode(), cell.getTimeBand()),
             ColorCell::getDominantColor));
