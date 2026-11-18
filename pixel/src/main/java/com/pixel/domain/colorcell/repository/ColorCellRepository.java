@@ -33,5 +33,13 @@ public interface ColorCellRepository extends JpaRepository<ColorCell, Long> {
 
   List<ColorCell> findByDongAndSeason(Dong dong, Season season);
 
-  List<ColorCell> findBySeason(Season season);
+  // 나의 지도 미리보기 색: 요청한 지역에서 색이 정해진 칸만 읽는다.
+  @Query("""
+      SELECT c FROM ColorCell c
+      WHERE c.season = :season
+        AND c.dong.region.regionCode = :regionCode
+        AND c.dominantColor IS NOT NULL
+      """)
+  List<ColorCell> findColoredInRegion(@Param("season") Season season,
+      @Param("regionCode") String regionCode);
 }

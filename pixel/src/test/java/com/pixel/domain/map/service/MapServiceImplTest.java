@@ -68,7 +68,7 @@ class MapServiceImplTest {
   void excludesDongWithoutPhoto() {
     givenCells(cell("A", 5), cell("B", 0), cell("C", 3));
 
-    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105");
+    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105", null);
 
     assertThat(response.getTopDongs())
         .extracting(MapDongsResponse.TopDong::getDongCode)
@@ -79,7 +79,7 @@ class MapServiceImplTest {
   void returnsTop3ByPhotoCountDesc() {
     givenCells(cell("A", 1), cell("B", 4), cell("C", 2), cell("D", 3));
 
-    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105");
+    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105", null);
 
     assertThat(response.getTopDongs())
         .extracting(MapDongsResponse.TopDong::getDongCode)
@@ -90,7 +90,7 @@ class MapServiceImplTest {
   void sortsTiesByDongCode() {
     givenCells(cell("B", 2), cell("A", 2), cell("C", 9));
 
-    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105");
+    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105", null);
 
     assertThat(response.getTopDongs())
         .extracting(MapDongsResponse.TopDong::getDongCode)
@@ -101,7 +101,7 @@ class MapServiceImplTest {
   void emptyWhenNoPhoto() {
     givenCells(cell("A", 0), cell("B", 0));
 
-    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105");
+    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105", null);
 
     assertThat(response.getTopDongs()).isEmpty();
   }
@@ -116,7 +116,7 @@ class MapServiceImplTest {
     given(a.getPointCount()).willReturn(3L);
     given(photoRepository.countPhotoPoints("3105", (short) 1, "DAY")).willReturn(List.of(a));
 
-    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105");
+    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105", null);
 
     assertThat(response.getDongs())
         .extracting(MapDongsResponse.DongColor::getDongCode,
@@ -129,7 +129,7 @@ class MapServiceImplTest {
     givenCells(cellWithBins("A", 5, bins(Map.of(0, 0.6, 12, 0.4))),
         cellWithBins("B", 0, bins(Map.of())));
 
-    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105");
+    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105", null);
 
     MapDongsResponse.DongColor dongA = response.getDongs().get(0);
     assertThat(dongA.getColorRatio())
@@ -155,7 +155,7 @@ class MapServiceImplTest {
     given(cell.getDominantColor()).willReturn(ColorBins.HEX.get(19));
     givenCells(cell);
 
-    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105");
+    MapDongsResponse response = mapService.getDongs(TimeBand.DAY, "3105", null);
 
     for (List<ColorRatio> ratios : List.of(response.getDongs().get(0).getColorRatio(),
         response.getTopDongs().get(0).getColorRatio())) {

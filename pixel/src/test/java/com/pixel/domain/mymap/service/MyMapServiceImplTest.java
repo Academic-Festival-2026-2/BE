@@ -154,7 +154,7 @@ class MyMapServiceImplTest {
   }
 
   private void givenColorCells(ColorCell... cells) {
-    given(colorCellRepository.findBySeason(season)).willReturn(List.of(cells));
+    given(colorCellRepository.findColoredInRegion(season, "3105")).willReturn(List.of(cells));
   }
 
   private MyMapResponse.Cell cellOf(MyMapResponse response, String dongCode, TimeBand timeBand) {

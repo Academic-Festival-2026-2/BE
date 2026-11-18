@@ -86,8 +86,6 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
   long countEarlierOnPublicMap(@Param("dongCode") String dongCode,
       @Param("seasonId") Short seasonId, @Param("photoId") Long photoId);
 
-  List<Photo> findAllByUserUserIdOrderByCreatedAtDesc(Long userId);
-
   @Modifying
   @Query(
       value =
