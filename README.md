@@ -187,7 +187,7 @@ mysql -u root -p --default-character-set=utf8mb4 pixel -e "source db/03_seed.sql
 | `DB_URL` | `jdbc:mysql://localhost:3306/pixel...` | DB 접속 URL |
 | `DB_USERNAME` / `DB_PASSWORD` | `root` / `password` | DB 계정 |
 | `SERVER_PORT` | `8080` | 서버 포트 |
-| `AWS_S3_BUCKET` | 없음 | 사진 저장 버킷. 없으면 사진 업로드만 실패 |
+| `AWS_S3_BUCKET` | 없음 | 사진 저장 버킷. 로컬은 `pixel-cs24-dev`. 없으면 사진 업로드와 사진 보기 API(내 사진·사진 상세·좋아요 목록)가 500 |
 | `AWS_REGION` | `ap-northeast-2` | S3 리전 (서울) |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | 없음 | 로컬 개발용 S3 키 (배포 서버는 IAM 역할 사용). **Git·단체방에 올리지 않기** |
 | `MODERATION_ENABLED` | `false` | 사진 AI 검수 켜기. 꺼져 있으면 모든 사진을 `PUBLIC`으로 처리 |
