@@ -1,6 +1,6 @@
 -- 1) 픽셀 테이블 전체 (MySQL 8.0.17 이상)
--- 기준: ERD v0.3. users·refresh_token·dongs는 현재 엔티티 코드에 맞췄다(ddl-auto: validate).
--- 색 분포는 40칸 (유채색 색상 12 × 명도 3 = 36칸 + 무채색 4칸)
+-- 기준: 현재 엔티티 코드와 같다(서버 시작 때 ddl-auto: validate로 검사).
+-- 색 분포는 지도 팔레트 40칸 (유채색 34칸 + 무채색 6칸, ColorBins 순서)
 -- 시간은 KST(Asia/Seoul)로 저장한다.
 -- 실행 순서: 01_schema.sql → 02_dongs.sql → 03_seed.sql
 SET NAMES utf8mb4;
@@ -85,8 +85,8 @@ CREATE TABLE photos (
     taken_at        DATETIME(6)  NULL COMMENT 'EXIF 촬영 시각(KST)',
     shot_date       DATE         NULL COMMENT '같은 사용자·같은 날 묶음 기준',
     location        POINT        SRID 4326 NULL COMMENT '촬영 좌표',
-    exif_verified   BOOLEAN      NOT NULL DEFAULT FALSE COMMENT '시각·좌표가 있고 좌표가 동 경계 안. ai_verdict가 PUBLIC일 때만 모두의 지도 반영',
-    ai_verdict      VARCHAR(13)  NOT NULL DEFAULT 'PUBLIC' COMMENT 'AI 검수 결과. PUBLIC 모두의 지도 가능 / PERSONAL_ONLY 풍경 아님·얼굴·번호판 / UNCHECKED 판정 실패',
+    exif_verified   BOOLEAN      NOT NULL DEFAULT FALSE COMMENT '시각·좌표가 있고 좌표가 동 경계 안. ai_verdict가 PUBLIC일 때만 공유 지도 반영',
+    ai_verdict      VARCHAR(13)  NOT NULL DEFAULT 'PUBLIC' COMMENT 'AI 검수 결과. PUBLIC 공유 지도 가능 / PERSONAL_ONLY 풍경 아님·얼굴·번호판 / UNCHECKED 판정 실패',
     palette         JSON         NOT NULL COMMENT '대표색 5개 ["#RRGGBB", ...], 첫 번째가 점 색',
     bins            JSON         NOT NULL COMMENT '색 분포 40칸 숫자 배열, 합 1.0',
     weight          FLOAT        NOT NULL DEFAULT 1.0 COMMENT '0-1, 이상치 사진은 낮춤',
