@@ -133,7 +133,7 @@ git --no-pager log --oneline "$PREV..$TARGET" 2>/dev/null | sed 's/^/[deploy]   
 
 # 4. 새 마이그레이션이 있으면 사람이 확인할 때까지 멈춤
 #    추가·변경(ADD·MODIFY)은 빌드 전에 적용해야 새 서버가 뜨고,
-#    삭제(DROP)는 옛 서버가 아직 그 컬럼을 쓰므로 새 서버 배포 후에 적용 (README "스키마를 바꿀 때")
+#    삭제(DROP)는 옛 서버가 아직 그 컬럼을 쓰므로 새 서버 배포 후에 적용 (docs/DEPLOY.md "스키마를 바꿀 때")
 # 이미 나간 마이그레이션 파일이 수정된 경우(M)도 사람이 확인하도록 멈춤
 NEW_MIGRATIONS=$(git diff --name-only --diff-filter=AM "$PREV" "$TARGET" -- pixel/db/migration/)
 DROP_MIGRATIONS=""

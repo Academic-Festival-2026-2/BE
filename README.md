@@ -7,49 +7,89 @@
 
 사진에 담긴 색·촬영 시각·위치를 행정동 단위로 모아, 이름난 관광지뿐 아니라 동네 자체를 "언제 가면 어떤 색을 볼 수 있는 곳"으로 보여 주는 서비스입니다.
 
-- **MVP 범위:** 부천시 37개 행정동 × 가을(9–11월) × 시간 4구간(새벽·낮·노을·밤) = 148칸
+- **서비스:** https://pixel-rouge-delta.vercel.app
+- **API 서버:** https://pixel-cs24.duckdns.org
 - **프론트엔드 레포지토리:** https://github.com/Academic-Festival-2026-2/FE
+- **데이터 범위:** 경기도 31개 시·군 601개 행정동 × 4계절 × 4시간대(새벽·낮·노을·밤)
+
+## 문서
+
+| 문서 | 위치 |
+|---|---|
+| API 명세서 · DB ERD | 별도 제출 · 테이블 정의는 [`pixel/db/01_schema.sql`](pixel/db/01_schema.sql) |
+| 배포 아키텍처 | 아래 [아키텍처](#아키텍처) · 운영 절차는 [docs/DEPLOY.md](docs/DEPLOY.md) |
+| Swagger UI (로컬 실행 시) | http://localhost:8080/swagger-ui/index.html |
+| 협업 규칙 (브랜치·커밋·PR) | [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) |
+
+## 주요 기능
+
+- **회원:** 이메일 회원가입·로그인, JWT(Access 30분 / Refresh 14일, Refresh Token Rotation), 내 정보·비밀번호 변경, 회원 탈퇴(소프트 삭제)
+- **공유 지도:** 지역 목록·동 경계(GeoJSON), 시간대·계절별 동 대표색과 색 비율, 사진 많은 동 Top 3
+- **동 상세:** 시간대 4개의 색 요약, 공개 사진 지점
+- **사진 업로드:** EXIF로 촬영 시각·좌표 확인, 좌표로 행정동 판정, AI 검수(Claude), 칸 대표색 집계, 배지 지급
+- **나의 지도:** 내 사진으로 칠한 칸, 공유 링크 만들기·중지, 공유된 나의 지도 보기
+- **사진 관리:** 내 사진 목록(계절별), 공개 여부 변경, 삭제, 좋아요·좋아요한 사진 목록
+
+## 아키텍처
+
+![Pixel 배포 아키텍처](docs/architecture.png)
+
+- 브라우저 → Vercel(FE) → `/api/*` 리라이트 → EC2 Nginx(HTTPS) → Spring Boot 컨테이너 → RDS(MySQL) · S3
+- 사진은 비공개 S3 버킷에 두고 5분짜리 서명 URL로만 보여 주며, 업로드 사진 검수는 Anthropic API(Claude Haiku)를 부릅니다.
+- EC2는 IAM 역할로 S3에 접근해 서버에 AWS 키가 없고, 비밀값은 EC2의 `.env`에만 둡니다.
 
 ## 기술 스택
 
-| 구분 | 현재 (1차) | 목표 |
-|---|---|---|
-| Language | Java 17 | |
-| Framework | Spring Boot 3.5, Spring Security, Spring Data JPA, Validation | |
-| 인증 | JWT (Access 30분 / Refresh 14일, Refresh Token Rotation) | + 카카오 로그인 (OAuth2, 확장 단계) |
-| Database | MySQL 8 | PostgreSQL + PostGIS (행정동 경계 판정) |
-| Infra | 로컬 실행 | AWS EC2 + RDS, S3, GitHub Actions 자동 배포 |
-| 문서화 | springdoc-openapi (Swagger UI) | |
-| Test | JUnit 5, Spring Security Test, H2 | |
+| 구분 | 사용 기술 |
+|---|---|
+| Language | Java 17 |
+| Framework | Spring Boot 3.5, Spring Security, Spring Data JPA, Validation, Cache |
+| 인증 | JWT (jjwt 0.12) |
+| Database | MySQL 8 (운영 RDS 8.4, 공간 타입 SRID 4326으로 행정동 경계 판정) |
+| 저장소 | Amazon S3 (AWS SDK v2) |
+| 외부 API | Anthropic API (사진 검수), metadata-extractor (EXIF) |
+| 문서화 | springdoc-openapi (Swagger UI) |
+| Test | JUnit 5, Spring Security Test, H2 (MySQL 모드) |
+| Infra | AWS EC2 · RDS · S3 · IAM, Docker Compose, Nginx, Let's Encrypt, DuckDNS |
+| CI | GitHub Actions (PR마다 테스트, dev 머지 필수 체크) |
 
 ## API
 
-모든 API는 `/api` 아래에 있고, 로그인이 필요한 API는 `Authorization: Bearer {accessToken}` 헤더를 사용합니다.
+모든 API는 `/api` 아래에 있고, 로그인이 필요한 API는 `Authorization: Bearer {accessToken}` 헤더를 보냅니다.
+요청·응답 필드와 에러 코드는 API 명세서(별도 제출)와 로컬 Swagger UI에서 볼 수 있습니다.
 
-### ✅ 구현 완료
+| 구분 | Method | Endpoint | 설명 | 로그인 |
+|---|---|---|---|---|
+| 인증 | `POST` | `/api/auth/signup` | 회원가입 | X |
+| 인증 | `POST` | `/api/auth/login` | 로그인 (Access·Refresh Token 발급) | X |
+| 인증 | `POST` | `/api/auth/reissue` | 토큰 재발급 (Rotation) | X |
+| 인증 | `POST` | `/api/auth/logout` | 로그아웃 (Refresh Token 삭제) | O |
+| 회원 | `GET` | `/api/users/me` | 내 정보 조회 (사진 수, 채운 칸 수 포함) | O |
+| 회원 | `PATCH` | `/api/users/me` | 내 정보 수정 (닉네임, 위치정보 동의, 프로필 이미지) | O |
+| 회원 | `PATCH` | `/api/users/me/password` | 비밀번호 변경 | O |
+| 회원 | `DELETE` | `/api/users/me` | 회원 탈퇴 | O |
+| 지도 | `GET` | `/api/map/regions` | 지역 목록 | X |
+| 지도 | `GET` | `/api/map/boundaries` | 지역의 동 경계 (GeoJSON) | X |
+| 지도 | `GET` | `/api/map/dongs` | 동별 칸 색, 인기 동 Top 3 | X |
+| 동 | `GET` | `/api/dongs/{dongCode}` | 동 상세 (시간대별 색, 사진 지점) | X |
+| 사진 | `POST` | `/api/photos` | 사진 업로드 (multipart) | O |
+| 사진 | `GET` | `/api/photos/{photoId}` | 사진 상세 | 선택 |
+| 사진 | `PATCH` | `/api/photos/{photoId}` | 공개 여부 변경 | O |
+| 사진 | `DELETE` | `/api/photos/{photoId}` | 사진 삭제 | O |
+| 사진 | `POST` | `/api/photos/{photoId}/likes` | 좋아요 | O |
+| 사진 | `DELETE` | `/api/photos/{photoId}/likes` | 좋아요 취소 | O |
+| 사진 | `GET` | `/api/users/me/photos` | 내 사진 목록 (계절 필터) | O |
+| 사진 | `GET` | `/api/users/me/liked-photos` | 좋아요한 사진 목록 | O |
+| 나의 지도 | `GET` | `/api/users/me/map` | 나의 지도 | O |
+| 나의 지도 | `GET` | `/api/users/me/map/dongs/{dongCode}` | 동의 내 사진 지점 | O |
+| 나의 지도 | `GET` | `/api/users/me/map/share` | 공유 상태 조회 | O |
+| 나의 지도 | `POST` | `/api/users/me/map/share` | 공유 링크 만들기 | O |
+| 나의 지도 | `DELETE` | `/api/users/me/map/share` | 공유 중지 | O |
+| 공유 지도 | `GET` | `/api/shared-maps/{shareKey}` | 공유된 나의 지도 조회 | X |
+| 배지 | `GET` | `/api/users/me/badges` | 내 배지 목록 | O |
+| 기타 | `GET` | `/health` | 서버 상태 확인 (배포 스크립트용, 본문 `OK` 텍스트) | X |
 
-| Method | Path | 설명 | 로그인 |
-|---|---|---|---|
-| `POST` | `/api/auth/signup` | 이메일·비밀번호 회원가입 (중복 검사, BCrypt 암호화) | 불필요 |
-| `POST` | `/api/auth/login` | 이메일 로그인, Access·Refresh Token 발급 | 불필요 |
-| `POST` | `/api/auth/reissue` | 토큰 재발급 (회전 방식) | 불필요 |
-| `POST` | `/api/auth/logout` | 로그아웃 (Refresh Token 폐기) | 필요 |
-| `GET` | `/health` | 서버 상태 확인 | 불필요 |
-
-### 🛠 개발 예정 (MVP)
-
-| 구분 | Method · Path | 설명 | 로그인 |
-|---|---|---|---|
-| 모두의 지도 | `GET /api/map?season=&slot=` | 37개 동의 구간별 대표색·사진 수·칸 신뢰도 | 불필요 |
-| 동 지도 | `GET /api/dongs/{dongId}?season=` | 4구간 대표색, 색 비율 상위 5개, 맑은 날 비율 | 불필요 |
-| 동 지도 | `GET /api/dongs/{dongId}/points?season=&slot=` | 사진 지점(격자 반올림) 목록과 대표색 | 불필요 |
-| 색으로 동 찾기 | `POST /api/search/color` | 색(1–2개)·테마로 검색, 일치도 상위 동·구간 | 불필요 |
-| 사진 업로드 | `GET /api/dongs/locate?lat=&lng=` | 좌표가 속한 행정동 판정 | 필요 |
-| 사진 업로드 | `POST /api/photos` | 대표색·40칸 분포·촬영 시각 등록, 날씨 태깅 후 지도 반영 | 필요 |
-| 사진 업로드 | `GET /api/photos/{photoId}` | 사진 상세 (비공개 사진은 색 정보만) | 불필요 |
-| 나의 지도 | `GET /api/me/map?season=` | 148칸 상태, 채운 칸 수, 빈칸 목록 | 필요 |
-| 나의 지도 | `GET /api/me/map/share-image` | 공유용 픽셀 그림 이미지 생성 | 필요 |
-| 확장 | `POST /api/auth/oauth/kakao` | 카카오 인가 코드로 로그인 | 불필요 |
+"선택"은 로그인하지 않아도 되지만, 로그인하면 결과가 달라지는 API입니다 (비공개 사진은 올린 회원만 조회).
 
 ### 공통 응답 형식
 
@@ -59,21 +99,49 @@
   "code": "USER200_2",
   "message": "로그인에 성공했습니다.",
   "result": {
-    "accessToken": "...",
-    "refreshToken": "..."
+    "accessToken": "eyJ...",
+    "refreshToken": "eyJ..."
   }
 }
 ```
 
-- 실패 시 `isSuccess: false`이고 `result`는 생략됩니다.
-- 에러 코드는 `{도메인}{HTTP상태}_{번호}` 형식입니다. (예: `USER401_1`, `COMMON500`)
+- 실패하면 `isSuccess: false`입니다. 입력값 오류는 `result`에 필드별 메시지가, 서버 오류(`COMMON500`)는 추적 ID가 들어갑니다.
+- 돌려줄 값이 없으면 `result`를 뺍니다.
+- 코드는 `{도메인}{HTTP 상태}_{번호}` 형식입니다. (예: `USER401_1`, `PHOTO422_1`, `COMMON500`)
+
+## 프로젝트 구조
+
+```
+pixel/
+├── db/                     # 테이블·초기 데이터 SQL (아래 "데이터베이스 만들기")
+└── src/main/java/com/pixel
+    ├── domain
+    │   ├── user            # 회원가입·로그인·내 정보·탈퇴
+    │   ├── refreshtoken    # Refresh Token 저장
+    │   ├── region          # 지역(시·군)
+    │   ├── dong            # 행정동, 동 상세
+    │   ├── season          # 계절
+    │   ├── map             # 공유 지도 (지역 목록, 경계, 동별 칸 색)
+    │   ├── colorcell       # 칸(동 × 계절 × 시간대) 색 집계
+    │   ├── photo           # 사진 업로드·조회·좋아요, AI 검수(moderation)
+    │   ├── mymap           # 나의 지도, 공유 링크
+    │   └── badge           # 배지
+    └── global
+        ├── apiPayload      # 공통 응답, 성공·에러 코드, 전역 예외 처리
+        ├── common          # BaseEntity (생성·수정 시각)
+        ├── config          # Swagger, 업로드 설정
+        ├── security        # Spring Security, JWT 필터, 공개 경로
+        └── storage         # S3 저장소
+```
+
+도메인 안은 `controller / dto / entity / repository / service / exception` 폴더로 나눕니다.
 
 ## 실행 방법
 
 ### 1. 사전 준비
 
 - JDK 17
-- MySQL 8.0.17 이상
+- MySQL 8.0.17 이상 (또는 Docker)
 
 ### 2. 데이터베이스 만들기
 
@@ -82,30 +150,21 @@
 ```
 pixel/db/
 ├── 01_schema.sql   # 테이블 전체
-├── 02_dongs.sql    # 부천 37개 동 경계 (SGIS, 기준일 20250630)
-├── 03_seed.sql     # 2026 가을 판 + 148칸
+├── 02_dongs.sql    # 부천 37개 동 경계 (SGIS, 기준일 20250630) + 부천시 지역 1행
+├── 03_seed.sql     # 4계절 + 빈 칸
 ├── dongs/          # 경기도 30개 시·군 경계 (자동 실행 안 함, dongs/README.md 참고)
-├── migration/      # 운영 DB에 적용할 변경 SQL (필요할 때 추가, 자동 실행 안 함)
-└── legacy/         # 옛 빈틈 테이블 정리용 (자동 실행 안 함)
+├── migration/      # 이미 만들어진 DB에 적용할 변경 SQL (자동 실행 안 함, docs/DEPLOY.md 참고)
+└── legacy/         # 옛 테이블 정리용 (자동 실행 안 함)
 ```
 
-**Docker로 실행할 때** — DB가 처음 만들어질 때 세 파일이 순서대로 자동 실행되고, 끝난 뒤에 서버가 켜집니다.
+**Docker로 실행할 때** — DB가 처음 만들어질 때 세 파일이 순서대로 자동 실행되고, 끝난 뒤에 서버가 켜집니다. 예전에 띄운 DB가 있으면 `docker compose down -v`로 볼륨을 지운 뒤 실행합니다. (로컬 DB 데이터도 지워집니다)
 
 ```bash
 cd pixel
 docker compose up -d
 ```
 
-이전에 Docker DB를 띄운 적이 있다면 볼륨을 한 번 지워야 SQL이 다시 실행됩니다. (로컬 DB 데이터도 지워집니다)
-
-```bash
-docker compose down -v
-docker compose up -d
-```
-
-**로컬 MySQL로 실행할 때** — 데이터베이스를 만들고 세 파일을 순서대로 실행합니다. 예전에 `ddl-auto: update`로 만든 `pixel`이 있다면 지우고 다시 만드세요. (로컬 DB 데이터도 지워집니다)
-
-`pixel` 폴더에서 실행합니다. `source` 방식이라 PowerShell·cmd·Git Bash 어디서나 동작합니다. `root`는 본인 DB 사용자로 바꾸고, 줄마다 비밀번호를 입력합니다.
+**로컬 MySQL로 실행할 때** — `pixel` 폴더에서 데이터베이스를 만들고 세 파일을 순서대로 실행합니다. (기존 `pixel` DB 데이터는 지워집니다)
 
 ```bash
 cd pixel
@@ -115,47 +174,26 @@ mysql -u root -p --default-character-set=utf8mb4 pixel -e "source db/02_dongs.sq
 mysql -u root -p --default-character-set=utf8mb4 pixel -e "source db/03_seed.sql"
 ```
 
-- Windows에서 `mysql`을 찾을 수 없다고 나오면 전체 경로로 실행합니다. PowerShell: `& "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" ...`
-- IntelliJ Ultimate·DataGrip을 쓰면 Database 창에서 MySQL을 연결한 뒤, 각 SQL 파일을 우클릭 → Run으로 `pixel`에 순서대로 실행해도 됩니다.
-- 확인: `SELECT (SELECT COUNT(*) FROM dongs), (SELECT COUNT(*) FROM color_cells);` → `37`, `148`
-
-**운영 DB(RDS)** 도 자동 실행되지 않습니다. RDS는 인터넷에서 접속할 수 없어서(퍼블릭 액세스 없음) **EC2 서버 안에서 관리자 계정 `admin`으로** 실행합니다. 앱 계정 `pixel`은 데이터 읽기·쓰기 권한만 있어서 테이블을 만들거나 바꿀 수 없습니다.
-
-```bash
-# EC2 서버 안, ~/BE/pixel 에서 실행. <RDS 엔드포인트>는 서버 .env의 DB_URL에 있고, 비밀번호는 입력 창에서 넣습니다.
-docker run --rm -it -v "$PWD/db:/db:ro" mysql:8.4 \
-  mysql -h <RDS 엔드포인트> -u admin -p --ssl-mode=REQUIRED --default-character-set=utf8mb4 pixel \
-  -e "source /db/01_schema.sql"
-```
-
-**스키마를 바꿀 때**
-
-1. `01_schema.sql`과 엔티티를 같은 PR에서 고칩니다.
-2. 같은 PR에 **운영에 적용할 바뀐 부분만** 담은 SQL을 `db/migration/`에 추가합니다. 파일 이름은 `날짜_내용.sql`로 합니다 (예: `db/migration/20261108_add_photo_memo.sql`). `01`을 고쳐도 이미 만들어진 운영 DB에는 반영되지 않기 때문입니다.
-3. 배포할 때 위 명령에서 파일 이름만 바꿔(`source /db/migration/파일.sql`) RDS에 실행합니다.
-    - 컬럼·테이블 **추가/변경**: 서버를 다시 빌드하기 **전에** 실행합니다. 순서가 바뀌면 `ddl-auto: validate`가 불일치로 서버 시작을 막습니다.
-    - 컬럼·테이블 **삭제**: 새 코드가 배포된 **후에** 실행합니다. 옛 코드가 아직 그 컬럼을 쓰고 있을 수 있습니다.
-4. `db/migration/`의 파일은 로컬 Docker에서도 자동 실행되지 않습니다(맨 위 폴더의 SQL만 실행). 로컬은 `01`이 이미 최신이라 따로 할 일이 없습니다.
+- 확인: `SELECT (SELECT COUNT(*) FROM dongs), (SELECT COUNT(*) FROM seasons), (SELECT COUNT(*) FROM color_cells);` → `37`, `4`, `592`
+- 경기도 전체 경계를 넣으려면 [`pixel/db/dongs/README.md`](pixel/db/dongs/README.md)를 따릅니다. (넣은 뒤 서버 재시작)
 
 ### 3. 환경 변수
 
-로컬에서는 환경 변수 없이도 아래 기본값으로 실행됩니다. 바꾸고 싶은 값만 `pixel/src/main/resources/.env.example`을 참고해 지정하세요.
+로컬에서는 환경 변수 없이도 기본값으로 실행됩니다. 바꾸고 싶은 값만 [`pixel/src/main/resources/.env.example`](pixel/src/main/resources/.env.example)을 참고해 지정하세요.
 
 | 변수 | 기본값 | 설명 |
 |---|---|---|
-| `JWT_SECRET` | 로컬용 기본키 (`application.yml`) | JWT 서명 키 (Base64, 256bit 이상). **배포(`prod`) 환경에서는 기본값이 없어 반드시 지정** |
+| `JWT_SECRET` | 로컬용 기본키 (`application.yml`) | JWT 서명 키 (Base64, 256bit 이상). **배포(`prod`)에서는 반드시 지정** |
 | `DB_URL` | `jdbc:mysql://localhost:3306/pixel...` | DB 접속 URL |
-| `DB_USERNAME` | `root` | DB 사용자 |
-| `DB_PASSWORD` | `password` | DB 비밀번호 |
+| `DB_USERNAME` / `DB_PASSWORD` | `root` / `password` | DB 계정 |
 | `SERVER_PORT` | `8080` | 서버 포트 |
-| `AWS_S3_BUCKET` | 없음 | 사진 저장 버킷. 로컬은 `pixel-cs24-dev`. 없으면 사진 업로드만 500 |
+| `AWS_S3_BUCKET` | 없음 | 사진 저장 버킷. 없으면 사진 업로드만 실패 |
 | `AWS_REGION` | `ap-northeast-2` | S3 리전 (서울) |
-| `AWS_ACCESS_KEY_ID` | 없음 | 로컬 개발용 S3 키. 팀원별로 따로 발급 |
-| `AWS_SECRET_ACCESS_KEY` | 없음 | 위 키의 비밀값. **Git·단체방에 올리지 않기** |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | 없음 | 로컬 개발용 S3 키 (배포 서버는 IAM 역할 사용). **Git·단체방에 올리지 않기** |
+| `MODERATION_ENABLED` | `false` | 사진 AI 검수 켜기. 꺼져 있으면 모든 사진을 `PUBLIC`으로 처리 |
+| `ANTHROPIC_API_KEY` | 없음 | AI 검수용 키 (`MODERATION_ENABLED=true`일 때 필요) |
 
-`.env`는 Spring이 직접 읽지 않습니다. IntelliJ 실행 구성(Edit Configurations) → 환경 변수 → 폴더 아이콘으로 `.env` 파일을 연결해야 적용됩니다. `./gradlew bootRun`으로 실행할 때는 `.env`가 적용되지 않습니다.
-
-로컬 개발용 키는 `pixel-cs24-dev` 버킷의 `photos/` 아래만 쓸 수 있습니다. 배포 서버는 키 없이 IAM 역할로 접근합니다.
+`.env`는 Spring이 직접 읽지 않습니다. IntelliJ 실행 구성 → 환경 변수 → 폴더 아이콘으로 `.env` 파일을 연결해야 적용됩니다.
 
 ### 4. 실행
 
@@ -164,8 +202,9 @@ cd pixel
 ./gradlew bootRun
 ```
 
-- Swagger UI: http://localhost:8080/swagger-ui/index.html
+- Swagger UI: http://localhost:8080/swagger-ui/index.html (로그인이 필요한 API는 오른쪽 위 Authorize에 Access Token 입력)
 - 헬스 체크: http://localhost:8080/health
+- 운영(`prod`) 프로필에서는 Swagger를 끕니다.
 
 ### 5. 테스트
 
@@ -174,104 +213,25 @@ cd pixel
 ./gradlew test
 ```
 
-## 배포 (운영 서버)
+H2 메모리 DB를 써서 MySQL·AWS 키 없이 돌아갑니다. GitHub Actions가 모든 PR에서 같은 테스트를 돌립니다.
 
-### 구조
+## 배포
 
-브라우저 → Vercel(FE, HTTPS) → `https://pixel-cs24.duckdns.org/api/*` → EC2 Nginx(HTTPS) → `127.0.0.1:8080` 백엔드 컨테이너 → RDS(MySQL) · S3
+- 운영 브랜치는 `main`입니다. dev → main 릴리스 PR을 머지한 뒤, EC2에서 `scripts/deploy.sh`로 반영합니다. (최신 main 받기 → 이미지 빌드 → `/health` 확인. 빌드 전 점검에서 문제가 있으면 서버를 바꾸지 않고 멈추고, 배포 중 실패하면 로그와 되돌리는 명령을 보여 줌)
+- DB 변경은 `db/migration/`의 SQL을 RDS에 직접 적용합니다. 추가·변경은 배포 전, 삭제는 배포 후에 적용합니다.
+- 외부에서 들어오는 길은 Nginx(443·80) 하나이고, 백엔드(8080)와 DB(3306)는 밖에서 접근할 수 없습니다.
+- 마이그레이션 순서, 배포 스크립트 옵션, 보안 그룹, Nginx·HTTPS·도메인 설정은 [docs/DEPLOY.md](docs/DEPLOY.md)에 있습니다.
 
-- 운영 브랜치는 `main`입니다. dev → main 릴리스 PR(`[deploy] 배포용 dev, main 머지`)을 머지한 뒤 서버에 반영합니다.
-- 마이그레이션이 필요한 PR이 있으면 위 "스키마를 바꿀 때" 순서를 따릅니다. 컬럼·테이블 **추가/변경은 서버를 다시 빌드하기 전에**, **삭제는 새 코드를 배포한 후에** RDS에 적용합니다.
+## 협업 규칙
 
-서버 반영은 `scripts/deploy.sh`로 합니다. 최신 main을 받아 다시 빌드하고 health까지 확인하며, 위험한 상황이면 서버를 바꾸지 않고 멈춥니다.
-
-```bash
-# EC2 서버 안
-~/BE/scripts/deploy.sh              # main에 새 커밋이 있으면 배포
-~/BE/scripts/deploy.sh --migrated   # 마이그레이션 확인 끝 (추가·변경은 RDS 적용 후, 삭제는 배포 후 적용)
-~/BE/scripts/deploy.sh --force      # 새 커밋이 없어도 다시 빌드
-```
-
-- 새 마이그레이션 파일이 있으면 `--migrated` 없이는 멈춥니다. 이때 `cd ~/BE && git switch main && git pull --ff-only`로 파일을 받은 뒤, 위 "스키마를 바꿀 때" 규칙대로 진행합니다.
-  - 추가·변경: RDS에 먼저 적용하고 `--migrated`로 다시 실행합니다.
-  - 삭제만 있으면: 적용하지 않고 `--migrated`로 먼저 배포한 뒤, 배포가 끝나면 적용합니다. 스크립트가 `DROP`이 든 파일을 따로 알려 줍니다.
-  - 둘 다 있으면: 추가·변경만 적용 → `--migrated`로 배포 → 삭제 적용. 그래서 추가와 삭제는 마이그레이션 파일을 나눠 만듭니다.
-- 종료 코드: 0 성공·이미 최신 / 1 배포 실패(로그와 되돌리는 명령 출력) / 2 배포 전에 멈춤(서버 그대로)
-- 기록: `~/pixel-deploy.log`(배포 이력), `~/pixel-deployed-commit`(마지막 성공 배포 커밋)
-- 처음 한 번은 돌고 있는 커밋을 직접 기록합니다: `git -C ~/BE rev-parse HEAD > ~/pixel-deployed-commit`
-- 빌드할 때마다 쌓이는 옛 이미지는 스크립트가 정리합니다(`docker image prune -f`).
-
-### 포트와 보안 그룹 (`pixel-ec2-sg`)
-
-| 포트 | 허용 범위 | 용도 |
-|---|---|---|
-| 22 | 관리자 IP만 | SSH |
-| 80 | 전체 | HTTP → HTTPS 이동, 인증서 자동 갱신 (**닫으면 갱신 실패**) |
-| 443 | 전체 | HTTPS (Nginx) |
-| 8080 | 열지 않음 | 백엔드는 `127.0.0.1:8080`에만 열려 있어 Nginx만 접근 |
-
-확인: `sudo ss -tlnp | grep 8080` → `127.0.0.1:8080`만 보여야 합니다.
-
-### Nginx
-
-- 설정 파일: `/etc/nginx/sites-available/pixel` (`/etc/nginx/sites-enabled/pixel`에 링크, 기본 사이트 `default`는 삭제)
-- 443으로 받은 요청을 `http://127.0.0.1:8080`으로 전달합니다. 업로드 크기 제한 `client_max_body_size 12m`는 백엔드 요청 최대 크기(12MB)와 맞춥니다.
-- 서버를 새로 만들 때 처음 넣는 설정입니다. 443 블록과 HTTPS 이동은 아래 certbot이 자동으로 추가합니다.
-
-```nginx
-server {
-    listen 80;
-    server_name pixel-cs24.duckdns.org;
-    client_max_body_size 12m;
-    server_tokens off;
-
-    location / {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-설정을 고친 뒤:
-
-```bash
-sudo nginx -t                 # 문법 확인
-sudo systemctl reload nginx   # 적용
-```
-
-### HTTPS 인증서 (Let's Encrypt)
-
-- certbot으로 발급합니다. 인증서는 90일마다 만료되고, 만료 전에 자동으로 갱신됩니다.
-- 처음 발급: `sudo certbot --nginx -d pixel-cs24.duckdns.org --redirect`
-- 자동 갱신 확인: `sudo certbot renew --dry-run`
-
-### 도메인 (DuckDNS)
-
-- `pixel-cs24.duckdns.org` → EC2 탄력적 IP `13.209.160.196`
-- 탄력적 IP라 EC2를 재시작해도 바뀌지 않아 따로 갱신할 필요가 없습니다. 탄력적 IP를 바꾸면 duckdns.org에서 IP를 수정합니다.
-- FE `vercel.json`의 `/api` 목적지가 이 도메인입니다.
-
-## 프로젝트 구조
-
-```
-pixel/src/main/java/com/pixel
-├── domain
-│   ├── user          # 회원 (controller, dto, entity, repository, service, exception)
-│   └── refreshtoken  # Refresh Token 저장소
-└── global
-    ├── apiPayload    # 공통 응답, 에러/성공 코드, 예외 처리
-    ├── config        # SecurityConfig 등
-    └── security/jwt  # JwtTokenProvider, JwtAuthenticationFilter, EntryPoint
-```
+- 브랜치: `{타입}/{이슈번호}-{내용}` → **dev로 PR**, 리뷰 2명 승인 + CI 통과 후 머지. main은 dev → main 릴리스 PR로만 반영
+- 커밋: `[타입] 내용 #이슈번호` (예: `[feat] 로그인 구현 #9`)
+- 코드 스타일: Google Java Style
+- 자세한 내용은 [CONTRIBUTING.md](.github/CONTRIBUTING.md)
 
 ## 외부 데이터
 
-- 통계지리정보서비스(SGIS) 행정구역 경계 — 부천 37개 행정동 경계
-- 기상청 ASOS 시간자료 — 촬영 시점 날씨
-- 한국관광공사 TourAPI — 동 주변 볼거리 (확장)
+- 통계지리정보서비스(SGIS) 행정구역 경계 — 경기도 31개 시·군 행정동 경계 (기준일 20250630)
 
 ## 팀원
 
@@ -282,10 +242,3 @@ pixel/src/main/java/com/pixel
 | 김세훈 | Dev |
 | 김우용 | Dev |
 | 임현진 | Design |
-
-## 협업 규칙
-
-브랜치·커밋·이슈·PR 규칙은 [CONTRIBUTING.md](.github/CONTRIBUTING.md)를 참고하세요.
-
-- 커밋: `[타입] 내용 #이슈번호` (예: `[feat] 로그인 구현 #9`)
-- 코드 스타일: Google Java Style
